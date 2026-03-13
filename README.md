@@ -1,36 +1,56 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🍳 Mom's Recipes
 
-## Getting Started
+A personal recipe website built with **Next.js** to store, organize, and share my mom’s recipes.
 
-First, run the development server:
+The goal of this project is to digitize family recipes and make them easy to browse and search through. My mom will also be able to log in and upload her own recipes directly to the website.
+
+---
+
+## ✨ Features
+
+- 📖 Browse a list of recipes
+- 🔍 Search through recipes
+- 🔐 Secure login for my mom
+- ➕ Upload new recipes
+- 📱 Responsive design for mobile and desktop
+
+---
+
+## 🧠 Project Goal
+
+This project aims to preserve family recipes by turning them into a searchable online cookbook. Instead of keeping recipes scattered across notebooks or papers, everything will live in one simple and accessible website.
+
+---
+
+## 🛠️ Tech Stack
+
+- **Framework:** Next.js
+- **Language:** JavaScript / TypeScript
+- **Styling:** CSS / Tailwind (update if needed)
+- **Authentication:** (to be implemented)
+- **Database:** (to be implemented)
+
+---
+
+## 📂 Planned Features
+
+Future improvements may include:
+
+- Recipe categories
+- Recipe images
+- Ingredient lists
+- Cooking instructions
+- Search filters
+- Admin dashboard for managing recipes
+- Editing and deleting recipes
+
+---
+
+## 🚀 Getting Started
+
+### Clone the repository
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/yourusername/moms-recipes.git
+cd moms-recipes
 ```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
