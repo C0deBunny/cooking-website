@@ -26,9 +26,9 @@ This project aims to preserve family recipes by turning them into a searchable o
 
 - **Framework:** Next.js
 - **Language:** JavaScript / TypeScript
-- **Styling:** CSS / Tailwind (update if needed)
-- **Authentication:** (to be implemented)
-- **Database:** (to be implemented)
+- **Styling:** CSS / Tailwind
+- **Authentication:** supabase
+- **Database:** supabase
 
 ---
 
@@ -45,8 +45,6 @@ Future improvements may include:
 - Editing and deleting recipes
 
 ---
-
-## 🚀 Getting Started
 
 ### Clone the repository
 
