@@ -2,22 +2,28 @@
 
 import { supabase } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Recipe } from "@/types/recipes";
 
-export default function AddRecipeButton() {
+export default function AddRecipeButton({ onRecipeAdded }: { onRecipeAdded: (recipe: Recipe) => void }) {
   async function addRecipe() {
-    const { error } = await supabase.from("recipes").insert([
-      {
-        title: "Apple Pie",
-        description: "Delicious apple pie added from button",
-      },
-    ]);
+    const { data, error } = await supabase
+      .from("recipes")
+      .insert([
+        {
+          title: "Apple Pie",
+          description: "Delicious apple pie added from button",
+        },
+      ])
+      .select()
+      .single();
 
     if (error) {
       console.error("Insert failed:", error);
     } else {
       console.log("Recipe inserted!");
-      location.reload(); // quick way to refresh data
     }
+
+    onRecipeAdded(data);
   }
 
   return (

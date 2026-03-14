@@ -1,21 +1,38 @@
+"use client";
+
 // import lib
 import { supabase } from "@/lib/supabase/client";
+import { useState, useEffect } from "react";
 
 // import components
 import RecipeCard from "@/components/Atoms/RecipeCard";
 import AddRecipeButton from "@/components/Atoms/AddRecipeButton";
 
 //import types
-import { Recipes } from "@/types/recipes";
+import { Recipe, Recipes } from "@/types/recipes";
 
-export default async function Home() {
-  const { data, error } = await supabase.from("recipes").select("*");
+export default function Home() {
+  const [recipes, setRecipes] = useState<Recipes>([]);
 
-  const recipes: Recipes = data ?? [];
+  useEffect(() => {
+    const fetchRecipes = async () => {
+      const { data, error } = await supabase.from("recipes").select("*");
 
-  if (error) {
-    console.error("Error fetching recipes:", error);
-    return <div className="p-8">Failed to load recipes.</div>;
+      if (error) {
+        console.error("Error fetching recipes:", error);
+        return;
+      }
+
+      if (data) {
+        setRecipes(data);
+      }
+    };
+
+    fetchRecipes();
+  }, []);
+
+  function handleRecipeAdded(newRecipe: Recipe) {
+    setRecipes((prev) => [...prev, newRecipe]);
   }
 
   return (
@@ -23,7 +40,7 @@ export default async function Home() {
       {recipes?.map((recipe) => (
         <RecipeCard key={recipe.id} title={recipe.title} description={recipe.description} />
       ))}
-      <AddRecipeButton />
+      <AddRecipeButton onRecipeAdded={handleRecipeAdded} />
     </div>
   );
 }
