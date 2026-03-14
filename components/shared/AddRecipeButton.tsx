@@ -1,12 +1,12 @@
 "use client";
 
-import { supabase } from "@/lib/supabase/client";
+import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Recipe } from "@/types/recipes";
 
 export default function AddRecipeButton({ onRecipeAdded }: { onRecipeAdded: (recipe: Recipe) => void }) {
   async function addRecipe() {
-    const { data, error } = await supabase
+    const { data, error } = await createClient
       .from("recipes")
       .insert([
         {

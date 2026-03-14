@@ -1,7 +1,7 @@
 "use client";
 
 // import lib
-import { supabase } from "@/lib/supabase/client";
+import { createClient } from "@/lib/supabase/client";
 import { useState, useEffect } from "react";
 
 // import components
@@ -16,7 +16,7 @@ export default function Home() {
 
   useEffect(() => {
     const fetchRecipes = async () => {
-      const { data, error } = await supabase.from("recipes").select("*");
+      const { data, error } = await createClient.from("recipes").select("*");
 
       if (error) {
         console.error("Error fetching recipes:", error);
