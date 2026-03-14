@@ -10,8 +10,9 @@ import "./globals.css";
 // import components
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
-import ThemeProvider from "@/components/Atoms/NextThemesProvider";
-import { ThemeToggle } from "@/components/Atoms/Theme-toggle";
+import ThemeProvider from "@/components/feature/layout/NextThemesProvider";
+import Navbar from "@/components/feature/layout/Navbar";
+import Footer from "@/components/feature/layout/Footer";
 
 const fontSans = Alan_Sans({
   subsets: ["latin"],
@@ -30,10 +31,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${fontSans.variable} antialiased`}>
+      <body className={`${fontSans.variable} antialiased min-h-screen flex flex-col`}>
         <ThemeProvider>
-          {children}
-          <ThemeToggle />
+          <Navbar />
+          <main className="mx-auto w-full max-w-7xl px-6 py-10 flex-1">{children}</main>
+          <Footer />
         </ThemeProvider>
         <Analytics />
         <SpeedInsights />

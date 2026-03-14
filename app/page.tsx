@@ -5,8 +5,8 @@ import { supabase } from "@/lib/supabase/client";
 import { useState, useEffect } from "react";
 
 // import components
-import RecipeCard from "@/components/Atoms/RecipeCard";
-import AddRecipeButton from "@/components/Atoms/AddRecipeButton";
+import RecipeCard from "@/components/shared/RecipeCard";
+import AddRecipeButton from "@/components/shared/AddRecipeButton";
 
 //import types
 import { Recipe, Recipes } from "@/types/recipes";
