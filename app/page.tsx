@@ -2,7 +2,8 @@
 import { supabase } from "@/lib/supabase/client";
 
 // import components
-import RecipeCard from "@/components/Atoms/recipeCard";
+import RecipeCard from "@/components/Atoms/RecipeCard";
+import AddRecipeButton from "@/components/Atoms/AddRecipeButton";
 
 //import types
 import { Recipes } from "@/types/recipes";
@@ -22,6 +23,7 @@ export default async function Home() {
       {recipes?.map((recipe) => (
         <RecipeCard key={recipe.id} title={recipe.title} description={recipe.description} />
       ))}
+      <AddRecipeButton />
     </div>
   );
 }
