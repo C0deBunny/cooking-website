@@ -2,7 +2,7 @@
 import { supabase } from "@/lib/supabase/client";
 
 // import components
-import RecipeCard from "@/components/Atoms/RecipeCard";
+import RecipeCard from "@/components/Atoms/test";
 import AddRecipeButton from "@/components/Atoms/AddRecipeButton";
 
 //import types
