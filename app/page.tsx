@@ -1,9 +1,27 @@
-import { Button } from "@/components/ui/button";
+// import lib
+import { supabase } from "@/lib/supabase/client";
 
-export default function Home() {
+// import components
+import RecipeCard from "@/components/Atoms/recipeCard";
+
+//import types
+import { Recipes } from "@/types/recipes";
+
+export default async function Home() {
+  const { data, error } = await supabase.from("recipes").select("*");
+
+  const recipes: Recipes = data ?? [];
+
+  if (error) {
+    console.error("Error fetching recipes:", error);
+    return <div className="p-8">Failed to load recipes.</div>;
+  }
+
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-4">
-      <Button>Test Button</Button>
+    <div className="p-8">
+      {recipes?.map((recipe) => (
+        <RecipeCard key={recipe.id} title={recipe.title} description={recipe.description} />
+      ))}
     </div>
   );
 }
