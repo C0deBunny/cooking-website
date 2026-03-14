@@ -12,7 +12,7 @@ type NavbarProps = {
   isLoggedIn?: boolean;
 };
 
-export default function Navbar({ isLoggedIn = true }: NavbarProps) {
+export default function Navbar({ isLoggedIn = false }: NavbarProps) {
   return (
     <header className="border-b">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3">

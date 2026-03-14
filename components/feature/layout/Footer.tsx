@@ -7,7 +7,7 @@ type FooterProps = {
   isLoggedIn?: boolean;
 };
 
-export default function Footer({ isLoggedIn = true }: FooterProps) {
+export default function Footer({ isLoggedIn = false }: FooterProps) {
   return (
     <footer className="mt-20 mb-10 border-t">
       <div className="mx-auto max-w-7xl px-6 py-8 text-sm text-muted-foreground">
