@@ -2,7 +2,7 @@
 import type { Metadata } from "next";
 
 //import fonts
-import { Geist, Geist_Mono } from "next/font/google";
+import { Alan_Sans } from "next/font/google";
 
 //import styles
 import "./globals.css";
@@ -13,14 +13,9 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import ThemeProvider from "@/components/Atoms/NextThemesProvider";
 import { ThemeToggle } from "@/components/Atoms/Theme-toggle";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const fontSans = Alan_Sans({
   subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  variable: "--font-sans",
 });
 
 export const metadata: Metadata = {
@@ -35,13 +30,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <Analytics />
-      <SpeedInsights />
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body className={`${fontSans.variable} antialiased`}>
         <ThemeProvider>
           {children}
           <ThemeToggle />
         </ThemeProvider>
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
