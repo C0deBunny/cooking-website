@@ -6,7 +6,7 @@ import { Recipe } from "@/types/recipes";
 
 export default function AddRecipeButton({ onRecipeAdded }: { onRecipeAdded: (recipe: Recipe) => void }) {
   async function addRecipe() {
-    const { data, error } = await createClient
+    const { data, error } = await createClient()
       .from("recipes")
       .insert([
         {
