@@ -19,7 +19,7 @@ const fontSans = Alan_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Mom's Cooking Website",
+  title: "Chique's Swiet Mofo",
   description: "Author: C0deBunny",
 };
 
