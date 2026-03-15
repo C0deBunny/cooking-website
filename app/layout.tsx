@@ -34,7 +34,7 @@ export default function RootLayout({
       <body className={`${fontSans.variable} antialiased min-h-screen flex flex-col`}>
         <ThemeProvider>
           <NavbarServer />
-          <main className="mx-auto w-full max-w-7xl px-6 py-10 flex-1">{children}</main>
+          <main className="w-full flex-1">{children}</main>
           <FooterServer />
         </ThemeProvider>
         <Analytics />

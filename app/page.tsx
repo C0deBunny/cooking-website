@@ -5,11 +5,10 @@ import { createClient } from "@/lib/supabase/client";
 import { useState, useEffect } from "react";
 
 // import components
-import RecipeCard from "@/components/shared/RecipeCard";
-import AddRecipeButton from "@/components/shared/AddRecipeButton";
+import HeroSection from "@/components/feature/layout/hero/hero";
 
 //import types
-import { Recipe, Recipes } from "@/types/recipes";
+import { Recipes } from "@/types/recipes";
 
 export default function Home() {
   const [recipes, setRecipes] = useState<Recipes>([]);
@@ -31,16 +30,9 @@ export default function Home() {
     fetchRecipes();
   }, []);
 
-  function handleRecipeAdded(newRecipe: Recipe) {
-    setRecipes((prev) => [...prev, newRecipe]);
-  }
-
   return (
-    <div className="p-8">
-      {recipes?.map((recipe) => (
-        <RecipeCard key={recipe.id} title={recipe.title} description={recipe.description} />
-      ))}
-      <AddRecipeButton onRecipeAdded={handleRecipeAdded} />
+    <div>
+      <HeroSection />
     </div>
   );
 }
