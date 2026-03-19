@@ -11,8 +11,8 @@ import "./globals.css";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import ThemeProvider from "@/components/feature/layout/NextThemesProvider";
-import NavbarServer from "@/components/feature/layout/NavbarServer";
 import FooterServer from "@/components/feature/layout/FooterServer";
+import Navbar from "@/components/feature/layout/navbar/Navbar";
 
 const fontSans = Alan_Sans({
   subsets: ["latin"],
@@ -33,7 +33,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${fontSans.variable} antialiased min-h-screen flex flex-col`}>
         <ThemeProvider>
-          <NavbarServer />
+          <Navbar />
           <main className="w-full flex-1">{children}</main>
           <FooterServer />
         </ThemeProvider>

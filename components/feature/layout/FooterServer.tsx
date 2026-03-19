@@ -1,5 +1,5 @@
 import Footer from "./Footer";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server-client";
 
 export default async function FooterServer() {
   const supabase = await createClient();

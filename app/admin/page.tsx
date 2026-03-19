@@ -1,7 +1,7 @@
 "use client";
 
 // import lib
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/supabase/browser-client";
 import { useState, useEffect } from "react";
 
 // import components
@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 
 // import types
 import type { Recipe, Recipes } from "@/types/recipes";
+import { requireUser } from "@/Actions/Auth";
 
 export default function Recipes() {
   const [recipes, setRecipes] = useState<Recipes>([]);
