@@ -18,9 +18,7 @@ export async function createClient() {
           cookiesToSet.forEach(({ name, value, options }) => {
             cookieStore.set(name, value, options);
           });
-        } catch {
-          // ignored if called somewhere cookies can't be written
-        }
+        } catch {}
       },
     },
   });

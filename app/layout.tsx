@@ -1,18 +1,18 @@
 // import types
 import type { Metadata } from "next";
 
-//import fonts
+// import fonts
 import { Alan_Sans } from "next/font/google";
 
-//import styles
+// import styles
 import "./globals.css";
 
 // import components
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import ThemeProvider from "@/components/feature/layout/navbar/theme/NextThemesProvider";
-import FooterServer from "@/components/feature/layout/footer/FooterServer";
 import Navbar from "@/components/feature/layout/navbar/Navbar";
+import Footer from "@/components/feature/layout/footer/Footer";
 
 const fontSans = Alan_Sans({
   subsets: ["latin"],
@@ -35,7 +35,7 @@ export default function RootLayout({
         <ThemeProvider>
           <Navbar />
           <main className="w-full flex-1">{children}</main>
-          <FooterServer />
+          <Footer />
         </ThemeProvider>
         <Analytics />
         <SpeedInsights />
