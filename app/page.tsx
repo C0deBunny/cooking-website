@@ -1,5 +1,5 @@
 // import components
-import HeroSection from "@/components/feature/layout/hero/heroSection";
+import HeroSection from "@/components/feature/hero/heroSection";
 
 export default function Home() {
   return (

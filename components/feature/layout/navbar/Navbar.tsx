@@ -5,7 +5,7 @@ import { getCurrentUser } from "@/Actions/Auth";
 import Link from "next/link";
 import Image from "next/image";
 import { Separator } from "@/components/ui/separator";
-import { ThemeToggle } from "../Theme-toggle";
+import { ThemeToggle } from "./theme/Theme-toggle";
 import AuthButton from "./AuthButton";
 import { Suspense } from "react";
 import { User } from "lucide-react";

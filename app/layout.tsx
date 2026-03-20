@@ -10,8 +10,8 @@ import "./globals.css";
 // import components
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
-import ThemeProvider from "@/components/feature/layout/NextThemesProvider";
-import FooterServer from "@/components/feature/layout/FooterServer";
+import ThemeProvider from "@/components/feature/layout/navbar/theme/NextThemesProvider";
+import FooterServer from "@/components/feature/layout/footer/FooterServer";
 import Navbar from "@/components/feature/layout/navbar/Navbar";
 
 const fontSans = Alan_Sans({
