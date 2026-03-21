@@ -1,7 +1,7 @@
 "use server";
 
 // import lib
-import { createClient } from "../lib/supabase/server-client";
+import { createClient } from "../../lib/supabase/server-client";
 import { redirect } from "next/navigation";
 
 export async function getCurrentUser() {
@@ -27,15 +27,4 @@ export async function requireUser() {
   }
 
   return user;
-}
-
-export async function signOut() {
-  const supabase = await createClient();
-  const { error } = await supabase.auth.signOut();
-
-  if (error) {
-    throw new Error("Failed to sign out: " + error.message);
-  }
-
-  redirect("/");
 }

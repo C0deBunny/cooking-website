@@ -1,5 +1,5 @@
 // import actions
-import { getCurrentUser } from "@/Actions/Auth";
+import { getCurrentUser } from "@/Actions/auth/Auth";
 
 // import components
 import { Separator } from "@/components/ui/separator";
