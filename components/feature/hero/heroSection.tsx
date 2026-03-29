@@ -37,7 +37,7 @@ export default function HeroSection() {
           <div className="relative w-full max-w-sm">
             <div className="overflow-hidden rounded-[28px] border bg-card p-3 shadow-xl">
               <div className="relative aspect-4/5 overflow-hidden rounded-[22px] bg-muted">
-                <Image src="/frontPicture.jpg" alt="Portrait of Chiquetha" fill className="object-cover" priority />
+                <Image src="/frontPicture.jpg" alt="Portrait of Chiquetha" fill sizes="(max-width: 1024px) 100vw, 384px" className="object-cover" priority />
 
                 <div className="absolute bottom-4 left-4 ">
                   <div className="max-w-65 rounded-2xl border border-white/50 bg-white/80 px-5 py-4 shadow-lg backdrop-blur-md">
