@@ -3,24 +3,6 @@
 Personal recipe site ("Chique's Swiet Mofo") — Next.js 16 App Router + Supabase.
 Public visitors browse recipes; a single owner logs in to add them.
 
-## Known issues — read first
-
-`docs/issues.md` tracks the open architecture and layout problems in this repo, ordered
-worst-first, with a target layout and a suggested work order. **Read it before proposing
-structural changes or explaining why something is shaped the way it is** — several things
-that look intentional below are known defects, not decisions:
-
-- `/admin`'s auth gate is deliberately soft — it redirects, but only after the prerendered shell
-  has been flushed (see "Auth gating" below)
-- the nav links and site name are duplicated across four files
-- `components/feature/` vs `components/shared/` is an arbitrary split that has already broken down
-- the Supabase integration has not been audited — issue 6 lists the open questions (which auth
-  read to use, whether the public client needs stateless `auth` options, and whether the RLS
-  policies actually say what we assume). **Deferred on the owner's instruction; don't start it
-  unasked**, but don't assert that the setup is correct either.
-
-When you fix one, tick it off in `docs/issues.md` and update the affected section here.
-
 ## Commands
 
 ```bash
@@ -128,8 +110,9 @@ read that blocks the root shell fails the build with `StaticGenBailoutError` —
 The cost, accepted deliberately: `/admin` stays partially prerendered, so its shell is flushed
 before the gate resolves and the redirect arrives as a client-side `replace` to `/`. An anonymous
 visitor sees admin chrome for a moment. Nothing in that shell is private — the recipe cards are the
-same public list `/recipes` serves. Don't describe `/admin` as hard-gated; `docs/issues.md` issue 3
-records how to harden it.
+same public list `/recipes` serves. **Don't describe `/admin` as hard-gated.** To harden it, opt the
+route out of prerendering so the gate blocks and nothing ships until the user is known —
+`getRecipes()` stays cached either way, so the only real loss is the static shell.
 
 `requireUser()` is not a substitute for RLS, and neither is the gate. See the environment note above.
 
