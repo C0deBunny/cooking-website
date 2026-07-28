@@ -11,34 +11,42 @@ Status legend: `[ ]` open, `[x]` fixed. Update this file as items land.
 
 ---
 
-## 1. `Actions/` mixes reads with mutations, and the reads pay for it
+## 1. `Actions/` mixed reads with mutations, and the reads paid for it
 
-- [ ] **Open**
+- [x] **Fixed** — `Actions/` is gone. Reads live in [lib/auth/queries.ts](../lib/auth/queries.ts)
+      wrapped in React's `cache()`; mutations in [lib/auth/actions.ts](../lib/auth/actions.ts); the
+      zod schema and `LoginState` in [lib/auth/schema.ts](../lib/auth/schema.ts). One
+      `auth.getUser()` per render instead of three.
 
-[Actions/auth/Auth.ts](../Actions/auth/Auth.ts) exports `getCurrentUser` and `requireUser` from a
-`"use server"` file. Both are _reads_. Consequences:
+`Actions/auth/Auth.ts` exported `getCurrentUser` and `requireUser` from a `"use server"` file. Both
+are _reads_. Consequences:
 
-- `"use server"` turns each into a callable POST endpoint for no benefit.
-- More importantly it blocks wrapping them in React's `cache()`, so calls are not deduped.
+- `"use server"` turned each into a callable POST endpoint for no benefit.
+- More importantly it blocked wrapping them in React's `cache()`, so calls were not deduped.
   [navbar/Navigators.tsx](../components/feature/layout/navbar/Navigators.tsx),
   [NavbarAuthSlot.tsx](../components/feature/layout/navbar/NavbarAuthSlot.tsx) and
   [footer/Navigators.tsx](../components/feature/layout/footer/Navigators.tsx) each call it, so
-  **every page render makes 3 separate `auth.getUser()` round-trips to Supabase.**
+  **every page render made 3 separate `auth.getUser()` round-trips to Supabase.**
 
-`requireUser` is currently dead code — nothing imports it.
+Two details worth keeping in mind for future work:
 
-**Fix:** auth reads move to `lib/auth/queries.ts` as plain async functions wrapped in `cache()`
-(no `"use server"`). Mutations (`login`, `signOut`) move to `lib/auth/actions.ts`. Lowercase the
-folder while doing it.
+- `cache()` dedupes per request, so the three callers sitting in separate `Suspense` boundaries
+  still share one Supabase call.
+- Only async functions may be exported from a `"use server"` file. That is why `loginSchema` and the
+  `LoginState` type moved to `schema.ts` rather than staying beside the action.
 
-## 2. Nothing calls `revalidateTag("recipes")` — the public cache never invalidates
+`requireUser` is still unused — issue 6 (the admin route gate) is what will consume it.
+
+## 2. Nothing calls `revalidateTag("recipes")` — the public page serves stale recipes
 
 - [ ] **Open**
 
 [lib/data/recipes.ts](../lib/data/recipes.ts) is `"use cache"` + `cacheTag("recipes")`, and the
 only write path is a raw `supabase.insert()` inside a client component
-([app/admin/page.tsx](../app/admin/page.tsx)). **Adding a recipe never makes it appear on
-`/recipes`.**
+([app/admin/page.tsx](../app/admin/page.tsx)). The tag is therefore never invalidated, so
+**a new recipe takes up to 15 minutes to appear on `/recipes`** — the default `"use cache"`
+revalidate window, visible as `Revalidate 15m` in `npm run build` output. The owner adds a recipe,
+sees it on `/admin` (client-fetched, always fresh), and does not see it on the public page.
 
 This is a layout consequence, not an oversight: the mutation lives somewhere that structurally
 cannot revalidate. Moving it into a server action fixes the bug as a side effect.
@@ -189,7 +197,7 @@ Items 1–4 fix actual defects; the rest is structure.
 
 1. ~~`lib/utils.ts` move + revert the 7 `components/ui` imports — issue 7 (unblocks shadcn)~~ **done**
 2. ~~Delete `AddRecipeButton.tsx` and the unused default SVGs — issues 3, 9~~ **done**
-3. Auth reads → `lib/auth/queries.ts` with `cache()` — issue 1 (kills 2 of 3 round-trips)
+3. ~~Auth reads → `lib/auth/queries.ts` with `cache()` — issue 1 (kills 2 of 3 round-trips)~~ **done**
 4. Admin write → server action + `revalidateTag` — issues 2, 3
 5. `config/site.ts`, then collapse the two `Navigators` into one component — issue 5
 6. `(public)` / `(admin)` route groups + admin auth gate — issue 6

@@ -10,10 +10,10 @@ worst-first, with a target layout and a suggested work order. **Read it before p
 structural changes or explaining why something is shaped the way it is** — several things
 that look intentional below are known defects, not decisions:
 
-- auth reads live in `Actions/` as server actions, costing 3 `auth.getUser()` calls per render
-- no mutation calls `revalidateTag("recipes")`, so `/recipes` never shows new recipes
+- no mutation calls `revalidateTag("recipes")`, so `/recipes` serves recipes up to 15 minutes stale
 - recipe queries are duplicated between `lib/data/recipes.ts` and `app/admin/page.tsx`
 - `/admin` has no server-side auth check
+- `components/feature/` vs `components/shared/` is an arbitrary split that has already broken down
 
 When you fix one, tick it off in `docs/issues.md` and update the affected section here.
 
@@ -47,11 +47,11 @@ this project without a deliberate discussion.
 ## Layout
 
 ```
-Actions/auth/       server actions ("use server") — note the capital A, root-level, not under app/
 app/                routes: / , /login , /recipes , /admin
 components/ui/      shadcn primitives (generated — regenerate, don't hand-edit)
 components/feature/ feature components, grouped by area (hero, layout/navbar, layout/footer, login)
 components/shared/  reused across features (RecipeCard)
+lib/auth/           queries.ts (cache()'d reads) · actions.ts ("use server") · schema.ts (zod)
 lib/data/           data access, server-only, cached
 lib/supabase/       three clients — pick the right one, see below
 lib/utils.ts        cn() helper — path must match the `utils` alias in components.json
@@ -81,7 +81,8 @@ illegal in Next 16. That's why `lib/data/recipes.ts` uses the public client.
 call `revalidateTag("recipes")` — nothing currently does, which is why `/admin` fetches
 client-side instead of reusing `getRecipes()`.
 
-That is a bug, not a design: new recipes never appear on `/recipes`. See issue 2 in
+That is a bug, not a design: `/recipes` serves recipes up to 15 minutes stale (the default
+`"use cache"` revalidate window — `npm run build` prints it as `Revalidate 15m`). See issue 2 in
 `docs/issues.md`.
 
 ## Conventions
@@ -92,7 +93,11 @@ That is a bug, not a design: new recipes never appear on `/recipes`. See issue 2
   Long JSX lines stay on one line — that's intentional, not sloppy formatting.
 - Server components by default; add `"use client"` only where state or effects are needed.
 - Server actions validate input with zod and return a `{ error?: string }` state object for
-  `useActionState` (see `Actions/auth/login.ts`); they `redirect()` on success.
+  `useActionState` (see `lib/auth/actions.ts`); they `redirect()` on success. Only async functions
+  may be exported from a `"use server"` file — schemas and types go in a sibling `schema.ts`.
+- Auth reads are **not** server actions. `lib/auth/queries.ts` wraps `getCurrentUser` in React's
+  `cache()` so the navbar, footer and pages share one `auth.getUser()` per request. Keep new reads
+  out of `"use server"` files for the same reason.
 - Styling is Tailwind v4 (CSS-first, no `tailwind.config`). Use the semantic theme tokens
   from `app/globals.css` (`bg-foreground/5`, `text-foreground`) rather than raw colors.
 - Page shell pattern: `<section>` wrapper → tinted header band → `max-w-7xl mx-auto px-6 py-12` body.

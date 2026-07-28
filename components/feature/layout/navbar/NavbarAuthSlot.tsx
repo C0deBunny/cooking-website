@@ -1,5 +1,5 @@
-// import actions
-import { getCurrentUser } from "@/Actions/auth/Auth";
+// import lib
+import { getCurrentUser } from "@/lib/auth/queries";
 
 // import components
 import AuthButton from "./AuthButton";
