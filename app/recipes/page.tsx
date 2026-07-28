@@ -1,5 +1,5 @@
 // import lib
-import { getRecipes } from "@/lib/data/recipes";
+import { getRecipes } from "@/lib/recipes/queries";
 
 // import components
 import RecipeCard from "@/components/shared/RecipeCard";

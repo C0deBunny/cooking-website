@@ -10,9 +10,8 @@ worst-first, with a target layout and a suggested work order. **Read it before p
 structural changes or explaining why something is shaped the way it is** — several things
 that look intentional below are known defects, not decisions:
 
-- no mutation calls `revalidateTag("recipes")`, so `/recipes` serves recipes up to 15 minutes stale
-- recipe queries are duplicated between `lib/data/recipes.ts` and `app/admin/page.tsx`
-- `/admin` has no server-side auth check
+- `/admin` has no server-side auth check (the create action does check; the page doesn't)
+- the nav links and site name are duplicated across four files
 - `components/feature/` vs `components/shared/` is an arbitrary split that has already broken down
 
 When you fix one, tick it off in `docs/issues.md` and update the affected section here.
@@ -52,7 +51,7 @@ components/ui/      shadcn primitives (generated — regenerate, don't hand-edit
 components/feature/ feature components, grouped by area (hero, layout/navbar, layout/footer, login)
 components/shared/  reused across features (RecipeCard)
 lib/auth/           queries.ts (cache()'d reads) · actions.ts ("use server") · schema.ts (zod)
-lib/data/           data access, server-only, cached
+lib/recipes/        same three-file shape — see "Domain modules" below
 lib/supabase/       three clients — pick the right one, see below
 lib/utils.ts        cn() helper — path must match the `utils` alias in components.json
 types/              shared types
@@ -61,29 +60,49 @@ proxy.ts            Next 16's renamed middleware — refreshes the Supabase sess
 
 Import alias: `@/*` → repo root.
 
-This layout is the one being challenged — `docs/issues.md` has the target structure.
+`components/feature/` vs `components/shared/` is still being unwound — `docs/issues.md` has the
+target structure.
+
+## Domain modules
+
+Each domain gets one folder under `lib/`, with the same three files:
+
+```
+lib/<domain>/queries.ts   reads — plain async, cache()'d or "use cache". Never "use server".
+lib/<domain>/actions.ts   writes — "use server". Only async functions may be exported.
+lib/<domain>/schema.ts    zod schemas + the useActionState state type.
+```
+
+`lib/auth/` and `lib/recipes/` both follow it; follow it for new domains too. Route-specific
+**components** colocate under the route in `_components/` (e.g. `app/admin/_components/`), but
+domain logic does not — recipes are read from three routes.
 
 ## Supabase clients — pick correctly
 
-| File                             | Use from                          | Notes                                                                                   |
-| -------------------------------- | --------------------------------- | --------------------------------------------------------------------------------------- |
-| `lib/supabase/server-client.ts`  | server components, server actions | cookie-backed, `await createClient()` — this is the only one that knows who the user is |
-| `lib/supabase/browser-client.ts` | client components                 | used by `app/admin/page.tsx`                                                            |
-| `lib/supabase/public-client.ts`  | cached/unauthenticated reads      | no cookies, so it's safe inside `"use cache"`                                           |
+| File                             | Use from                          | Notes                                                                                         |
+| -------------------------------- | --------------------------------- | --------------------------------------------------------------------------------------------- |
+| `lib/supabase/server-client.ts`  | server components, server actions | cookie-backed, `await createClient()` — this is the only one that knows who the user is       |
+| `lib/supabase/public-client.ts`  | cached/unauthenticated reads      | no cookies, so it's safe inside `"use cache"`                                                 |
+| `lib/supabase/browser-client.ts` | client components                 | **currently unused** — kept for realtime/uploads. Don't reach for it to fetch or mutate data. |
 
 Never use `server-client.ts` inside a `"use cache"` function — reading cookies there is
-illegal in Next 16. That's why `lib/data/recipes.ts` uses the public client.
+illegal in Next 16. That's why `lib/recipes/queries.ts` uses the public client.
 
 ## Caching
 
 `next.config.ts` sets `cacheComponents: true`. Cached data functions use `"use cache"` plus
-`cacheTag(...)` (see `lib/data/recipes.ts`). When you add a mutation that changes recipes,
-call `revalidateTag("recipes")` — nothing currently does, which is why `/admin` fetches
-client-side instead of reusing `getRecipes()`.
+`cacheTag(...)` — see `lib/recipes/queries.ts`. Without an explicit `cacheLife`, entries use the
+`"default"` profile: stale 5m, revalidate 15m, no expiry. `npm run build` prints the window per
+route, so a route showing `Revalidate 15m` is cached.
 
-That is a bug, not a design: `/recipes` serves recipes up to 15 minutes stale (the default
-`"use cache"` revalidate window — `npm run build` prints it as `Revalidate 15m`). See issue 2 in
-`docs/issues.md`.
+**Invalidating from a mutation — Next 16 split the API, pick the right one:**
+
+- `updateTag("recipes")` — server actions only, read-your-own-writes. The value is fresh on the
+  same response, so a form submitter sees their own change. This is what `lib/recipes/actions.ts`
+  uses, and what you want for nearly every mutation here.
+- `revalidateTag("recipes", profile)` — marks entries stale for a later background refresh. The
+  second argument is **required** and it does not guarantee freshness on the next read. For
+  webhooks and external syncs, not form submissions.
 
 ## Conventions
 

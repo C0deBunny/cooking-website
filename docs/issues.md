@@ -4,8 +4,9 @@ Findings from an architecture review of the initial setup (2026-07-28). The repo
 by a trainee; the instincts are mostly sound but a few layout decisions are causing real defects
 and others will as the app grows.
 
-Nothing here has been fixed yet. Items are ordered worst-first. The suggested work order is at
-the bottom — it differs from the severity order because some cheap fixes unblock later ones.
+Items are ordered worst-first. The suggested work order is at the bottom — it differs from the
+severity order because some cheap fixes unblock later ones. Issues 1, 2, 3 and 7 are done; the
+fixed entries are kept rather than deleted, because the reasoning is the useful part.
 
 Status legend: `[ ]` open, `[x]` fixed. Update this file as items land.
 
@@ -37,35 +38,54 @@ Two details worth keeping in mind for future work:
 
 `requireUser` is still unused — issue 6 (the admin route gate) is what will consume it.
 
-## 2. Nothing calls `revalidateTag("recipes")` — the public page serves stale recipes
+## 2. No mutation invalidated the `recipes` cache tag — the public page served stale recipes
 
-- [ ] **Open**
+- [x] **Fixed** — the write is a server action ([lib/recipes/actions.ts](../lib/recipes/actions.ts))
+      that calls `updateTag("recipes")`, so both `/recipes` and `/admin` show a new recipe
+      immediately.
 
-[lib/data/recipes.ts](../lib/data/recipes.ts) is `"use cache"` + `cacheTag("recipes")`, and the
-only write path is a raw `supabase.insert()` inside a client component
-([app/admin/page.tsx](../app/admin/page.tsx)). The tag is therefore never invalidated, so
-**a new recipe takes up to 15 minutes to appear on `/recipes`** — the default `"use cache"`
-revalidate window, visible as `Revalidate 15m` in `npm run build` output. The owner adds a recipe,
-sees it on `/admin` (client-fetched, always fresh), and does not see it on the public page.
+`lib/data/recipes.ts` was `"use cache"` + `cacheTag("recipes")`, and the only write path was a raw
+`supabase.insert()` inside a client component. The tag was therefore never invalidated, so a new
+recipe took up to 15 minutes to appear on `/recipes` — the default `"use cache"` revalidate window,
+visible as `Revalidate 15m` in `npm run build` output.
 
-This is a layout consequence, not an oversight: the mutation lives somewhere that structurally
-cannot revalidate. Moving it into a server action fixes the bug as a side effect.
+**Use `updateTag`, not `revalidateTag`.** Next 16 split these:
 
-## 3. Recipe queries live in three places
+| Function                      | Semantics                                                               | Use for                  |
+| ----------------------------- | ----------------------------------------------------------------------- | ------------------------ |
+| `updateTag(tag)`              | server-action only, read-your-own-writes — fresh on the same response   | form submissions         |
+| `revalidateTag(tag, profile)` | marks entries stale for a later background refresh; profile is required | webhooks, external syncs |
 
-- [ ] **Open**
+An earlier draft of this file told you to call `revalidateTag` here. That would compile only with a
+second argument and still would not guarantee the owner sees their own recipe on submit.
 
-[lib/data/recipes.ts](../lib/data/recipes.ts),
-[app/admin/page.tsx](../app/admin/page.tsx) and the orphaned
-`components/shared/AddRecipeButton.tsx` each queried `recipes` directly. A data layer that gets
-bypassed isn't a data layer. Two of the three already disagreed — `lib/data` has no `.order()`,
-admin orders by `created_at desc`.
+This was a layout consequence, not an oversight: the mutation lived somewhere that structurally
+could not invalidate a server cache. Moving it into a server action fixed the bug as a side effect —
+which is the general lesson worth keeping from this one.
 
-`AddRecipeButton` was dead code (nothing imported it) and also passed `data` to its callback without
-null-checking after an error. **Deleted.** Two query sites remain.
+## 3. Recipe queries lived in three places
 
-**Fix:** `lib/data/recipes.ts` becomes the only place recipes are read; a server action is the only
-place they are written. Lands with issue 2.
+- [x] **Fixed** — [lib/recipes/queries.ts](../lib/recipes/queries.ts) is the only place recipes are
+      read; [lib/recipes/actions.ts](../lib/recipes/actions.ts) the only place they are written.
+      `lib/data/` is retired.
+
+`lib/data/recipes.ts`, `app/admin/page.tsx` and the orphaned `components/shared/AddRecipeButton.tsx`
+each queried `recipes` directly. A data layer that gets bypassed isn't a data layer. Two of the three
+disagreed on ordering — `lib/data` had no `.order()` while admin sorted `created_at desc`. The
+ordering now lives in `getRecipes()`, so **both pages are newest-first**.
+
+`AddRecipeButton` was dead code and also passed `data` to its callback without null-checking after an
+error. Deleted in an earlier step.
+
+### The layout decision this settled
+
+Each domain gets one folder — `queries.ts` (reads), `actions.ts` (`"use server"` writes),
+`schema.ts` (zod + action state) — mirroring `lib/auth/`. Route-specific **components** still
+colocate under the route in `_components/`; domain logic does not, because recipes are read from
+`/`, `/recipes` and `/admin`, and editing will eventually be reachable from more than one route.
+
+The alternative was colocating the write in `app/admin/_actions/`. Rejected: it splits one domain
+across two trees and leaves three folders holding the same category of code.
 
 ## 4. `components/feature/` vs `components/shared/` has already collapsed
 
@@ -99,13 +119,16 @@ component consumed by both header and footer.
 
 ## 6. `/admin` has no server-side auth check
 
-- [ ] **Open**
+- [ ] **Open** — partially mitigated
 
-There is no `app/admin/layout.tsx`, and the page is `"use client"`. RLS stops the write and recipes
-are public anyway, so this is **not a data leak** — but anyone who types the URL loads the admin UI.
+The write is now safe: `createRecipe` calls `requireUser()` before inserting, so an anonymous POST
+is redirected regardless of RLS. What remains is the **page** — there is no `app/admin/layout.tsx`,
+so anyone who types the URL still loads the admin UI (and sees the same public recipe list they can
+already see at `/recipes`). Not a data leak; an unguarded surface.
 
 **Fix:** `(public)` / `(admin)` route groups, with an `(admin)/layout.tsx` calling `requireUser()`.
-One gate, applied to everything underneath it, permanently.
+One gate, applied to everything underneath it, permanently. This is what finally consumes
+`requireUser` at the page level.
 
 ## 7. `lib/utils/utils.ts` breaks the shadcn setup
 
@@ -138,6 +161,9 @@ alias — `Recipe[]` reads better at call sites.
       [lib/supabase/server-client.ts](../lib/supabase/server-client.ts). Extract it.
 - [ ] [app/login/page.tsx](../app/login/page.tsx) renders a `<main>` inside the root layout's
       `<main>` — invalid HTML.
+- [ ] `lib/supabase/browser-client.ts` is now unused — moving the admin write to a server action
+      removed its last caller. Kept deliberately for things that genuinely need a browser client
+      (realtime subscriptions, storage uploads). Delete it if those never materialise.
 - [ ] No `app/error.tsx`, `app/not-found.tsx`, or `app/loading.tsx`.
 - [ ] No recipe detail route (`/recipes/[id]`). Recipes also have no slug column.
 - [x] **Fixed** — the unused Next scaffolding SVGs (`file.svg`, `globe.svg`, `next.svg`,
@@ -164,6 +190,9 @@ normalize. Recommendation: normalize to PascalCase now, as part of item 4.
 
 ## Target layout
 
+Domain logic lives in `lib/<domain>/`; only components colocate under routes. `✓` marks what is
+already in place.
+
 ```
 app/
   layout.tsx  error.tsx  not-found.tsx
@@ -171,20 +200,18 @@ app/
               recipes/page.tsx
               recipes/[id]/page.tsx           ← does not exist yet
   (admin)/    layout.tsx                      ← requireUser() gate, one place
-              admin/page.tsx                  ← server component, uses getRecipes()
-                    _components/NewRecipeDialog.tsx   ← client, useActionState
-                    _actions/createRecipe.ts          ← zod + insert + revalidateTag
+              admin/page.tsx               ✓  ← server component, uses getRecipes()
+                    _components/NewRecipeDialog.tsx  ✓  ← client, useActionState
   login/      page.tsx  _components/LoginForm.tsx
 components/
-  ui/                                         ← generated, untouched
+  ui/                                      ✓  ← generated, untouched
   layout/     Navbar.tsx  Footer.tsx  ThemeProvider.tsx
   RecipeCard.tsx
 lib/
-  auth/queries.ts                             ← cache()'d reads, NOT "use server"
-  auth/actions.ts                             ← login, signOut
-  data/recipes.ts                             ← the only place recipes are read
-  supabase/client.ts  server.ts  anon.ts  cookies.ts
-  utils.ts
+  auth/     queries.ts  actions.ts  schema.ts   ✓
+  recipes/  queries.ts  actions.ts  schema.ts   ✓
+  supabase/ client.ts  server.ts  anon.ts  cookies.ts
+  utils.ts                                   ✓
 config/site.ts                                ← name + nav links
 types/database.ts                             ← generated
 ```
@@ -198,7 +225,7 @@ Items 1–4 fix actual defects; the rest is structure.
 1. ~~`lib/utils.ts` move + revert the 7 `components/ui` imports — issue 7 (unblocks shadcn)~~ **done**
 2. ~~Delete `AddRecipeButton.tsx` and the unused default SVGs — issues 3, 9~~ **done**
 3. ~~Auth reads → `lib/auth/queries.ts` with `cache()` — issue 1 (kills 2 of 3 round-trips)~~ **done**
-4. Admin write → server action + `revalidateTag` — issues 2, 3
+4. ~~Admin write → server action + `updateTag` — issues 2, 3~~ **done**
 5. `config/site.ts`, then collapse the two `Navigators` into one component — issue 5
 6. `(public)` / `(admin)` route groups + admin auth gate — issue 6
 7. Flatten `feature/` + `shared/` into colocated `_components/`, normalizing casing — issue 4
