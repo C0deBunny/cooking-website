@@ -3,6 +3,21 @@
 Personal recipe site ("Chique's Swiet Mofo") — Next.js 16 App Router + Supabase.
 Public visitors browse recipes; a single owner logs in to add them.
 
+## Known issues — read first
+
+`docs/issues.md` tracks the open architecture and layout problems in this repo, ordered
+worst-first, with a target layout and a suggested work order. **Read it before proposing
+structural changes or explaining why something is shaped the way it is** — several things
+that look intentional below are known defects, not decisions:
+
+- auth reads live in `Actions/` as server actions, costing 3 `auth.getUser()` calls per render
+- no mutation calls `revalidateTag("recipes")`, so `/recipes` never shows new recipes
+- recipe queries are duplicated across three files
+- `lib/utils/utils.ts` disagrees with `components.json`, so `components/ui/*` was hand-edited
+- `/admin` has no server-side auth check
+
+When you fix one, tick it off in `docs/issues.md` and update the affected section here.
+
 ## Commands
 
 ```bash
@@ -47,6 +62,8 @@ proxy.ts            Next 16's renamed middleware — refreshes the Supabase sess
 
 Import alias: `@/*` → repo root.
 
+This layout is the one being challenged — `docs/issues.md` has the target structure.
+
 ## Supabase clients — pick correctly
 
 | File                             | Use from                          | Notes                                                                                   |
@@ -65,6 +82,9 @@ illegal in Next 16. That's why `lib/data/recipes.ts` uses the public client.
 call `revalidateTag("recipes")` — nothing currently does, which is why `/admin` fetches
 client-side instead of reusing `getRecipes()`.
 
+That is a bug, not a design: new recipes never appear on `/recipes`. See issue 2 in
+`docs/issues.md`.
+
 ## Conventions
 
 - Grouped import comments, in this order, used consistently across the codebase:
@@ -79,6 +99,9 @@ client-side instead of reusing `getRecipes()`.
 - Page shell pattern: `<section>` wrapper → tinted header band → `max-w-7xl mx-auto px-6 py-12` body.
 - Component filenames are inconsistent (`heroSection.tsx` vs `RecipeCard.tsx`). Prefer
   PascalCase for new files; don't churn existing ones.
+
+The import-comment and filename-churn conventions above are both under review — see
+"Conventions worth revisiting" in `docs/issues.md`.
 
 ## Dependency gotchas
 
