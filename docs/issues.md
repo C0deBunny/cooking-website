@@ -5,89 +5,16 @@ by a trainee; the instincts are mostly sound but a few layout decisions are caus
 and others will as the app grows.
 
 Items are ordered worst-first. The suggested work order is at the bottom — it differs from the
-severity order because some cheap fixes unblock later ones. Issues 1, 2, 3 and 7 are done; the
-fixed entries are kept rather than deleted, because the reasoning is the useful part.
+severity order because some cheap fixes unblock later ones. Fixed items are deleted from this file
+once they land; the decisions they settled are recorded in `CLAUDE.md`, and the reasoning is in the
+git history.
 
-Status legend: `[ ]` open, `[x]` fixed. Update this file as items land.
+Status legend: `[ ]` open, `[x]` done. Update this file as items land — an issue only keeps a
+`[x]` line while part of it is still open (issue 3 is the current example).
 
 ---
 
-## 1. `Actions/` mixed reads with mutations, and the reads paid for it
-
-- [x] **Fixed** — `Actions/` is gone. Reads live in [lib/auth/queries.ts](../lib/auth/queries.ts)
-      wrapped in React's `cache()`; mutations in [lib/auth/actions.ts](../lib/auth/actions.ts); the
-      zod schema and `LoginState` in [lib/auth/schema.ts](../lib/auth/schema.ts). One
-      `auth.getUser()` per render instead of three.
-
-`Actions/auth/Auth.ts` exported `getCurrentUser` and `requireUser` from a `"use server"` file. Both
-are _reads_. Consequences:
-
-- `"use server"` turned each into a callable POST endpoint for no benefit.
-- More importantly it blocked wrapping them in React's `cache()`, so calls were not deduped.
-  [navbar/Navigators.tsx](../components/feature/layout/navbar/Navigators.tsx),
-  [NavbarAuthSlot.tsx](../components/feature/layout/navbar/NavbarAuthSlot.tsx) and
-  [footer/Navigators.tsx](../components/feature/layout/footer/Navigators.tsx) each call it, so
-  **every page render made 3 separate `auth.getUser()` round-trips to Supabase.**
-
-Two details worth keeping in mind for future work:
-
-- `cache()` dedupes per request, so the three callers sitting in separate `Suspense` boundaries
-  still share one Supabase call.
-- Only async functions may be exported from a `"use server"` file. That is why `loginSchema` and the
-  `LoginState` type moved to `schema.ts` rather than staying beside the action.
-
-`requireUser` is still unused — issue 6 (the admin route gate) is what will consume it.
-
-## 2. No mutation invalidated the `recipes` cache tag — the public page served stale recipes
-
-- [x] **Fixed** — the write is a server action ([lib/recipes/actions.ts](../lib/recipes/actions.ts))
-      that calls `updateTag("recipes")`, so both `/recipes` and `/admin` show a new recipe
-      immediately.
-
-`lib/data/recipes.ts` was `"use cache"` + `cacheTag("recipes")`, and the only write path was a raw
-`supabase.insert()` inside a client component. The tag was therefore never invalidated, so a new
-recipe took up to 15 minutes to appear on `/recipes` — the default `"use cache"` revalidate window,
-visible as `Revalidate 15m` in `npm run build` output.
-
-**Use `updateTag`, not `revalidateTag`.** Next 16 split these:
-
-| Function                      | Semantics                                                               | Use for                  |
-| ----------------------------- | ----------------------------------------------------------------------- | ------------------------ |
-| `updateTag(tag)`              | server-action only, read-your-own-writes — fresh on the same response   | form submissions         |
-| `revalidateTag(tag, profile)` | marks entries stale for a later background refresh; profile is required | webhooks, external syncs |
-
-An earlier draft of this file told you to call `revalidateTag` here. That would compile only with a
-second argument and still would not guarantee the owner sees their own recipe on submit.
-
-This was a layout consequence, not an oversight: the mutation lived somewhere that structurally
-could not invalidate a server cache. Moving it into a server action fixed the bug as a side effect —
-which is the general lesson worth keeping from this one.
-
-## 3. Recipe queries lived in three places
-
-- [x] **Fixed** — [lib/recipes/queries.ts](../lib/recipes/queries.ts) is the only place recipes are
-      read; [lib/recipes/actions.ts](../lib/recipes/actions.ts) the only place they are written.
-      `lib/data/` is retired.
-
-`lib/data/recipes.ts`, `app/admin/page.tsx` and the orphaned `components/shared/AddRecipeButton.tsx`
-each queried `recipes` directly. A data layer that gets bypassed isn't a data layer. Two of the three
-disagreed on ordering — `lib/data` had no `.order()` while admin sorted `created_at desc`. The
-ordering now lives in `getRecipes()`, so **both pages are newest-first**.
-
-`AddRecipeButton` was dead code and also passed `data` to its callback without null-checking after an
-error. Deleted in an earlier step.
-
-### The layout decision this settled
-
-Each domain gets one folder — `queries.ts` (reads), `actions.ts` (`"use server"` writes),
-`schema.ts` (zod + action state) — mirroring `lib/auth/`. Route-specific **components** still
-colocate under the route in `_components/`; domain logic does not, because recipes are read from
-`/`, `/recipes` and `/admin`, and editing will eventually be reachable from more than one route.
-
-The alternative was colocating the write in `app/admin/_actions/`. Rejected: it splits one domain
-across two trees and leaves three folders holding the same category of code.
-
-## 4. `components/feature/` vs `components/shared/` has already collapsed
+## 1. `components/feature/` vs `components/shared/` has already collapsed
 
 - [ ] **Open**
 
@@ -102,7 +29,7 @@ gone wrong:
 leading underscore marks a private, non-routable folder in the App Router). `components/` then holds
 only genuinely cross-route things: `ui/`, `layout/`, and the handful of shared pieces.
 
-## 5. Duplicated navigation and site name
+## 2. Duplicated navigation and site name
 
 - [ ] **Open**
 
@@ -117,30 +44,49 @@ The site name `Chique's Swiet Mofo` is hardcoded in four places: layout metadata
 **Fix:** `config/site.ts` exporting the name and a `navLinks` array; one presentational nav
 component consumed by both header and footer.
 
-## 6. `/admin` has no server-side auth check
+## 3. `/admin` is gated, but softly
 
-- [ ] **Open** — partially mitigated
+- [x] **Gated** — [app/admin/layout.tsx](../app/admin/layout.tsx) renders
+      [AdminGate](../app/admin/_components/AdminGate.tsx) (a `requireUser()` side-effect component)
+      inside `Suspense`, so anonymous visitors are redirected to `/`. Verified against
+      `next start`: `GET /admin` with no cookies returns `200` with `x-nextjs-postponed: 1` and
+      `NEXT_REDIRECT;replace;/;307;` in the streamed payload.
+- [ ] **Still soft** — the redirect lands _after_ the static shell, see below.
 
-The write is now safe: `createRecipe` calls `requireUser()` before inserting, so an anonymous POST
-is redirected regardless of RLS. What remains is the **page** — there is no `app/admin/layout.tsx`,
-so anyone who types the URL still loads the admin UI (and sees the same public recipe list they can
-already see at `/recipes`). Not a data leak; an unguarded surface.
+The write was already safe: `createRecipe` calls `requireUser()` before inserting, so an anonymous
+POST is redirected regardless of RLS.
 
-**Fix:** `(public)` / `(admin)` route groups, with an `(admin)/layout.tsx` calling `requireUser()`.
-One gate, applied to everything underneath it, permanently. This is what finally consumes
-`requireUser` at the page level.
+### Why the gate is Suspense-wrapped, and what that costs
 
-## 7. `lib/utils/utils.ts` breaks the shadcn setup
+`cacheComponents: true` forbids blocking the root shell with request data. Next's
+`throwIfDisallowedDynamic` throws `StaticGenBailoutError` when the prelude is blocked and the route
+has no `Suspense` above the body (`next/dist/server/app-render/dynamic-rendering.js`). A bare
+`await requireUser()` at the top of the layout reads cookies and does exactly that — it would fail
+the build. The navbar's `getCurrentUser()` calls only work today because
+[Navbar.tsx](../components/feature/layout/navbar/Navbar.tsx) wraps them in `Suspense`.
 
-- [x] **Fixed** — `lib/utils.ts`, seven `components/ui/*` imports reverted to `@/lib/utils`,
-      matching `components.json`. `npx shadcn add` now resolves correctly.
+So the gate sits inside its own boundary and `/admin` stays partially prerendered (`◐ /admin` with
+`Revalidate 15m` in `npm run build`). The consequence: `.next/server/app/admin.html` is still a
+prerendered shell — heading, "New Recipe" button and the cached recipe cards — and it is flushed
+before the gate resolves. An anonymous visitor briefly sees admin chrome, then the client router
+replaces to `/`. **Not a data leak** (those cards are the same public list `/recipes` serves) and
+the write is separately guarded, but it is a soft gate, chosen deliberately over losing PPR.
 
-[components.json](../components.json) declares `"utils": "@/lib/utils"`, but the file lived at
-`lib/utils/utils.ts`. To make that work, all seven `components/ui/*` files were hand-edited to
-import `@/lib/utils/utils` — which contradicted the "generated, don't hand-edit" rule. The next
-`npx shadcn add` would have emitted `@/lib/utils`, which would not have resolved.
+**To harden later:** opt `/admin` out of prerendering so the gate blocks and nothing ships until the
+user is known. `getRecipes()` stays cached either way, so the only real loss is the static shell.
 
-## 8. Database types are hand-written
+### Route groups: not needed yet
+
+An earlier draft of this file called for `(public)` / `(admin)` route groups. A plain
+`app/admin/layout.tsx` gates `/admin` and everything under it identically, and route groups don't
+change URLs, so the move stays free later. The group only starts paying off when an owner-only
+surface lives at a different URL path — `/recipes/[id]/edit`, say. Put new admin routes under this
+segment rather than repeating the check.
+
+One thing left to confirm manually: that a signed-in owner still reaches `/admin` normally. Only the
+anonymous path was verified end to end.
+
+## 4. Database types are hand-written
 
 - [ ] **Open**
 
@@ -152,24 +98,20 @@ typecheck.
 `type Recipe = Database["public"]["Tables"]["recipes"]["Row"]`. Drop the `Recipes = Recipe[]`
 alias — `Recipe[]` reads better at call sites.
 
-## 9. Smaller items
+## 5. Smaller items
 
 - [ ] `lib/supabase/browser-client.ts` and `server-client.ts` both export a function named
       `createClient`, making call sites ambiguous. Supabase's own convention is `client.ts` /
       `server.ts` / `anon.ts`, so the import path tells you which environment you're in.
 - [ ] The cookie adapter is duplicated between [proxy.ts](../proxy.ts) and
       [lib/supabase/server-client.ts](../lib/supabase/server-client.ts). Extract it.
-- [ ] [app/login/page.tsx](../app/login/page.tsx) renders a `<main>` inside the root layout's
-      `<main>` — invalid HTML.
 - [ ] `lib/supabase/browser-client.ts` is now unused — moving the admin write to a server action
       removed its last caller. Kept deliberately for things that genuinely need a browser client
       (realtime subscriptions, storage uploads). Delete it if those never materialise.
 - [ ] No `app/error.tsx`, `app/not-found.tsx`, or `app/loading.tsx`.
 - [ ] No recipe detail route (`/recipes/[id]`). Recipes also have no slug column.
-- [x] **Fixed** — the unused Next scaffolding SVGs (`file.svg`, `globe.svg`, `next.svg`,
-      `vercel.svg`, `window.svg`) are gone from `public/`.
 
-## 10. Audit the Supabase integration end to end
+## 6. Audit the Supabase integration end to end
 
 - [ ] **Open — deliberately deferred.** Not scheduled. Owner wants the whole Supabase surface
       verified at some point: are we calling the right APIs, in the right places, with the right
@@ -216,7 +158,7 @@ or whether magic-link/OTP would be less to get wrong, and whether anything needs
 `auth.onAuthStateChange` now that no client component holds a Supabase client (see the
 `browser-client.ts` note above).
 
-Overlaps issue 8 — `supabase gen types` is part of the same sweep.
+Overlaps issue 4 — `supabase gen types` is part of the same sweep.
 
 ---
 
@@ -233,7 +175,7 @@ rule does automatically and correctly. Recommendation: add the lint rule, delete
 **"Don't churn existing filenames."** There are currently four casing styles —
 `heroSection.tsx`, `loginForm.tsx`, `Theme-toggle.tsx`, `RecipeCard.tsx`. The repo is ~25 files with
 no collaborators and no history worth protecting, so this is the cheapest it will ever be to
-normalize. Recommendation: normalize to PascalCase now, as part of item 4.
+normalize. Recommendation: normalize to PascalCase now, as part of item 1.
 
 ---
 
@@ -245,13 +187,14 @@ already in place.
 ```
 app/
   layout.tsx  error.tsx  not-found.tsx
-  (public)/   page.tsx
-              recipes/page.tsx
-              recipes/[id]/page.tsx           ← does not exist yet
-  (admin)/    layout.tsx                      ← requireUser() gate, one place
-              admin/page.tsx               ✓  ← server component, uses getRecipes()
-                    _components/NewRecipeDialog.tsx  ✓  ← client, useActionState
-  login/      page.tsx  _components/LoginForm.tsx
+  page.tsx                                 ✓
+  recipes/  page.tsx                       ✓
+            [id]/page.tsx                     ← does not exist yet
+  admin/    layout.tsx                     ✓  ← the gate, one place
+            page.tsx                       ✓  ← server component, uses getRecipes()
+            _components/AdminGate.tsx      ✓  ← requireUser(), must stay inside Suspense
+            _components/NewRecipeDialog.tsx  ✓  ← client, useActionState
+  login/    page.tsx  _components/LoginForm.tsx
 components/
   ui/                                      ✓  ← generated, untouched
   layout/     Navbar.tsx  Footer.tsx  ThemeProvider.tsx
@@ -269,19 +212,19 @@ types/database.ts                             ← generated
 
 ## Suggested work order
 
-Items 1–4 fix actual defects; the rest is structure.
+The four defect fixes that came out of the original review have landed (`lib/utils.ts` +
+shadcn imports, dead code and unused SVGs removed, auth reads deduped in `lib/auth/queries.ts`,
+admin write moved to a server action with `updateTag`). What is left is structure:
 
-1. ~~`lib/utils.ts` move + revert the 7 `components/ui` imports — issue 7 (unblocks shadcn)~~ **done**
-2. ~~Delete `AddRecipeButton.tsx` and the unused default SVGs — issues 3, 9~~ **done**
-3. ~~Auth reads → `lib/auth/queries.ts` with `cache()` — issue 1 (kills 2 of 3 round-trips)~~ **done**
-4. ~~Admin write → server action + `updateTag` — issues 2, 3~~ **done**
-5. `config/site.ts`, then collapse the two `Navigators` into one component — issue 5
-6. `(public)` / `(admin)` route groups + admin auth gate — issue 6
-7. Flatten `feature/` + `shared/` into colocated `_components/`, normalizing casing — issue 4
-8. Generated database types — issue 8
-9. Lint import order, delete the import comment blocks — conventions
+1. `config/site.ts`, then collapse the two `Navigators` into one component — issue 2
+2. Flatten `feature/` + `shared/` into colocated `_components/`, normalizing casing — issue 1
+3. Generated database types — issue 4
+4. The smaller items — issue 5
+5. Lint import order, delete the import comment blocks — conventions
+6. Harden the `/admin` gate by dropping the route's static shell — issue 3. Independent of the
+   rest; do it whenever the soft gate stops being acceptable.
 
-**Unscheduled:** issue 10, the Supabase integration audit. Deferred on purpose — pick it up when
-there's appetite for it, ideally together with issue 8 since both want the `supabase` CLI. The RLS
+**Unscheduled:** issue 6, the Supabase integration audit. Deferred on purpose — pick it up when
+there's appetite for it, ideally together with issue 4 since both want the `supabase` CLI. The RLS
 check inside it is the one part that is worth not leaving indefinitely, since RLS is the only thing
 protecting writes.

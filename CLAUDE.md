@@ -10,10 +10,11 @@ worst-first, with a target layout and a suggested work order. **Read it before p
 structural changes or explaining why something is shaped the way it is** — several things
 that look intentional below are known defects, not decisions:
 
-- `/admin` has no server-side auth check (the create action does check; the page doesn't)
+- `/admin`'s auth gate is deliberately soft — it redirects, but only after the prerendered shell
+  has been flushed (see "Auth gating" below)
 - the nav links and site name are duplicated across four files
 - `components/feature/` vs `components/shared/` is an arbitrary split that has already broken down
-- the Supabase integration has not been audited — issue 10 lists the open questions (which auth
+- the Supabase integration has not been audited — issue 6 lists the open questions (which auth
   read to use, whether the public client needs stateless `auth` options, and whether the RLS
   policies actually say what we assume). **Deferred on the owner's instruction; don't start it
   unasked**, but don't assert that the setup is correct either.
@@ -51,6 +52,7 @@ this project without a deliberate discussion.
 
 ```
 app/                routes: / , /login , /recipes , /admin
+app/admin/layout.tsx  the owner-only gate — see "Auth gating" below
 components/ui/      shadcn primitives (generated — regenerate, don't hand-edit)
 components/feature/ feature components, grouped by area (hero, layout/navbar, layout/footer, login)
 components/shared/  reused across features (RecipeCard)
@@ -107,6 +109,29 @@ route, so a route showing `Revalidate 15m` is cached.
 - `revalidateTag("recipes", profile)` — marks entries stale for a later background refresh. The
   second argument is **required** and it does not guarantee freshness on the next read. For
   webhooks and external syncs, not form submissions.
+
+## Auth gating
+
+Two layers, and they are not equivalent:
+
+- **Writes** — `lib/recipes/actions.ts` calls `await requireUser()` before touching the database.
+  This is the real boundary; keep it in every new action.
+- **Pages** — `app/admin/layout.tsx` renders `_components/AdminGate.tsx` (a `requireUser()`
+  side-effect component that returns `null`) inside `Suspense`. New owner-only routes go under
+  `app/admin/`, so the gate covers them; don't repeat the check per page.
+
+**The `Suspense` wrapper is load-bearing, not decoration.** With `cacheComponents: true`, a cookie
+read that blocks the root shell fails the build with `StaticGenBailoutError` — a bare
+`await requireUser()` at the top of the layout does exactly that. Same reason the navbar's
+`getCurrentUser()` calls sit inside `Suspense`. Keep new request-data reads behind a boundary.
+
+The cost, accepted deliberately: `/admin` stays partially prerendered, so its shell is flushed
+before the gate resolves and the redirect arrives as a client-side `replace` to `/`. An anonymous
+visitor sees admin chrome for a moment. Nothing in that shell is private — the recipe cards are the
+same public list `/recipes` serves. Don't describe `/admin` as hard-gated; `docs/issues.md` issue 3
+records how to harden it.
+
+`requireUser()` is not a substitute for RLS, and neither is the gate. See the environment note above.
 
 ## Conventions
 
