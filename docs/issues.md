@@ -49,15 +49,15 @@ cannot revalidate. Moving it into a server action fixes the bug as a side effect
 
 [lib/data/recipes.ts](../lib/data/recipes.ts),
 [app/admin/page.tsx](../app/admin/page.tsx) and the orphaned
-[components/shared/AddRecipeButton.tsx](../components/shared/AddRecipeButton.tsx) each query
-`recipes` directly. A data layer that gets bypassed isn't a data layer. Two of the three already
-disagree — `lib/data` has no `.order()`, admin orders by `created_at desc`.
+`components/shared/AddRecipeButton.tsx` each queried `recipes` directly. A data layer that gets
+bypassed isn't a data layer. Two of the three already disagreed — `lib/data` has no `.order()`,
+admin orders by `created_at desc`.
 
-`AddRecipeButton` is dead code (nothing imports it) and also passes `data` to its callback without
-null-checking after an error. Delete it.
+`AddRecipeButton` was dead code (nothing imported it) and also passed `data` to its callback without
+null-checking after an error. **Deleted.** Two query sites remain.
 
 **Fix:** `lib/data/recipes.ts` becomes the only place recipes are read; a server action is the only
-place they are written.
+place they are written. Lands with issue 2.
 
 ## 4. `components/feature/` vs `components/shared/` has already collapsed
 
@@ -101,14 +101,13 @@ One gate, applied to everything underneath it, permanently.
 
 ## 7. `lib/utils/utils.ts` breaks the shadcn setup
 
-- [ ] **Open**
+- [x] **Fixed** — `lib/utils.ts`, seven `components/ui/*` imports reverted to `@/lib/utils`,
+      matching `components.json`. `npx shadcn add` now resolves correctly.
 
-[components.json](../components.json) declares `"utils": "@/lib/utils"`, but the file lives at
-[lib/utils/utils.ts](../lib/utils/utils.ts). To make that work, all seven `components/ui/*` files
-were hand-edited to import `@/lib/utils/utils` — which contradicts the "generated, don't hand-edit"
-rule. The next `npx shadcn add` will emit `@/lib/utils`, which will not resolve.
-
-**Fix:** move to `lib/utils.ts`, revert the seven imports. Cheapest fix in this file; do it first.
+[components.json](../components.json) declares `"utils": "@/lib/utils"`, but the file lived at
+`lib/utils/utils.ts`. To make that work, all seven `components/ui/*` files were hand-edited to
+import `@/lib/utils/utils` — which contradicted the "generated, don't hand-edit" rule. The next
+`npx shadcn add` would have emitted `@/lib/utils`, which would not have resolved.
 
 ## 8. Database types are hand-written
 
@@ -133,8 +132,8 @@ alias — `Recipe[]` reads better at call sites.
       `<main>` — invalid HTML.
 - [ ] No `app/error.tsx`, `app/not-found.tsx`, or `app/loading.tsx`.
 - [ ] No recipe detail route (`/recipes/[id]`). Recipes also have no slug column.
-- [ ] `public/` still contains the unused Next scaffolding SVGs (`file.svg`, `globe.svg`,
-      `next.svg`, `vercel.svg`, `window.svg`). Nothing references them.
+- [x] **Fixed** — the unused Next scaffolding SVGs (`file.svg`, `globe.svg`, `next.svg`,
+      `vercel.svg`, `window.svg`) are gone from `public/`.
 
 ---
 
@@ -188,8 +187,8 @@ types/database.ts                             ← generated
 
 Items 1–4 fix actual defects; the rest is structure.
 
-1. `lib/utils.ts` move + revert the 7 `components/ui` imports — issue 7 (unblocks shadcn)
-2. Delete `AddRecipeButton.tsx` and the unused default SVGs — issues 3, 9
+1. ~~`lib/utils.ts` move + revert the 7 `components/ui` imports — issue 7 (unblocks shadcn)~~ **done**
+2. ~~Delete `AddRecipeButton.tsx` and the unused default SVGs — issues 3, 9~~ **done**
 3. Auth reads → `lib/auth/queries.ts` with `cache()` — issue 1 (kills 2 of 3 round-trips)
 4. Admin write → server action + `revalidateTag` — issues 2, 3
 5. `config/site.ts`, then collapse the two `Navigators` into one component — issue 5

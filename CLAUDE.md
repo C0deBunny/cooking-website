@@ -12,8 +12,7 @@ that look intentional below are known defects, not decisions:
 
 - auth reads live in `Actions/` as server actions, costing 3 `auth.getUser()` calls per render
 - no mutation calls `revalidateTag("recipes")`, so `/recipes` never shows new recipes
-- recipe queries are duplicated across three files
-- `lib/utils/utils.ts` disagrees with `components.json`, so `components/ui/*` was hand-edited
+- recipe queries are duplicated between `lib/data/recipes.ts` and `app/admin/page.tsx`
 - `/admin` has no server-side auth check
 
 When you fix one, tick it off in `docs/issues.md` and update the affected section here.
@@ -52,10 +51,10 @@ Actions/auth/       server actions ("use server") — note the capital A, root-l
 app/                routes: / , /login , /recipes , /admin
 components/ui/      shadcn primitives (generated — regenerate, don't hand-edit)
 components/feature/ feature components, grouped by area (hero, layout/navbar, layout/footer, login)
-components/shared/  reused across features (RecipeCard, AddRecipeButton)
+components/shared/  reused across features (RecipeCard)
 lib/data/           data access, server-only, cached
 lib/supabase/       three clients — pick the right one, see below
-lib/utils/utils.ts  cn() helper
+lib/utils.ts        cn() helper — path must match the `utils` alias in components.json
 types/              shared types
 proxy.ts            Next 16's renamed middleware — refreshes the Supabase session cookie
 ```
