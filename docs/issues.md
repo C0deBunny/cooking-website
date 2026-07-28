@@ -169,6 +169,55 @@ alias — `Recipe[]` reads better at call sites.
 - [x] **Fixed** — the unused Next scaffolding SVGs (`file.svg`, `globe.svg`, `next.svg`,
       `vercel.svg`, `window.svg`) are gone from `public/`.
 
+## 10. Audit the Supabase integration end to end
+
+- [ ] **Open — deliberately deferred.** Not scheduled. Owner wants the whole Supabase surface
+      verified at some point: are we calling the right APIs, in the right places, with the right
+      options? Nothing below is a confirmed defect — they are questions to answer, and each one
+      should be checked against current Supabase docs rather than assumed.
+
+Installed: `@supabase/ssr` 0.9.0, `@supabase/supabase-js` 2.99.1, `@supabase/auth-js` 2.99.1.
+
+**Are we using the right auth read?** All three exist on the installed client:
+
+| Method       | Cost                         | Trust                                    |
+| ------------ | ---------------------------- | ---------------------------------------- |
+| `getSession` | local, reads the cookie      | unvalidated — never gate on it           |
+| `getUser`    | network call to the auth API | validated                                |
+| `getClaims`  | local JWT verify             | validated, if asymmetric signing keys on |
+
+We call `getUser()` in both [proxy.ts](../proxy.ts) and
+[lib/auth/queries.ts](../lib/auth/queries.ts) — so **potentially two auth round-trips per request**,
+one for the session refresh and one for the render. `cache()` cannot dedupe across those two,
+because the proxy runs in a separate context. Worth checking whether `getClaims()` (added for
+exactly this, and present in 2.99.1) can replace the render-time call, which would make it free.
+Requires JWT signing keys enabled on the Supabase project — verify before relying on it.
+
+**Is `public-client.ts` configured correctly for server use?** It calls plain
+`createClient()` from `@supabase/supabase-js` with no `auth` options. A stateless server client
+normally wants `auth: { persistSession: false, autoRefreshToken: false }` so it never tries to
+store or refresh a session. Confirm whether the default already does the right thing in a Node
+server context, or whether we are relying on it accidentally.
+
+**Is the cookie adapter still the recommended shape?** [server-client.ts](../lib/supabase/server-client.ts)
+has a bare `catch {}` around `cookieStore.set` — that is from the Supabase docs (writes fail in
+server components, which is expected), but it is undocumented in our code and worth a comment.
+Also confirm `getAll`/`setAll` is still the current API and that `proxy.ts` matches what
+`@supabase/ssr` 0.9 expects from Next 16's renamed middleware, including the matcher.
+
+**Do the RLS policies actually exist and say what we think?** This is the load-bearing one. Both
+keys are `NEXT_PUBLIC_*`, so RLS is the _only_ thing protecting writes — and nothing in this repo
+verifies it. Check on the `recipes` table: is RLS enabled; is `select` open to `anon`; is
+`insert`/`update`/`delete` restricted to the authenticated owner. Needs the dashboard or
+`supabase` CLI, not a code read.
+
+**Also worth confirming:** whether `signInWithPassword` is the right flow for a single-owner site
+or whether magic-link/OTP would be less to get wrong, and whether anything needs
+`auth.onAuthStateChange` now that no client component holds a Supabase client (see the
+`browser-client.ts` note above).
+
+Overlaps issue 8 — `supabase gen types` is part of the same sweep.
+
 ---
 
 ## Conventions worth revisiting
@@ -231,3 +280,8 @@ Items 1–4 fix actual defects; the rest is structure.
 7. Flatten `feature/` + `shared/` into colocated `_components/`, normalizing casing — issue 4
 8. Generated database types — issue 8
 9. Lint import order, delete the import comment blocks — conventions
+
+**Unscheduled:** issue 10, the Supabase integration audit. Deferred on purpose — pick it up when
+there's appetite for it, ideally together with issue 8 since both want the `supabase` CLI. The RLS
+check inside it is the one part that is worth not leaving indefinitely, since RLS is the only thing
+protecting writes.

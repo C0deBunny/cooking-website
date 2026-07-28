@@ -13,6 +13,10 @@ that look intentional below are known defects, not decisions:
 - `/admin` has no server-side auth check (the create action does check; the page doesn't)
 - the nav links and site name are duplicated across four files
 - `components/feature/` vs `components/shared/` is an arbitrary split that has already broken down
+- the Supabase integration has not been audited — issue 10 lists the open questions (which auth
+  read to use, whether the public client needs stateless `auth` options, and whether the RLS
+  policies actually say what we assume). **Deferred on the owner's instruction; don't start it
+  unasked**, but don't assert that the setup is correct either.
 
 When you fix one, tick it off in `docs/issues.md` and update the affected section here.
 
