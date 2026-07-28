@@ -1,0 +1,9 @@
+# Generated / tool-owned — npm rewrites this with its own formatting on every install,
+# so letting prettier touch it just creates churn.
+package-lock.json
+
+# Build output and generated types
+.next/
+out/
+build/
+next-env.d.ts

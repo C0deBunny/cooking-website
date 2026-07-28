@@ -1,0 +1,14 @@
+# Keep LF in the working tree on every platform, so it matches .prettierrc's
+# `endOfLine: "lf"`. Without this, core.autocrlf=true on Windows checks files out
+# as CRLF and `npm run format:check` fails on a freshly cloned repo.
+* text=auto eol=lf
+
+# Binary — never touch line endings
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.woff binary
+*.woff2 binary
