@@ -13,9 +13,8 @@ import { SidebarProvider } from "@/components/ui/sidebar";
  * The shell below the gate is a rail plus a content region.
  *
  * min-h-0 cancels SidebarProvider's own min-h-svh, which would otherwise push the footer a full
- * viewport down; flex-1 then makes the shell fill <main> instead. This depends on <main> being a
- * flex column — see app/layout.tsx. Without that it silently collapses to the height of the nav
- * buttons, because flex-1 on a block parent's child does nothing.
+ * viewport down. Nothing here has to claim the height: <main> is a single-1fr-row grid, so this
+ * shell is stretched to fill it — see app/layout.tsx.
  *
  * The content region is a plain div rather than SidebarInset because that renders a <main>, and
  * <main> may not nest.
@@ -31,7 +30,7 @@ export default function AdminLayout({
         <AdminGate />
       </Suspense>
 
-      <SidebarProvider className="min-h-0 flex-1">
+      <SidebarProvider className="min-h-0">
         <AdminSidebar />
 
         {/* flex column so a page can claim the region's height with flex-1 rather than a percentage */}
