@@ -48,8 +48,9 @@ proxy.ts            Next 16's renamed middleware — refreshes the Supabase sess
 
 Import alias: `@/*` → repo root.
 
-`components/feature/` vs `components/shared/` is still being unwound — `docs/issues.md` has the
-target structure.
+`components/feature/` vs `components/shared/` is still being unwound. The target: route-specific
+components colocate under their route in `_components/`, leaving `components/` for genuinely
+cross-route pieces (`ui/`, the layout chrome, `RecipeCard`).
 
 ## Domain modules
 
@@ -135,8 +136,8 @@ route out of prerendering so the gate blocks and nothing ships until the user is
 - Component filenames are inconsistent (`heroSection.tsx` vs `RecipeCard.tsx`). Prefer
   PascalCase for new files; don't churn existing ones.
 
-The import-comment and filename-churn conventions above are both under review — see
-"Conventions worth revisiting" in `docs/issues.md`.
+The import-comment and filename-churn conventions above are both under review. Until that's
+settled, follow them as written rather than drifting from them.
 
 ## Dependency gotchas
 
