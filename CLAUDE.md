@@ -34,12 +34,13 @@ this project without a deliberate discussion.
 
 ```
 app/                routes: / , /login , /recipes , /admin
-app/admin/layout.tsx  the owner-only gate — see "Auth gating" below
+app/admin/          /admin redirects to /admin/create · child routes create/ and manage/
+app/admin/layout.tsx  the owner-only gate + the sidebar shell — see "Auth gating" below
 components/ui/      shadcn primitives (generated — regenerate, don't hand-edit)
 components/feature/ feature components, grouped by area (hero, layout/navbar, layout/footer, login)
 components/shared/  reused across features (RecipeCard)
 lib/auth/           queries.ts (cache()'d reads) · actions.ts ("use server") · schema.ts (zod)
-lib/recipes/        same three-file shape — see "Domain modules" below
+lib/recipes/        queries.ts only — the write path was removed and is being rebuilt
 lib/supabase/       three clients — pick the right one, see below
 lib/utils.ts        cn() helper — path must match the `utils` alias in components.json
 types/              shared types
@@ -62,9 +63,10 @@ lib/<domain>/actions.ts   writes — "use server". Only async functions may be e
 lib/<domain>/schema.ts    zod schemas + the useActionState state type.
 ```
 
-`lib/auth/` and `lib/recipes/` both follow it; follow it for new domains too. Route-specific
-**components** colocate under the route in `_components/` (e.g. `app/admin/_components/`), but
-domain logic does not — recipes are read from three routes.
+`lib/auth/` follows it in full; `lib/recipes/` is down to `queries.ts` because its write path was
+removed, and regains the other two when that path is rebuilt. Follow the full shape for new domains.
+Route-specific **components** colocate under the route in `_components/` (e.g.
+`app/admin/_components/`), but domain logic does not — recipes are read from three routes.
 
 ## Supabase clients — pick correctly
 
@@ -87,8 +89,9 @@ route, so a route showing `Revalidate 15m` is cached.
 **Invalidating from a mutation — Next 16 split the API, pick the right one:**
 
 - `updateTag("recipes")` — server actions only, read-your-own-writes. The value is fresh on the
-  same response, so a form submitter sees their own change. This is what `lib/recipes/actions.ts`
-  uses, and what you want for nearly every mutation here.
+  same response, so a form submitter sees their own change. This is what you want for nearly every
+  mutation here. No action currently calls it — the recipe write path was removed — so reach for
+  this one when you add the next one.
 - `revalidateTag("recipes", profile)` — marks entries stale for a later background refresh. The
   second argument is **required** and it does not guarantee freshness on the next read. For
   webhooks and external syncs, not form submissions.
@@ -97,8 +100,9 @@ route, so a route showing `Revalidate 15m` is cached.
 
 Two layers, and they are not equivalent:
 
-- **Writes** — `lib/recipes/actions.ts` calls `await requireUser()` before touching the database.
-  This is the real boundary; keep it in every new action.
+- **Writes** — every action calls `await requireUser()` before touching the database. This is the
+  real boundary; keep it in every new action. `lib/auth/actions.ts` is the surviving example of the
+  action shape, though as a login it authenticates rather than gates.
 - **Pages** — `app/admin/layout.tsx` renders `_components/AdminGate.tsx` (a `requireUser()`
   side-effect component that returns `null`) inside `Suspense`. New owner-only routes go under
   `app/admin/`, so the gate covers them; don't repeat the check per page.
@@ -110,10 +114,10 @@ read that blocks the root shell fails the build with `StaticGenBailoutError` —
 
 The cost, accepted deliberately: `/admin` stays partially prerendered, so its shell is flushed
 before the gate resolves and the redirect arrives as a client-side `replace` to `/`. An anonymous
-visitor sees admin chrome for a moment. Nothing in that shell is private — the recipe cards are the
-same public list `/recipes` serves. **Don't describe `/admin` as hard-gated.** To harden it, opt the
-route out of prerendering so the gate blocks and nothing ships until the user is known —
-`getRecipes()` stays cached either way, so the only real loss is the static shell.
+visitor sees admin chrome for a moment. Nothing in that shell is private — it is the sidebar rail and
+a placeholder card. **Don't describe `/admin` as hard-gated.** To harden it, opt the route out of
+prerendering so the gate blocks and nothing ships until the user is known; the only real loss is the
+static shell.
 
 `requireUser()` is not a substitute for RLS, and neither is the gate. See the environment note above.
 

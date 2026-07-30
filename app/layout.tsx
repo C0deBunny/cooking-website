@@ -34,7 +34,9 @@ export default function RootLayout({
       <body className={`${fontSans.variable} antialiased min-h-screen flex flex-col`}>
         <ThemeProvider>
           <Navbar />
-          <main className="w-full flex-1">{children}</main>
+          {/* flex column so a route can fill the region's height with flex-1. Every page renders a
+              single block child, which behaves the same stretched in a column as it did in flow. */}
+          <main className="w-full flex-1 flex flex-col">{children}</main>
           <Footer />
         </ThemeProvider>
         <Analytics />

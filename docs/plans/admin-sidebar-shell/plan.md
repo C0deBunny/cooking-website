@@ -71,12 +71,24 @@ AdminLayout (server)
         └── {children}
 ```
 
-`SidebarProvider`'s wrapper is `min-h-svh flex w-full`; it needs `min-h-0 flex-1` layered on so the
-footer isn't pushed a full viewport down. `tailwind-merge` resolves the `min-h-*` conflict in favour
-of the override.
+`SidebarProvider`'s wrapper is `min-h-svh flex w-full`; it needs `min-h-0 flex-1` layered on — `min-h-0`
+to cancel the `min-h-svh` that would push the footer a full viewport down, `flex-1` to fill `<main>`
+instead. `tailwind-merge` resolves the `min-h-*` conflict in favour of the override.
+
+**This requires one change to the root layout:** `<main>` becomes `w-full flex-1 flex flex-col`. It was
+a plain block, and `flex-1` on a block parent's child does nothing, so the shell silently collapsed to
+the height of the nav buttons while `min-h-0` had already removed the primitive's own floor. Every
+route renders a single top-level block child, which behaves identically stretched in a column, so the
+change is safe for `/`, `/recipes`, `/login` and `/dev`.
+
+A percentage (`min-h-full`) was tried first and rejected: it depends on `<main>`'s flex-grown height
+being treated as definite, which is exactly the kind of thing that resolves inconsistently. Making the
+parent an explicit flex column removes the guesswork.
 
 ## Components
 
+- **`app/layout.tsx`** — modified. `<main>` gains `flex flex-col` so the admin shell can fill it. The
+  only change outside `/admin`, and the only one that touches a public route.
 - **`app/admin/layout.tsx`** — modified. Keeps `Suspense`/`AdminGate` verbatim; wraps `children` in
   `SidebarProvider` + `AdminSidebar` + the content `div`.
 - **`app/admin/page.tsx`** — replaced. Its entire body becomes `redirect("/admin/create")`, so
