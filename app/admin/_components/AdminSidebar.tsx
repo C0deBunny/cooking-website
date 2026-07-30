@@ -9,8 +9,8 @@ import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu
 
 /** Add a destination here and it appears in the rail — nothing else needs touching. */
 const items = [
-  { href: "/admin/create", label: "Create Recipes" },
   { href: "/admin/manage", label: "Manage Recipes" },
+  { href: "/admin/create", label: "Create Recipes" },
 ];
 
 /**

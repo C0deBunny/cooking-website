@@ -34,7 +34,7 @@ this project without a deliberate discussion.
 
 ```
 app/                routes: / , /login , /recipes , /admin
-app/admin/          /admin redirects to /admin/create · child routes create/ and manage/
+app/admin/          /admin redirects to /admin/manage · child routes manage/ and create/
 app/admin/layout.tsx  the owner-only gate + the sidebar shell — see "Auth gating" below
 components/ui/      shadcn primitives (generated — regenerate, don't hand-edit)
 components/feature/ feature components, grouped by area (hero, layout/navbar, layout/footer, login)

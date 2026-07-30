@@ -6,5 +6,5 @@ import { redirect } from "next/navigation";
  * Reads no request data, so this stays prerenderable under cacheComponents.
  */
 export default function AdminPage() {
-  redirect("/admin/create");
+  redirect("/admin/manage");
 }
