@@ -13,30 +13,6 @@ import type { RecipeIngredient, RecipeWithChildren } from "@/types/recipes";
  * Images are absent on purpose — no Storage bucket exists yet, see docs/image-storage.md.
  */
 
-/**
- * Groups ingredients by their label, preserving list order rather than sorting by it.
- *
- * A new group starts whenever the label changes, which is what makes "group order = order of
- * first appearance" work without storing a group position. If a label reappears after a
- * different one, it becomes a second group with the same heading — the interleaving that
- * recipeSchema's contiguity check exists to prevent.
- */
-function groupIngredients(ingredients: RecipeIngredient[]) {
-  const groups: { label: string | null; items: RecipeIngredient[] }[] = [];
-
-  for (const ingredient of ingredients) {
-    const current = groups.at(-1);
-
-    if (current && current.label === ingredient.group_label) {
-      current.items.push(ingredient);
-    } else {
-      groups.push({ label: ingredient.group_label, items: [ingredient] });
-    }
-  }
-
-  return groups;
-}
-
 /** "1 h 30" reads better than "90 min" past an hour. */
 function formatMinutes(minutes: number) {
   if (minutes < 60) return `${minutes} min`;
@@ -54,8 +30,6 @@ function formatAmount(ingredient: RecipeIngredient) {
 }
 
 export default function RecipeArticle({ recipe }: { recipe: RecipeWithChildren }) {
-  const groups = groupIngredients(recipe.recipe_ingredients);
-
   // Computed here rather than stored: a generated total column would have had to decide whether
   // a recipe with no times recorded means 0 or unknown. See decision 9.
   const total = (recipe.prep_minutes ?? 0) + (recipe.cook_minutes ?? 0);
@@ -97,24 +71,18 @@ export default function RecipeArticle({ recipe }: { recipe: RecipeWithChildren }
             Ingredients
           </h2>
 
-          {groups.map((group, index) => (
-            <div key={`${group.label ?? "ungrouped"}-${index}`} className="mb-6 last:mb-0">
-              {group.label ? <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">{group.label}</h3> : null}
+          <ul className="space-y-2">
+            {recipe.recipe_ingredients.map((ingredient) => {
+              const amount = formatAmount(ingredient);
 
-              <ul className="space-y-2">
-                {group.items.map((ingredient) => {
-                  const amount = formatAmount(ingredient);
-
-                  return (
-                    <li key={ingredient.id} className="flex gap-4 border-b border-border pb-2 last:border-b-0">
-                      {amount ? <span className="shrink-0 font-medium tabular-nums">{amount}</span> : null}
-                      <span className={amount ? "text-muted-foreground" : undefined}>{ingredient.name}</span>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          ))}
+              return (
+                <li key={ingredient.id} className="flex gap-4 border-b border-border pb-2 last:border-b-0">
+                  {amount ? <span className="shrink-0 font-medium tabular-nums">{amount}</span> : null}
+                  <span className={amount ? "text-muted-foreground" : undefined}>{ingredient.name}</span>
+                </li>
+              );
+            })}
+          </ul>
         </section>
 
         <Separator className="my-12" />

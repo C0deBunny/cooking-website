@@ -33,10 +33,10 @@ import type { RecipeFormState } from "@/lib/recipes/schema";
  * row leaves a gap and reordering means rewriting every name.
  */
 
-type IngredientRow = { name: string; amount: string; unit: string; group_label: string };
+type IngredientRow = { name: string; amount: string; unit: string };
 type StepRow = { instruction: string; note: string };
 
-const EMPTY_INGREDIENT: IngredientRow = { name: "", amount: "", unit: "", group_label: "" };
+const EMPTY_INGREDIENT: IngredientRow = { name: "", amount: "", unit: "" };
 const EMPTY_STEP: StepRow = { instruction: "", note: "" };
 
 // Radix Select refuses an empty string as an item value, so "unset" stands in for "no difficulty"
@@ -198,9 +198,7 @@ export default function RecipeForm() {
           </Button>
         </div>
 
-        <p className="mb-6 text-xs text-muted-foreground">
-          A group label starts a heading like &ldquo;For the sambal&rdquo;. Rows in the same group have to sit together — leave it empty to stay ungrouped.
-        </p>
+        <p className="mb-6 text-xs text-muted-foreground">The order here is the order on the page. Use the arrows to rearrange.</p>
 
         <ul className="space-y-3">
           {ingredients.map((ingredient, index) => (
@@ -224,13 +222,6 @@ export default function RecipeForm() {
                   Ingredient
                 </Label>
                 <Input id={`name-${index}`} value={ingredient.name} onChange={(event) => setIngredients((rows) => replaceAt(rows, index, { name: event.target.value }))} />
-              </div>
-
-              <div className="min-w-32 flex-1 space-y-1">
-                <Label className="text-xs" htmlFor={`group-${index}`}>
-                  Group
-                </Label>
-                <Input id={`group-${index}`} value={ingredient.group_label} onChange={(event) => setIngredients((rows) => replaceAt(rows, index, { group_label: event.target.value }))} />
               </div>
 
               <RowControls

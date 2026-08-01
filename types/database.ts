@@ -71,7 +71,6 @@ export type Database = {
       recipe_ingredients: {
         Row: {
           amount: number | null;
-          group_label: string | null;
           id: number;
           name: string;
           recipe_id: number;
@@ -80,7 +79,6 @@ export type Database = {
         };
         Insert: {
           amount?: number | null;
-          group_label?: string | null;
           id?: number;
           name: string;
           recipe_id: number;
@@ -89,7 +87,6 @@ export type Database = {
         };
         Update: {
           amount?: number | null;
-          group_label?: string | null;
           id?: number;
           name?: string;
           recipe_id?: number;

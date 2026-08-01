@@ -98,7 +98,7 @@ from it. Both are committed. Four tables:
 recipes              slug (unique), title, description, difficulty, prep_minutes,
                      cook_minutes, servings, notes, published, created_at, updated_at
 recipe_steps         recipe_id → recipes, step_number, instruction, note, image_path
-recipe_ingredients   recipe_id → recipes, sort_order, group_label, name, amount, unit
+recipe_ingredients   recipe_id → recipes, sort_order, name, amount, unit
 recipe_images        recipe_id → recipes, storage_path, alt, sort_order, is_primary
 ```
 

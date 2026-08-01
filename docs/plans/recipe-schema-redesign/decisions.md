@@ -110,6 +110,15 @@
   And the normalized version was rejected partly because it would have made the RPC materially
   harder — inserting groups, reading back their ids, then inserting ingredients against them
   is a two-level write inside the function.
+- **Superseded 2026-08-01 — the feature is gone, not just the shape of it.** `group_label` was
+  dropped from `recipe_ingredients`, its read removed from `save_recipe()`, and
+  `hasContiguousGroups` deleted from `lib/recipes/schema.ts`. The choice recorded above was
+  between two ways of storing groups; the wizard work decided not to have groups at all, which
+  makes the question moot rather than answered differently. Neither option here was wrong —
+  keeping an unwritten column would have meant maintaining three pieces of machinery for a
+  feature nothing uses. See decision 3 of `docs/plans/admin-create-wizard/decisions.md` and
+  migration `20260801190718_remove_ingredient_groups.sql`. The entry above stays as written
+  because it records what was true when it was decided.
 
 ## 8. Notes at both recipe and step level
 

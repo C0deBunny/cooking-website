@@ -7,6 +7,38 @@
      - Next: <what remains> / Blocked: <on what>
 -->
 
+## 2026-08-01 — Phase 1: ingredient groups removed
+
+- **Did:** `20260801190718_remove_ingredient_groups.sql` — gate, then `save_recipe()` without
+  `group_label`, then the column drop. Regenerated `types/database.ts`. Removed `group_label`
+  from `ingredientSchema` and deleted `hasContiguousGroups` with its `.refine`; deleted
+  `groupIngredients()` from `RecipeArticle` and flattened the list; removed the Group input from
+  `RecipeForm` (deleted in phase 4, but phase 1 has to leave the tree compiling). Docs: the
+  `recipe_ingredients` line in `CLAUDE.md`, and a superseding note appended to decision 7 of
+  `recipe-schema-redesign`.
+- **The gate is in the migration, not just in the log.** The count was run and returned 0, but a
+  human step that has to be remembered is not a guard — a `do $$ … raise exception $$` block runs
+  first and aborts before either destructive statement if any row still carries a label. It also
+  protects a replay against a restored database, which the dashboard query never could.
+- **`hasContiguousGroups` had a NUL byte in it.** The "distinct key for ungrouped" was
+  `"\0ungrouped"` — a literal `\0` in the source, presumably so no user-typed label could collide
+  with it. It reads as a space in every editor and it made the file match as binary to ripgrep.
+  Gone with the function; noted because it was invisible.
+- **Verified:** `npm run lint`, `npm run typecheck` (the drop broke `RecipeArticle` and nothing
+  else — see the caveat below), `npm run format:check`. Then a real write:
+  `save_recipe()` called with a three-ingredient, two-step payload returned an id, and
+  `/recipes/zzz-phase1-smoke` renders the flat ingredient list in `sort_order` and the steps
+  numbered from `step_number`.
+- **Caveat on "the drop breaks every reader".** It broke exactly one: `RecipeArticle`, which
+  reads the generated row type. It did **not** break `ingredientSchema` (an extra key in a zod
+  object is not a type error) or `RecipeForm` (`IngredientRow` is a hand-written local type).
+  Both had to be found by grep. Typecheck is a good net for anything typed off `types/database.ts`
+  and no net at all for anything that restates the shape by hand.
+- **Left behind on purpose:** the recipe `zzz-phase1-smoke` is published test data, kept because
+  its `0.5 tl kaneel` is what phase 2's fraction glyphs and phase 3's mapper need something real
+  to render. **Delete it after phase 4.**
+- **Next:** phase 2.
+
 ## 2026-08-01 — Phase 0: the open question, closed
 
 - **Did:** diagnosed the "neither recipe page renders" report from `c65bf67` and re-enabled the
