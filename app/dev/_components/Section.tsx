@@ -4,7 +4,10 @@ import { cn } from "@/lib/utils";
 /** One group of related primitives, targeted by the anchor nav. */
 function Section({ id, title, hint, children }: { id: string; title: string; hint?: string; children: React.ReactNode }) {
   return (
-    <section id={id} className="scroll-mt-20 border-t border-foreground/10 pt-10">
+    // first: — the divider separates one section from the previous one, and the first has no
+    // previous. It used to sit under DevNav, which has since moved out to the rail.
+    // scroll-mt-20 clears the 64px sticky header with room to spare; see Navbar.tsx.
+    <section id={id} className="scroll-mt-20 border-t border-foreground/10 pt-10 first:border-t-0 first:pt-0">
       <h2 className="text-xl font-semibold tracking-tight text-foreground">{title}</h2>
       {hint ? <p className="mt-1 max-w-2xl text-sm text-foreground/60">{hint}</p> : null}
       <div className="mt-6 flex flex-col gap-8">{children}</div>
