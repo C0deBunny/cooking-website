@@ -39,16 +39,16 @@ this project without a deliberate discussion.
 ## Layout
 
 ```
-app/                routes: / , /login , /recipes , /admin
-app/admin/          /admin redirects to /admin/manage · child routes manage/ and create/
+app/                routes: / , /login , /recipes , /recipes/[slug] , /admin
+app/admin/          /admin redirects to /admin/manage · children: manage/ create/ preview/[slug]/
 app/admin/layout.tsx  the owner-only gate + the sidebar shell — see "Auth gating" below
 components/ui/      shadcn primitives (generated — regenerate, don't hand-edit)
 components/feature/ feature components, grouped by area (hero, layout/navbar, layout/footer, login)
-components/shared/  reused across features (RecipeCard)
+components/shared/  reused across features (RecipeCard, RecipeArticle)
 lib/auth/           queries.ts (cache()'d reads) · actions.ts ("use server") · schema.ts (zod)
-lib/recipes/        queries.ts only — the write path was removed and is being rebuilt
+lib/recipes/        the same three files — queries.ts · actions.ts · schema.ts
 lib/supabase/       three clients — pick the right one, see below
-lib/utils.ts        cn() helper — path must match the `utils` alias in components.json
+lib/utils.ts        cn() + slugify() — path must match the `utils` alias in components.json
 supabase/           config.toml + migrations/ — the schema, see "Database schema & migrations"
 types/              shared types · database.ts is GENERATED, don't hand-edit
 proxy.ts            Next 16's renamed middleware — refreshes the Supabase session cookie
@@ -70,8 +70,7 @@ lib/<domain>/actions.ts   writes — "use server". Only async functions may be e
 lib/<domain>/schema.ts    zod schemas + the useActionState state type.
 ```
 
-`lib/auth/` follows it in full; `lib/recipes/` is down to `queries.ts` because its write path was
-removed, and regains the other two when that path is rebuilt. Follow the full shape for new domains.
+Both `lib/auth/` and `lib/recipes/` follow it in full. Follow the same shape for new domains.
 Route-specific **components** colocate under the route in `_components/` (e.g.
 `app/admin/_components/`), but domain logic does not — recipes are read from three routes.
 
@@ -96,17 +95,34 @@ The schema lives in `supabase/migrations/` as hand-written SQL; `types/database.
 from it. Both are committed. Four tables:
 
 ```
-recipes              slug (unique), title, description, difficulty, time_minutes,
-                     servings, published, created_at, updated_at
-recipe_steps         recipe_id → recipes, step_number, instruction, image_path
-recipe_ingredients   recipe_id → recipes, sort_order, name, amount, unit
+recipes              slug (unique), title, description, difficulty, prep_minutes,
+                     cook_minutes, servings, notes, published, created_at, updated_at
+recipe_steps         recipe_id → recipes, step_number, instruction, note, image_path
+recipe_ingredients   recipe_id → recipes, sort_order, group_label, name, amount, unit
 recipe_images        recipe_id → recipes, storage_path, alt, sort_order, is_primary
 ```
 
 Every child table's `recipe_id` is a real foreign key with `on delete cascade` — deleting a recipe
-removes its steps, ingredients and images, so don't write cleanup code for that. Each child also
-has `unique (recipe_id, <ordering column>)`, so a duplicate position fails at the database.
-`recipe_images` has a partial unique index limiting each recipe to one `is_primary` row.
+removes its steps, ingredients and images, so don't write cleanup code for that — but note that
+cascade deletes _rows_, not the files those rows name; see `docs/image-storage.md`. All three child
+tables are unique on `(recipe_id, <ordering column>)`, so a duplicate position fails at the
+database. None of those constraints is deferrable, which matters only for images — see the
+reordering note below. `recipe_images` is additionally unique on `(recipe_id, storage_path)`, plus a
+partial unique index limiting each recipe to one `is_primary` row.
+
+**Reordering, and why only images have a problem with it.** A non-deferrable unique constraint is
+checked after every row of an `update`, so swapping two positions in place fails mid-statement.
+Steps and ingredients never hit it because `save_recipe()` deletes and re-inserts a recipe's whole
+set on every save, taking position from array order — so there is no swap. Images are written
+incrementally as uploads land, so a gallery reorder _would_ hit it. Unresolved on purpose, recorded
+in `docs/known-issues.md`, to be decided with the Storage work.
+
+`save_recipe(payload jsonb) returns bigint` is the only write path for a recipe and its children.
+It exists because Supabase JS sends every statement as its own transaction, so replacing children
+with a `delete` plus an `insert` could leave a recipe with no steps. It is `security invoker` — a
+`definer` function would bypass RLS entirely — with `search_path = ''` and `execute` revoked from
+`anon`. Extend it by reading another key off the payload rather than adding parameters, so existing
+callers keep working.
 `difficulty` is a Postgres enum, which `db:types` emits as `"easy" | "medium" | "hard"`.
 `updated_at` is maintained by a trigger, not by the app.
 
@@ -146,8 +162,7 @@ route, so a route showing `Revalidate 15m` is cached.
 
 - `updateTag("recipes")` — server actions only, read-your-own-writes. The value is fresh on the
   same response, so a form submitter sees their own change. This is what you want for nearly every
-  mutation here. No action currently calls it — the recipe write path was removed — so reach for
-  this one when you add the next one.
+  mutation here. `lib/recipes/actions.ts` calls it after `save_recipe` returns; follow that.
 - `revalidateTag("recipes", profile)` — marks entries stale for a later background refresh. The
   second argument is **required** and it does not guarantee freshness on the next read. For
   webhooks and external syncs, not form submissions.
@@ -168,6 +183,22 @@ read that blocks the root shell fails the build with `StaticGenBailoutError` —
 `await requireUser()` at the top of the layout does exactly that. Same reason the navbar's
 `getCurrentUser()` calls sit inside `Suspense`. Keep new request-data reads behind a boundary.
 
+**More things count as "request data" than you'd expect, and each one fails the build**, not just
+degrades. All four of these were hit while building the recipe pages:
+
+- `await params` in a page body. Pass the promise down to a Suspended child instead of awaiting it
+  in the page — see `app/recipes/[slug]/page.tsx`, which is deliberately not `async`.
+- A server action bound to `<form action={…}>`, which is why `app/admin/create/page.tsx` wraps its
+  form in `Suspense`.
+- `usePathname()` in a client component. Harmless on a static route, request data on a dynamic one
+  — `AdminSidebar` only became a build blocker once `/admin` gained its first `[slug]` child.
+- Cookie reads, per above.
+
+**There is no route-level escape hatch:** `export const dynamic = "force-dynamic"` is rejected
+outright with "not compatible with `nextConfig.cacheComponents`". `Suspense` is the mechanism.
+When a build fails this way, `next build --debug-prerender` names the component and line; the
+default trace usually doesn't.
+
 The cost, accepted deliberately: `/admin` stays partially prerendered, so its shell is flushed
 before the gate resolves and the redirect arrives as a client-side `replace` to `/`. An anonymous
 visitor sees admin chrome for a moment. Nothing in that shell is private — it is the sidebar rail and
@@ -177,16 +208,31 @@ static shell.
 
 `requireUser()` is not a substitute for RLS, and neither is the gate. See the environment note above.
 
-**RLS, and the assumption underneath it.** All four recipe tables have RLS enabled with explicit
+**RLS, and the permission model it encodes.** All four recipe tables have RLS enabled with explicit
 policies: `anon` may read published recipes, plus the steps, ingredients and images belonging to a
 published recipe; `authenticated` may read and write everything, drafts included, so `/admin` can
 list them.
 
-`authenticated` means **any logged-in user, not specifically the owner.** That equivalence holds
-only while public signups are disabled in Supabase Auth. If signups are ever enabled, tighten the
-policies to pin `auth.uid()` to the owner's id — otherwise anyone who registers can write recipes.
+**There are two roles, not three: visitor and admin.** Every logged-in account is an admin, by
+design — there is no such thing as a normal user account here. Any admin may create, edit and delete
+any recipe; `anon` may only read published ones. That is why every write policy is `using (true)`
+rather than pinned to `auth.uid()`, and why no table carries a `user_id` — recipes are not owned by
+an account, so there is no ownership for a policy to check. Don't "fix" this by adding one.
+
+The consequence: **account creation is the only admission control, so signups must stay disabled**
+in Supabase Auth. Accounts are created by hand in the dashboard. Anyone who obtains an account
+obtains full write access to every recipe — that is the intended grant, not a hole, but it means
+enabling public signups would hand write access to the internet. If self-service accounts are ever
+wanted, the model needs a real role split first (an `is_admin` claim or an admin table the policies
+consult); tightening the existing policies is not enough on its own.
+
 Table-level `grant`s are a separate layer from the policies and both must permit an operation; the
-migration sets them explicitly rather than relying on the project's default privileges.
+migration sets them explicitly rather than relying on the project's default privileges. `anon` is
+granted `select` only, so anonymous writes are refused twice over.
+
+Full write-up, including the rebuild path if personal accounts are ever added:
+`docs/permission-model.md`. Note the model covers table rows only — **Supabase Storage has separate
+policies and currently has none**, and no bucket exists; see `docs/image-storage.md`.
 
 ## Conventions
 
