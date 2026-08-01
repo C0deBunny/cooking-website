@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { getDraftBySlug } from "@/lib/recipes/queries";
 
 // import components
-import RecipeArticle from "@/components/shared/RecipeArticle";
+import RecipeArticle, { toRecipeView } from "@/components/shared/RecipeArticle";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -53,7 +53,7 @@ async function PreviewContent({ params }: Props) {
         </div>
       </div>
 
-      <RecipeArticle recipe={recipe} />
+      <RecipeArticle recipe={toRecipeView(recipe)} />
     </>
   );
 }

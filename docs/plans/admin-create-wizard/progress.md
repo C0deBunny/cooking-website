@@ -7,6 +7,29 @@
      - Next: <what remains> / Blocked: <on what>
 -->
 
+## 2026-08-01 — Phase 3: RecipeArticle takes a view, not a row
+
+- **Did:** `RecipeView` in `types/recipes.ts`; `toRecipeView()` exported from
+  `RecipeArticle.tsx`; both database-backed pages map through it. List keys are the array index
+  and step numbers are `index + 1`.
+- **Open question resolved — where the mapper lives.** Not `types/recipes.ts`, which is pure
+  types and would become a runtime module; not `lib/recipes/`, because `CLAUDE.md` says a domain
+  folder is exactly three files and a mapper is none of them. It sits beside the component it
+  adapts for, which both callers already import.
+- **`RecipeView` is built with `Pick`, not restated fields.** The subset is a real design choice
+  — it is what the article renders — but the _types_ of those fields still come from the
+  generated row aliases, so a column that turns nullable cannot quietly disagree here. That is
+  the failure `types/recipes.ts` already warns about, and hand-writing
+  `description: string | null` would have walked straight back into it.
+- **Decision 8's constraint is now a comment at the top of `RecipeArticle`.** The wizard imports
+  it, so it is in the client bundle; `next/headers`, `cookies()` and the Supabase server client
+  are off-limits in that file from here on. Nothing enforces it.
+- **Verified:** `npm run lint`, `npm run typecheck`, `npm run format:check`. Rendered
+  `/recipes/zzz-phase1-smoke`, `/admin/preview/zzz-phase1-smoke` and
+  `/recipes/hutspot-met-klapstuk` (a recipe with no children at all, to check the empty case) —
+  all 200, ingredient order and step numbering unchanged from phase 2.
+- **Next:** phase 4.
+
 ## 2026-08-01 — Phase 2: DifficultyBadge, tokens, fraction glyphs
 
 - **Did:** six `--difficulty-*` tokens in `:root` and `.dark`, exposed through `@theme inline` as

@@ -23,3 +23,24 @@ export type RecipeWithChildren = Recipe & {
   recipe_ingredients: RecipeIngredient[];
   recipe_steps: RecipeStep[];
 };
+
+/**
+ * What `RecipeArticle` renders — deliberately narrower than a row, so a recipe that has never
+ * been saved can be rendered without inventing the parts a row would have.
+ *
+ * The wizard's live preview is the reason. A draft has no `id` on its ingredients and no
+ * `step_number` on its steps, and the alternative was an adapter that fabricated both: a
+ * fake-row constructor whose only consumer is a preview, needing an update every time a column
+ * is added to `recipe_ingredients` or `recipe_steps`. Narrowing the component's prop instead
+ * means real rows satisfy this structurally and the two database-backed pages keep working
+ * through `toRecipeView()`.
+ *
+ * `Pick` rather than restated fields, for the same reason the aliases above are derived: a
+ * hand-written `description: string` once disagreed with a column that was always nullable.
+ * This stays a *view* — a subset chosen by what the article shows — while its nullability comes
+ * from the schema and cannot drift from it.
+ */
+export type RecipeView = Pick<Recipe, "title" | "description" | "difficulty" | "prep_minutes" | "cook_minutes" | "servings" | "notes"> & {
+  ingredients: Pick<RecipeIngredient, "name" | "amount" | "unit">[];
+  steps: Pick<RecipeStep, "instruction" | "note">[];
+};

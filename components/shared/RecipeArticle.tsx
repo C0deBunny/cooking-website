@@ -3,15 +3,44 @@ import DifficultyBadge from "@/components/shared/DifficultyBadge";
 import { Separator } from "@/components/ui/separator";
 
 // import types
-import type { RecipeIngredient, RecipeWithChildren } from "@/types/recipes";
+import type { RecipeView, RecipeWithChildren } from "@/types/recipes";
 
 /**
- * Renders one recipe. Lives in shared/ rather than under a route because two routes use it:
- * the public /recipes/[slug] and the owner-only /admin/preview/[slug], which differ only in
- * which query feeds them.
+ * Renders one recipe. Lives in shared/ rather than under a route because three things use it:
+ * the public /recipes/[slug], the owner-only /admin/preview/[slug], and the create wizard's live
+ * preview. The first two differ only in which query feeds them; the third has no query at all,
+ * which is why the prop is RecipeView rather than a row — see types/recipes.ts.
  *
  * Images are absent on purpose — no Storage bucket exists yet, see docs/image-storage.md.
+ *
+ * ⚠ This component may never gain a server-only import. The wizard is a client component, so
+ * importing it there compiles this file into the client bundle as well as leaving it a server
+ * component for the two pages that render it from the server. It imports only Badge, Separator
+ * and types today. `next/headers`, `cookies()` and any Supabase server client are therefore
+ * off-limits here — nothing warns, and the failure arrives as a build error pointing at the
+ * wizard rather than at the import that caused it. Decision 8 exists so that error is findable.
  */
+
+/**
+ * Row shape in, view shape out. Two callers, both server pages reading through Supabase.
+ *
+ * Lives here rather than in lib/recipes/ because a domain folder is exactly three files
+ * (queries · actions · schema) and this is none of them, and because keeping it beside the
+ * component means the day RecipeView gains a field, the thing that has to fill it is on screen.
+ */
+export function toRecipeView(recipe: RecipeWithChildren): RecipeView {
+  return {
+    title: recipe.title,
+    description: recipe.description,
+    difficulty: recipe.difficulty,
+    prep_minutes: recipe.prep_minutes,
+    cook_minutes: recipe.cook_minutes,
+    servings: recipe.servings,
+    notes: recipe.notes,
+    ingredients: recipe.recipe_ingredients,
+    steps: recipe.recipe_steps,
+  };
+}
 
 /** "1 h 30" reads better than "90 min" past an hour. */
 function formatMinutes(minutes: number) {
@@ -53,12 +82,12 @@ function formatQuantity(amount: number) {
   return whole > 0 ? `${whole}${glyph}` : glyph;
 }
 
-function formatAmount(ingredient: RecipeIngredient) {
+function formatAmount(ingredient: RecipeView["ingredients"][number]) {
   const parts = [ingredient.amount === null ? null : formatQuantity(ingredient.amount), ingredient.unit].filter(Boolean);
   return parts.join(" ");
 }
 
-export default function RecipeArticle({ recipe }: { recipe: RecipeWithChildren }) {
+export default function RecipeArticle({ recipe }: { recipe: RecipeView }) {
   // Computed here rather than stored: a generated total column would have had to decide whether
   // a recipe with no times recorded means 0 or unknown. See decision 9.
   const total = (recipe.prep_minutes ?? 0) + (recipe.cook_minutes ?? 0);
@@ -102,12 +131,17 @@ export default function RecipeArticle({ recipe }: { recipe: RecipeWithChildren }
             Ingredients
           </h2>
 
+          {/* Keyed by index, and step numbers below are index + 1. Both are correct only because
+              the article is a static render of an already-ordered list: getRecipeBySlug and
+              getDraftBySlug order the children in the query, and the wizard's draft is ordered by
+              the array the user arranged. A caller that skips that ordering renumbers the method
+              silently. See decision 7. */}
           <ul className="space-y-2">
-            {recipe.recipe_ingredients.map((ingredient) => {
+            {recipe.ingredients.map((ingredient, index) => {
               const amount = formatAmount(ingredient);
 
               return (
-                <li key={ingredient.id} className="flex gap-4 border-b border-border pb-2 last:border-b-0">
+                <li key={index} className="flex gap-4 border-b border-border pb-2 last:border-b-0">
                   {amount ? <span className="shrink-0 font-medium tabular-nums">{amount}</span> : null}
                   <span className={amount ? "text-muted-foreground" : undefined}>{ingredient.name}</span>
                 </li>
@@ -124,10 +158,10 @@ export default function RecipeArticle({ recipe }: { recipe: RecipeWithChildren }
           </h2>
 
           <ol className="space-y-8">
-            {recipe.recipe_steps.map((step) => (
-              <li key={step.id} className="flex gap-4">
+            {recipe.steps.map((step, index) => (
+              <li key={index} className="flex gap-4">
                 <span aria-hidden className="flex size-8 shrink-0 items-center justify-center rounded-full bg-foreground/5 text-sm font-semibold tabular-nums">
-                  {step.step_number}
+                  {index + 1}
                 </span>
 
                 <div className="space-y-2 pt-1">

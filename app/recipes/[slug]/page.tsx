@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { getRecipeBySlug } from "@/lib/recipes/queries";
 
 // import components
-import RecipeArticle from "@/components/shared/RecipeArticle";
+import RecipeArticle, { toRecipeView } from "@/components/shared/RecipeArticle";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // import types
@@ -44,7 +44,7 @@ async function RecipeContent({ params }: Props) {
 
   if (!recipe) notFound();
 
-  return <RecipeArticle recipe={recipe} />;
+  return <RecipeArticle recipe={toRecipeView(recipe)} />;
 }
 
 function RecipeFallback() {
