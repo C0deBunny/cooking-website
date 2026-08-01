@@ -311,14 +311,21 @@ settled, follow them as written rather than drifting from them.
   transitive through `next` and `eslint` themselves, and `next` is already at the latest
   16.2.12 — there is nothing to fix here directly. **Never run `npm audit fix --force`**: it
   proposes "fixing" them by installing `next@9.3.3`.
-- **A brand-new file's Tailwind classes do not exist until `.next` is cleared.** Turbopack's dev
-  cache does not invalidate Tailwind's source scan when a source file is _created_ — editing an
-  existing file is picked up, adding one is not. The utilities for any class that appears only in
-  the new file are silently absent, so the component renders with correct-looking `class`
-  attributes and no styling, and restarting `next dev` does not help. `rm -rf .next` does.
-  `npm run build` is unaffected and is the way to confirm the CSS is genuinely right — it scans
-  cold every time. Hit while adding `DifficultyBadge.tsx`; costs an hour if you assume the theme
-  token is wrong, because that is the thing that looks suspicious.
+- **A sick Turbopack dev cache can silently drop Tailwind utilities.** Symptom: a component
+  renders with correct-looking `class` attributes and no styling, because the rule behind the
+  class was never generated. Restarting `next dev` does not fix it; `rm -rf .next` does.
+  `npm run build` is unaffected, which is how you tell a cache problem from a real one — if the
+  production CSS has the rule and dev does not, stop debugging your code.
+  Hit once here, while adding `DifficultyBadge.tsx`, on the same `.next` that had already produced
+  the dead-worker 500s described below. Both symptoms cleared together, so treat a `.next` that
+  has misbehaved once as suspect for everything afterwards. A healthy cache picks up new files and
+  new classes hot, with no restart — that was re-tested afterwards and works, so do **not** build a
+  habit of clearing `.next` routinely.
+- **Turbopack's dead-worker 500.** When the dev server's render workers die, every route 500s and
+  the only log line is `Error: Jest worker encountered N child process exceptions, exceeding retry
+limit`, which swallows whatever actually threw. It reads as "this page is broken" when it means
+  "this server is broken" — a whole session was spent believing two working pages were broken.
+  Restart `next dev` before believing a 500, and `rm -rf .next` if it persists.
 - The whole tree was formatted with prettier in one pass, so `npm run format:check` is clean.
   Keep it that way — run `npm run format` before committing rather than letting drift
   accumulate into another repo-wide reformat.

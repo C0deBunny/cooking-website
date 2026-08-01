@@ -7,6 +7,28 @@
      - Next: <what remains> / Blocked: <on what>
 -->
 
+## 2026-08-01 — Correction: the Tailwind "new file" gotcha was misdiagnosed
+
+Phase 2 concluded that Turbopack's dev cache does not invalidate Tailwind's source scan when a
+file is _created_, and that went into `CLAUDE.md`. Re-tested afterwards on a clean tree, and it
+is **not reproducible**: a brand-new component file containing an otherwise-unused utility had
+its rule in the served CSS within seconds, with no restart and no page request. Adding a novel
+class to an already-scanned file works hot too.
+
+Two measurement mistakes made it look otherwise. The first probe run compared against a stale
+response and reported `.bg-primary` missing as well, which should have been the tell. The
+follow-up probes used arbitrary-value classes like `tracking-[0.37em]` and grepped for
+`tracking-\[0\.37em\]` — but a CSS class selector escapes `[`, `]` and `.`, so the file contains
+`tracking-\[0\.37em\]` with backslashes and the pattern never matched. Both classes had been
+generated the whole time. **Probe with plain unescaped utilities (`line-through`) rather than
+arbitrary-value ones, or the test lies.**
+
+What survives: the original symptom was real — the difficulty utilities genuinely were absent
+from dev CSS while present in the production build, and `rm -rf .next` fixed it. The mechanism is
+just "that `.next` was sick", and notably it was the same `.next` that had produced the
+dead-worker 500s in phase 0. `CLAUDE.md` now says that instead, and explicitly warns against
+clearing `.next` as a habit.
+
 ## 2026-08-01 — Phase 4: the wizard
 
 - **Did:** `recipeSchema` split into `detailsSchema` / `ingredientsSchema` / `stepsSchema`,
@@ -105,14 +127,19 @@
 - **The badge map is typed `Record<RecipeDifficulty, string>` on purpose.** A fourth difficulty
   then fails to compile here rather than rendering an unstyled pill — the enum is generated, so
   adding a value and running `db:types` is what trips it.
-- **Cost an hour, and would cost it again: a brand-new file's Tailwind classes do not exist until
-  `.next` is cleared.** Turbopack's dev cache does not invalidate Tailwind's source scan when a
-  file is _created_ (editing an existing one is fine). `bg-difficulty-hard-bg` was in the
-  rendered `class` attribute and had no rule behind it; restarting `next dev` twice changed
-  nothing; `git add`-ing the file changed nothing. `npm run build` generated all twelve
-  utilities correctly, which is what proved the code right and the dev cache wrong.
-  `rm -rf .next` fixed dev. Written into `CLAUDE.md` under dependency gotchas, because phase 4
-  adds several new files at once and will hit it again.
+- **Cost an hour: the dev CSS was missing the difficulty utilities.** `bg-difficulty-hard-bg` was
+  in the rendered `class` attribute with no rule behind it; restarting `next dev` twice changed
+  nothing, `git add`-ing the new file changed nothing. `npm run build` generated all twelve
+  utilities correctly, which proved the code right and the dev cache wrong. `rm -rf .next` fixed
+  it.
+
+  **Corrected after the fact — see the entry below dated the same day.** The explanation first
+  written here and into `CLAUDE.md` was "Turbopack does not invalidate Tailwind's source scan when
+  a file is _created_". That is wrong, and re-testing disproved it. What is true: a `.next` can go
+  bad in a way that drops utilities, `rm -rf .next` fixes it, and the production build is how you
+  tell. Worth noting the `.next` in question was the same one that had produced the dead-worker
+  500s at the start of the session.
+
 - **Verified:** `npm run lint`, `npm run typecheck`, `npm run build`, `npm run format:check`.
   Rendered `/admin/preview/zzz-phase1-smoke` — chosen because that route is uncached, so a direct
   database write shows up without a cache dance. Every glyph case: `½ tl`, `¼ el`, `¾`,
