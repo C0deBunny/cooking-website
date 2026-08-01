@@ -50,7 +50,37 @@ several rows hits it too, because the constraint is evaluated per row.
 Worth settling as part of the schema redesign rather than patching later — the choice affects the
 column type, so it is cheaper to decide before there is data.
 
-## 2. `recipe_images.sort_order` is not unique per recipe
+## 2. One refresh empties the recipe wizard
+
+- **Found:** 2026-08-01, designing `/admin/create` — a scope cut, not a discovery
+- **Status:** accepted and deliberate. Decisions 13 and 14 of
+  `docs/plans/admin-create-wizard/decisions.md`
+- **Where:** `app/admin/_components/recipe-wizard/RecipeWizard.tsx`
+
+The draft lives in `useState` and nothing else. There is no autosave, no `beforeunload` warning,
+and no `localStorage` mirror, and there is no Save Draft button either — a recipe is written once,
+on the last step, and the publish switch there is what decides draft versus live.
+
+So one accidental refresh, one closed tab, or one click on a sidebar link discards four steps of
+typing with no warning and no recovery. That is meaningfully worse than the single-page form it
+replaced, which lost the same data but only ever held one screen of it.
+
+Why it is not fixed: each option carries a cost that was not worth paying for a screen used a few
+times a month by one person.
+
+- **`localStorage` with a "restore draft?" prompt** — the cheap fix, and the one to reach for
+  first if this starts biting. Needs a rule for when the stored draft is stale, and a second one
+  for what happens when a restore is offered on top of a wizard the user has already started
+  filling in.
+- **A `beforeunload` warning** — catches the refresh and the closed tab, but not an in-app
+  navigation, which is the likelier way to lose it. Browsers also ignore it until the page has
+  been interacted with.
+- **A real Save Draft button** — the trap is the id. A recipe has no id until its first save, so a
+  button that saves and stays has to thread the returned id back into the draft; miss that and the
+  second click inserts a second recipe, or trips 23505 on the slug. That is why `saveRecipe`
+  redirects rather than returning.
+
+## 3. `recipe_images.sort_order` is not unique per recipe
 
 - **Found:** 2026-08-01, same pass
 - **Status:** agreed to fix — it should be unique. Folded into the schema redesign.

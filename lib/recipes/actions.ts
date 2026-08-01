@@ -54,10 +54,11 @@ export async function saveRecipe(_prevState: RecipeFormState, formData: FormData
   const { data: recipeId, error } = await supabase.rpc("save_recipe", { payload: parsed.data });
 
   if (error) {
-    // 23505 is unique_violation, which here means the slug is taken — a routine collision worth
-    // a readable message rather than a raw Postgres error.
+    // 23505 is unique_violation, which here means the slug is taken. Returned with the slug
+    // itself so the form can point at the title that produced it — there is no slug field to
+    // correct, by design.
     if (error.code === "23505") {
-      return { error: `The slug "${parsed.data.slug}" is already used by another recipe.` };
+      return { error: `The address "${parsed.data.slug}" is already used by another recipe. Choose a different title.`, takenSlug: parsed.data.slug };
     }
 
     return { error: "Failed to save the recipe: " + error.message };

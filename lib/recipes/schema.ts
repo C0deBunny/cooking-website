@@ -50,11 +50,28 @@ const stepSchema = z.object({
   note: optionalText,
 });
 
-export const recipeSchema = z.object({
-  // Absent on create, present on edit. The function branches on it rather than upserting by
-  // slug, which is what makes renaming a slug an update instead of a fork.
-  id: z.number().int().positive().nullable().optional(),
-
+/**
+ * The three wizard steps, as schemas.
+ *
+ * Split so that each step's ✓ in the stepper can be that step's own `safeParse(...).success` and
+ * nothing else. A hand-written "is this step complete?" helper always drifts from the schema —
+ * the first mockup ticked Details on `title.trim().length > 0` while `optionalNumber` rejects
+ * NaN, so typing `abc` into Prep time produced **Details ✓ Complete**, an unlocked Review step,
+ * and then a server rejection reading "Prep time must be greater than 0."
+ *
+ * The split only pays off while it stays honest, and it is honest only because every input that
+ * could produce an invalid value is sanitised at the keystroke — see the sanitisers in
+ * `app/admin/_components/recipe-wizard/draft.ts`. Wire up a new field with a rule and no
+ * sanitiser and the tick goes green over a value the server will reject. Nothing enforces this.
+ *
+ * Which field sits in which step is a layout decision, not a data one: `servings` is in
+ * Ingredients because the amounts are relative to it (decision 6).
+ */
+export const detailsSchema = z.object({
+  // Derived from the title by slugify() and never shown as an editable field, so this failing is
+  // reachable in exactly one way: a title with nothing in `[a-z0-9]` to build an address from
+  // ("№1", an emoji, non-Latin script). The wizard says so on the URL line, because the tick
+  // going quiet with no explanation is a dead end — decision 10.
   slug: z
     .string()
     .trim()
@@ -67,14 +84,35 @@ export const recipeSchema = z.object({
 
   prep_minutes: optionalNumber({ integer: true, label: "Prep time" }),
   cook_minutes: optionalNumber({ integer: true, label: "Cook time" }),
+});
+
+export const ingredientsSchema = z.object({
   servings: optionalNumber({ integer: true, label: "Servings" }),
+  ingredients: z.array(ingredientSchema).min(1, "A recipe needs at least one ingredient."),
+});
+
+export const stepsSchema = z.object({
+  steps: z.array(stepSchema).min(1, "A recipe needs at least one step."),
+});
+
+/**
+ * The whole payload `save_recipe()` parses — the three above plus the fields that belong to no
+ * step: the id that tells the function insert from update, the publish switch on Review, and
+ * notes, which is deferred and currently always sent as null (decision 16).
+ *
+ * Composed by spreading `.shape` rather than `.merge()`, which is deprecated in zod 4.
+ */
+export const recipeSchema = z.object({
+  // Absent on create, present on edit. The function branches on it rather than upserting by
+  // slug, which is what makes renaming a slug an update instead of a fork.
+  id: z.number().int().positive().nullable().optional(),
 
   notes: optionalText,
   published: z.boolean().default(false),
 
-  ingredients: z.array(ingredientSchema).min(1, "A recipe needs at least one ingredient."),
-
-  steps: z.array(stepSchema).min(1, "A recipe needs at least one step."),
+  ...detailsSchema.shape,
+  ...ingredientsSchema.shape,
+  ...stepsSchema.shape,
 });
 
 /** What the form sends and the action validates. */
@@ -83,9 +121,19 @@ export type RecipeInput = z.input<typeof recipeSchema>;
 /** What the action passes to the database, after normalisation. */
 export type RecipePayload = z.output<typeof recipeSchema>;
 
-/** State object returned to useActionState by saveRecipe. */
+/**
+ * State object returned to useActionState by saveRecipe.
+ *
+ * `takenSlug` carries the one failure the form can act on rather than only report. The wizard has
+ * no slug field to correct — the address follows the title, always (decision 9) — so a collision
+ * has to be answered by changing the title, and the wizard says so on the URL line as well as on
+ * Review (decision 11). It holds the slug that collided rather than a boolean so the warning
+ * clears itself: the wizard compares it against the slug the current title derives, and a single
+ * keystroke in the title makes them differ.
+ */
 export type RecipeFormState = {
   error?: string;
+  takenSlug?: string;
 };
 
 /**

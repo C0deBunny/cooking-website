@@ -7,6 +7,70 @@
      - Next: <what remains> / Blocked: <on what>
 -->
 
+## 2026-08-01 — Phase 4: the wizard
+
+- **Did:** `recipeSchema` split into `detailsSchema` / `ingredientsSchema` / `stepsSchema`,
+  composed back by spreading `.shape`. New `app/admin/_components/recipe-wizard/` — `draft.ts`
+  (state shape, sanitisers, the two mappings), `RecipeWizard.tsx` (state owner), `Stepper`,
+  four panels, `PreviewRail`, `RowControls`, `PanelNav`. `RecipeForm.tsx` deleted.
+  `create/page.tsx` renders the wizard and keeps its `Suspense`. Docs: `CLAUDE.md` gains a
+  wizard section, `README.md`'s Planned Features pruned to what is genuinely pending,
+  `docs/known-issues.md` gains the refresh entry.
+- **Open question resolved — one file or several.** Several. One file would have been ~700 lines
+  and the panels share almost nothing but the draft, which is threaded down as `draft` plus a
+  single `onPatch`. There is no context and no reducer; the state owner is one `useState`.
+- **Open question resolved — how the preview emphasises the current step.** Scroll only; the
+  mockup's dimming is dropped. Dimming two thirds of a preview reads as broken rather than
+  focused, and implementing it meant either giving the shared `RecipeArticle` a wizard-shaped
+  prop or styling its internals from outside. The scroll targets `#ingredients-heading` and
+  `#steps-heading`, which are `RecipeArticle`'s own `aria-labelledby` ids and therefore part of
+  its markup rather than something reached into.
+- **`useActionState` sits in the wizard root, not in the Review panel.** A slug collision has to
+  send the user back to Details to change the title, which unmounts Review — and would take the
+  error message with it. The `<form>` element still lives only in Review, which is what
+  decision 12 is actually about. Consequence recorded in `CLAUDE.md`: the page's `Suspense`
+  boundary has to cover the whole wizard, not just the panel with the form in it.
+- **`RecipeFormState` gained `takenSlug`.** Decision 11 needs the form to know a failure _was_ a
+  collision, not just that something failed. It holds the slug rather than a boolean so the
+  warning clears itself — the wizard compares it against the slug the current title derives, and
+  one keystroke makes them differ.
+- **Found and fixed while testing: a blank row was a dead end.** Clicking "Add ingredient" and
+  then navigating away leaves an empty row; `ingredientsSchema` rejects it, so the step un-ticks
+  and Review re-locks with only the generic banner to explain it. That is the same shape of
+  problem as the unsluggable title, and it gets the same answer — the panel now says "Every
+  ingredient needs a name. Fill the empty row in, or remove it with ✕." Same on Steps. Not
+  fixed by dropping blank rows in `toPayload`, which would tick green while a row visibly on
+  screen silently vanished on save.
+- **Verified.** `npm run lint`, `npm run typecheck`, `npm run build`, `npm run format:check`.
+  There is no browser automation here, so the interactive behaviour was checked two ways.
+  A throwaway route handler inside the app (`/dev/wizard-check`, since deleted) exercised the
+  pure logic where the `@/` aliases resolve:
+  - sanitisers — `digitsOnly` strips `-`, `.` and letters; `amountChars` keeps digits and at most
+    one of `. , /`
+  - `parseAmount` — `1/2`→0.5, `0,5`→0.5, `3/4`→0.75, and `1/` · `.` · `0/0` → null
+  - the tick is honest — `prep_minutes: "abc"` and `"0"` both leave Details un-ticked, which is
+    the exact bug decision 2 exists to prevent
+  - decision 10 — a title of `"№ 🍌 «»"` gives `slug: ""` and Details does not tick, while
+    `"Gestoofde Bakbanaan Crème"` gives `gestoofde-bakbanaan-creme`
+  - a complete draft ticks all three, and `recipeSchema` normalises it to exactly what
+    `save_recipe()` wants
+
+  Then the panels themselves, by seeding the wizard's initial step and draft, loading the page and
+  reading the markup back — reverted afterwards. Step 1 with an empty draft shows the new blank-row
+  hint and a locked Review; step 2 shows the preview rail and the "all three complete" banner, and
+  **zero `<form>` elements on the page**, which is decision 12 confirmed rather than assumed;
+  step 4 shows the checklist, the publish switch, the hidden payload field carrying the right JSON,
+  and the full article underneath with `½ tl kaneel` and the difficulty badge.
+
+  Finally the whole contract end to end: the exact payload the wizard produces, fed to
+  `save_recipe()`, returned an id, and `/recipes/gestoofde-bakbanaan` renders it — `1/2` typed
+  and `0,5` typed both coming back as `½`.
+
+- **Not verified, and worth a real click-through:** focus behaviour, the smooth scroll in the
+  preview rail, and how the layout actually looks. Everything above is markup and logic.
+- **Cleanup done:** `zzz-phase1-smoke` and the `gestoofde-bakbanaan` round-trip recipe were both
+  deleted from the database.
+
 ## 2026-08-01 — Phase 3: RecipeArticle takes a view, not a row
 
 - **Did:** `RecipeView` in `types/recipes.ts`; `toRecipeView()` exported from

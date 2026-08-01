@@ -42,11 +42,13 @@ this project without a deliberate discussion.
 app/                routes: / , /login , /recipes , /recipes/[slug] , /admin
 app/admin/          /admin redirects to /admin/manage · children: manage/ create/ preview/[slug]/
 app/admin/layout.tsx  the owner-only gate + the sidebar shell — see "Auth gating" below
+app/admin/_components/recipe-wizard/  the four-step recipe creator — see "The recipe wizard"
 components/ui/      shadcn primitives (generated — regenerate, don't hand-edit)
 components/feature/ feature components, grouped by area (hero, layout/navbar, layout/footer, login)
 components/shared/  reused across features (RecipeCard, RecipeArticle, DifficultyBadge)
 lib/auth/           queries.ts (cache()'d reads) · actions.ts ("use server") · schema.ts (zod)
 lib/recipes/        the same three files — queries.ts · actions.ts · schema.ts
+                    schema.ts also splits per wizard step — see "The recipe wizard"
 lib/supabase/       three clients — pick the right one, see below
 lib/utils.ts        cn() + slugify() — path must match the `utils` alias in components.json
 supabase/           config.toml + migrations/ — the schema, see "Database schema & migrations"
@@ -151,6 +153,34 @@ as the only Docker-free way to inspect the live schema.
 caught a hand-written `description: string` disagreeing with a column that was always nullable —
 don't reintroduce hand-written row types.
 
+## The recipe wizard
+
+`/admin/create` is a four-step wizard — Details · Ingredients · Steps · Review & Publish — over
+the unchanged write path. Full spec and reasoning: `docs/plans/admin-create-wizard/`. Four things
+about it are load-bearing and easy to undo by accident:
+
+- **The step is client state, not a route or a query param.** A recipe cannot be saved in pieces,
+  so per-step routes would advertise a durability `save_recipe()` does not have — and
+  `useSearchParams` would need its own `Suspense` boundary under `cacheComponents`, exactly as
+  `usePathname` already does.
+- **Steps 1–3 contain no `<form>` element; only the Review panel does.** Inside a form, Enter in
+  any text input submits against the first submit button, so one wrapping form would let a
+  habitual Enter after typing the title save a one-field recipe. There is no `onKeyDown` guard —
+  the element simply isn't there, which is why nothing looks like it is preventing anything.
+- **Each step's ✓ is that step's own `safeParse`,** against `detailsSchema` / `ingredientsSchema`
+  / `stepsSchema` in `lib/recipes/schema.ts`, run on the payload that will actually be submitted.
+  Never add a second notion of "complete" — a hand-written helper drifts from the schema, and the
+  first version of this shipped ticking Details while Prep time held `abc`.
+- **That only stays honest because every numeric input is sanitised at the keystroke** — see the
+  sanitisers in `recipe-wizard/draft.ts`. Add a field with a validation rule and no sanitiser and
+  the tick goes green over a value the server rejects. Nothing enforces this. Where an invalid
+  state cannot be sanitised away (a title that slugifies to nothing, a blank ingredient row), the
+  wizard explains it on the panel instead.
+
+The slug is derived from the title, never editable, and follows it forever — including on edit,
+where a rename changes a live URL and `updateTag("recipes")` 404s the old one immediately. There
+is no slug field to fall back on, so a collision asks for a different title.
+
 ## Caching
 
 `next.config.ts` sets `cacheComponents: true`. Cached data functions use `"use cache"` plus
@@ -188,8 +218,10 @@ degrades. All four of these were hit while building the recipe pages:
 
 - `await params` in a page body. Pass the promise down to a Suspended child instead of awaiting it
   in the page — see `app/recipes/[slug]/page.tsx`, which is deliberately not `async`.
-- A server action bound to `<form action={…}>`, which is why `app/admin/create/page.tsx` wraps its
-  form in `Suspense`.
+- A server action bound to `<form action={…}>`, which is why `app/admin/create/page.tsx` wraps the
+  wizard in `Suspense`. Note the boundary has to cover the whole wizard even though the `<form>`
+  is four levels down in its Review panel: `useActionState` is called at the wizard's root, where
+  the draft lives, so the action is referenced as soon as anything renders.
 - `usePathname()` in a client component. Harmless on a static route, request data on a dynamic one
   — `AdminSidebar` only became a build blocker once `/admin` gained its first `[slug]` child.
 - Cookie reads, per above.
