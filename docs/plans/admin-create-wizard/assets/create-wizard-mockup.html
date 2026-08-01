@@ -1,0 +1,1773 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>/admin/create — Recipe Creator wizard mockup</title>
+    <style>
+      /* Tokens lifted from app/globals.css so the mockup reads like the real site. */
+      :root {
+        --background: oklch(0.98 0.016 73.684);
+        --foreground: oklch(0.147 0.004 49.25);
+        --card: oklch(1 0 0);
+        --primary: oklch(0.75 0.183 55.934);
+        --primary-foreground: oklch(0.9851 0 0);
+        --secondary: oklch(0.897 0.196 126.665);
+        --muted: oklch(0.9702 0 0);
+        --muted-foreground: oklch(0.5555 0 0);
+        --accent: oklch(0.901 0.076 70.697);
+        --destructive: oklch(0.637 0.237 25.331);
+        --destructive-foreground: oklch(1 0 0);
+        --border: oklch(0.9219 0 0);
+        --input: oklch(0.9219 0 0);
+        --sidebar: oklch(0.965 0.014 73.684);
+        --sidebar-accent: oklch(0.945 0.012 73.684);
+        --radius: 1rem;
+        --shadow-sm: 0 1px 3px 0 hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
+        --shadow-xl: 0 1px 3px 0 hsl(0 0% 0% / 0.1), 0 8px 10px -1px hsl(0 0% 0% / 0.1);
+        --ok: oklch(0.58 0.13 155);
+        --ok-bg: oklch(0.95 0.045 155);
+        --warn: oklch(0.58 0.13 75);
+        --warn-bg: oklch(0.96 0.05 85);
+        --note: oklch(0.55 0.13 250);
+        --note-bg: oklch(0.96 0.03 250);
+        --tint: oklch(0.147 0.004 49.25 / 0.05);
+        /* Proposed new tokens for globals.css — deliberately NOT reusing
+           --secondary / --primary / --destructive, see the legend. */
+        --difficulty-easy: oklch(0.45 0.13 150);
+        --difficulty-easy-bg: oklch(0.93 0.06 150);
+        --difficulty-medium: oklch(0.52 0.14 55);
+        --difficulty-medium-bg: oklch(0.94 0.06 65);
+        --difficulty-hard: oklch(0.51 0.19 25);
+        --difficulty-hard-bg: oklch(0.94 0.05 25);
+      }
+      html.dark {
+        --background: oklch(0.18 0.012 75);
+        --foreground: oklch(0.96 0.01 75);
+        --card: oklch(0.22 0.01 75);
+        --primary: oklch(0.75 0.183 55.934);
+        --primary-foreground: oklch(0.2046 0 0);
+        --secondary: oklch(0.72 0.16 126.665);
+        --muted: oklch(0.28 0.008 75);
+        --muted-foreground: oklch(0.78 0.01 75);
+        --accent: oklch(0.78 0.095 70.697);
+        --destructive: oklch(0.62 0.22 25.331);
+        --border: oklch(0.3 0.008 75);
+        --input: oklch(0.3 0.008 75);
+        --sidebar: oklch(0.215 0.012 75);
+        --sidebar-accent: oklch(0.26 0.012 75);
+        --ok: oklch(0.78 0.14 155);
+        --ok-bg: oklch(0.26 0.05 155);
+        --warn: oklch(0.82 0.13 85);
+        --warn-bg: oklch(0.28 0.05 85);
+        --note: oklch(0.8 0.11 250);
+        --note-bg: oklch(0.26 0.03 250);
+        --tint: oklch(0.96 0.01 75 / 0.06);
+        --difficulty-easy: oklch(0.82 0.14 150);
+        --difficulty-easy-bg: oklch(0.3 0.06 150);
+        --difficulty-medium: oklch(0.85 0.13 70);
+        --difficulty-medium-bg: oklch(0.31 0.06 65);
+        --difficulty-hard: oklch(0.8 0.15 25);
+        --difficulty-hard-bg: oklch(0.31 0.07 25);
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        background: var(--background);
+        color: var(--foreground);
+        font-family: ui-sans-serif, system-ui, sans-serif;
+        font-size: 14px;
+        line-height: 1.5;
+        padding: 32px 24px 96px;
+      }
+
+      /* ---------- mockup scaffolding ---------- */
+      .wrap {
+        max-width: 1320px;
+        margin: 0 auto;
+      }
+      .doc-h1 {
+        font-size: 26px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+      }
+      .doc-sub {
+        color: var(--muted-foreground);
+        margin-top: 6px;
+        max-width: 82ch;
+      }
+      .doc-h2 {
+        font-size: 13px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.09em;
+        color: var(--muted-foreground);
+        margin: 44px 0 14px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--border);
+      }
+      .toolbar {
+        position: fixed;
+        top: 14px;
+        right: 18px;
+        display: flex;
+        gap: 8px;
+        z-index: 60;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        max-width: 60vw;
+      }
+      .toolbar button {
+        font: inherit;
+        font-size: 12px;
+        font-weight: 600;
+        border: 1px solid var(--border);
+        background: var(--card);
+        color: var(--foreground);
+        border-radius: 999px;
+        padding: 6px 14px;
+        cursor: pointer;
+        box-shadow: var(--shadow-sm);
+      }
+      .toolbar button[aria-pressed="true"] {
+        background: var(--foreground);
+        color: var(--background);
+        border-color: var(--foreground);
+      }
+
+      .frame {
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        overflow: hidden;
+        background: var(--background);
+        box-shadow: var(--shadow-sm);
+        margin-top: 20px;
+      }
+      .frame-bar {
+        background: var(--sidebar);
+        border-bottom: 1px solid var(--border);
+        padding: 7px 12px;
+        font-size: 11px;
+        color: var(--muted-foreground);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .dots {
+        display: flex;
+        gap: 5px;
+      }
+      .dots i {
+        width: 9px;
+        height: 9px;
+        border-radius: 999px;
+        background: var(--border);
+        display: block;
+      }
+
+      /* ---------- admin shell ---------- */
+      .shell {
+        display: grid;
+        grid-template-columns: 208px minmax(0, 1fr);
+        min-height: 900px;
+      }
+      .rail {
+        background: var(--sidebar);
+        border-right: 1px solid var(--border);
+        user-select: none;
+      }
+      .rail-head {
+        border-bottom: 1px solid var(--border);
+        padding: 12px;
+        font-weight: 800;
+        font-size: 13px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .rail-group {
+        padding: 12px 0 4px;
+      }
+      .rail-label {
+        padding: 0 12px 6px;
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--muted-foreground);
+      }
+      .rail-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        font-size: 13px;
+        color: var(--foreground);
+        position: relative;
+      }
+      .rail-item.active {
+        background: var(--sidebar-accent);
+        font-weight: 700;
+      }
+      .rail-item.active::before {
+        content: "";
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: 4px;
+        background: var(--primary);
+      }
+
+      .main {
+        padding: 28px 28px 56px;
+        min-width: 0;
+      }
+      .page-h {
+        margin-bottom: 20px;
+      }
+      .page-h h1 {
+        font-size: 24px;
+        font-weight: 800;
+        letter-spacing: -0.015em;
+      }
+      .page-h p {
+        color: var(--muted-foreground);
+        margin-top: 4px;
+      }
+
+      /* ---------- cards ---------- */
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow-sm);
+      }
+      .card-pad {
+        padding: 22px;
+      }
+      .card-h {
+        font-size: 17px;
+        font-weight: 700;
+      }
+      .card-sub {
+        color: var(--muted-foreground);
+        font-size: 13px;
+        margin-top: 2px;
+      }
+
+      /* ---------- stepper ---------- */
+      .stepper {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr 1fr;
+        padding: 16px 20px;
+        margin-bottom: 18px;
+      }
+      .snode {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        min-width: 0;
+      }
+      .sbtn {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        background: none;
+        border: 0;
+        font: inherit;
+        color: inherit;
+        text-align: left;
+        cursor: pointer;
+        padding: 4px 6px;
+        border-radius: 12px;
+        min-width: 0;
+      }
+      .sbtn:disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+      }
+      .sdot {
+        width: 34px;
+        height: 34px;
+        border-radius: 999px;
+        display: grid;
+        place-items: center;
+        background: var(--muted);
+        color: var(--muted-foreground);
+        flex: 0 0 auto;
+        border: 1px solid transparent;
+      }
+      .sbtn[data-state="current"] .sdot {
+        background: var(--primary);
+        color: var(--primary-foreground);
+        box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary) 22%, transparent);
+      }
+      .sbtn[data-state="complete"] .sdot {
+        background: var(--ok-bg);
+        color: var(--ok);
+        border-color: color-mix(in oklab, var(--ok) 35%, transparent);
+      }
+      .stitle {
+        font-weight: 700;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        white-space: nowrap;
+      }
+      .sstatus {
+        font-size: 12px;
+        color: var(--muted-foreground);
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        margin-top: 1px;
+        white-space: nowrap;
+      }
+      .sbtn[data-state="complete"] .sstatus {
+        color: var(--ok);
+      }
+      .sline {
+        flex: 1;
+        height: 2px;
+        background: var(--border);
+        margin: 21px 10px 0;
+        border-radius: 2px;
+        min-width: 12px;
+      }
+      .sline.done {
+        background: color-mix(in oklab, var(--ok) 55%, transparent);
+      }
+
+      /* ---------- banner ---------- */
+      .banner {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        border-radius: 12px;
+        padding: 12px 14px;
+        font-size: 13px;
+        margin-bottom: 18px;
+        border: 1px solid transparent;
+      }
+      .banner.ok {
+        background: var(--ok-bg);
+        color: var(--ok);
+        border-color: color-mix(in oklab, var(--ok) 30%, transparent);
+      }
+      .banner.warn {
+        background: var(--warn-bg);
+        color: var(--warn);
+        border-color: color-mix(in oklab, var(--warn) 32%, transparent);
+      }
+      .banner.bad {
+        background: color-mix(in oklab, var(--destructive) 12%, var(--card));
+        color: var(--destructive);
+        border-color: color-mix(in oklab, var(--destructive) 35%, transparent);
+      }
+      .banner .grow {
+        flex: 1;
+      }
+
+      /* ---------- body grid ---------- */
+      .body-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.85fr) minmax(300px, 0.95fr);
+        gap: 18px;
+        align-items: start;
+      }
+      .body-grid.full {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      /* /admin is desktop-first — AdminSidebar is collapsible="none" with a fixed 16rem
+         rail, so the shell already assumes width. Below lg the preview simply isn't there. */
+      @media (max-width: 1023px) {
+        .body-grid {
+          grid-template-columns: minmax(0, 1fr);
+        }
+        .preview {
+          display: none;
+        }
+      }
+
+      /* ---------- form bits ---------- */
+      .field {
+        margin-top: 18px;
+      }
+      .field:first-child {
+        margin-top: 0;
+      }
+      .lab {
+        display: block;
+        font-size: 13px;
+        font-weight: 600;
+        margin-bottom: 6px;
+      }
+      .req {
+        color: var(--destructive);
+      }
+      .ctl {
+        position: relative;
+      }
+      input[type="text"],
+      input[type="number"],
+      textarea,
+      select {
+        width: 100%;
+        font: inherit;
+        font-size: 14px;
+        color: var(--foreground);
+        background: var(--card);
+        border: 1px solid var(--input);
+        border-radius: 10px;
+        padding: 9px 12px;
+        outline: none;
+      }
+      input:focus,
+      textarea:focus,
+      select:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary) 20%, transparent);
+      }
+      textarea {
+        resize: vertical;
+        min-height: 72px;
+      }
+      .counter {
+        position: absolute;
+        right: 12px;
+        bottom: 9px;
+        font-size: 11px;
+        color: var(--muted-foreground);
+        background: var(--card);
+        padding-left: 6px;
+        pointer-events: none;
+      }
+      .hint {
+        font-size: 12px;
+        color: var(--muted-foreground);
+        margin-top: 6px;
+      }
+      .row3 {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 14px;
+      }
+      .row2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+      }
+      /* No type="number", so no spinner to collide with the suffix.
+         inputMode="numeric" still gets a numeric keypad on mobile, and
+         optionalNumber() in the schema already coerces the string. */
+      .suffix-wrap {
+        position: relative;
+      }
+      .suffix-wrap input {
+        padding-right: 66px;
+      }
+      .suffix {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 12px;
+        color: var(--muted-foreground);
+        pointer-events: none;
+      }
+
+      /* derived url line */
+      .urlline {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        margin-top: 8px;
+        font-size: 12.5px;
+        color: var(--muted-foreground);
+        background: var(--tint);
+        border-radius: 8px;
+        padding: 7px 10px;
+        flex-wrap: wrap;
+      }
+      .urlline code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 12.5px;
+        color: var(--foreground);
+      }
+      .urlline .why {
+        opacity: 0.8;
+      }
+      .urlline.clash {
+        background: color-mix(in oklab, var(--destructive) 10%, transparent);
+        color: var(--destructive);
+      }
+      .urlline.clash code {
+        color: var(--destructive);
+      }
+      .linkbtn {
+        font: inherit;
+        font-size: 12px;
+        font-weight: 700;
+        background: none;
+        border: 0;
+        color: var(--primary);
+        cursor: pointer;
+        text-decoration: underline;
+        padding: 0;
+      }
+
+      /* ---------- list rows ---------- */
+      .ing-head,
+      .ing-row {
+        display: grid;
+        grid-template-columns: 84px 92px minmax(0, 1fr) 96px;
+        gap: 8px;
+        align-items: center;
+      }
+      .ing-head {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--muted-foreground);
+        padding: 0 2px 6px;
+      }
+      .ing-row {
+        margin-bottom: 8px;
+      }
+      .ing-row input {
+        padding: 7px 10px;
+        font-size: 13.5px;
+      }
+      .iconrow {
+        display: flex;
+        gap: 2px;
+        justify-content: flex-end;
+      }
+      .ibtn {
+        width: 28px;
+        height: 28px;
+        display: grid;
+        place-items: center;
+        border-radius: 8px;
+        border: 1px solid transparent;
+        background: none;
+        color: var(--muted-foreground);
+        cursor: pointer;
+      }
+      .ibtn:hover:not(:disabled) {
+        background: var(--tint);
+        color: var(--foreground);
+      }
+      .ibtn:disabled {
+        opacity: 0.28;
+        cursor: not-allowed;
+      }
+      .step-row {
+        display: grid;
+        grid-template-columns: 32px minmax(0, 1fr) 96px;
+        gap: 10px;
+        align-items: start;
+        margin-bottom: 14px;
+      }
+      .step-n {
+        width: 30px;
+        height: 30px;
+        border-radius: 999px;
+        background: var(--tint);
+        display: grid;
+        place-items: center;
+        font-weight: 700;
+        font-size: 13px;
+        margin-top: 5px;
+        font-variant-numeric: tabular-nums;
+      }
+      .step-row textarea {
+        min-height: 60px;
+      }
+      .step-row .note {
+        margin-top: 7px;
+        padding: 7px 10px;
+        font-size: 13px;
+      }
+
+      .btn {
+        font: inherit;
+        font-size: 13px;
+        font-weight: 700;
+        border-radius: 10px;
+        padding: 8px 14px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        border: 1px solid var(--border);
+        background: var(--card);
+        color: var(--foreground);
+      }
+      .btn:hover {
+        background: var(--tint);
+      }
+      .btn.primary {
+        background: var(--primary);
+        color: var(--primary-foreground);
+        border-color: var(--primary);
+      }
+      .btn.primary:hover {
+        filter: brightness(1.04);
+      }
+      .btn:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+      .navrow {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        margin-top: 24px;
+        padding-top: 18px;
+        border-top: 1px solid var(--border);
+      }
+      .navrow .grow {
+        flex: 1;
+      }
+
+      /* ---------- live preview ---------- */
+      .preview {
+        position: sticky;
+        top: 18px;
+        overflow: hidden;
+      }
+      .preview-h {
+        padding: 16px 18px 12px;
+        border-bottom: 1px solid var(--border);
+      }
+      .preview-scroll {
+        max-height: 620px;
+        overflow: auto;
+        scroll-behavior: smooth;
+      }
+      .pv-sec {
+        transition:
+          opacity 0.25s,
+          filter 0.25s;
+      }
+      .preview-scroll[data-focus] .pv-sec {
+        opacity: 0.38;
+      }
+      .preview-scroll[data-focus] .pv-sec.on {
+        opacity: 1;
+      }
+
+      /* the real public article layout, just narrow */
+      .art-head {
+        background: var(--tint);
+        padding: 18px;
+      }
+      /* <DifficultyBadge /> — one shared component, used in the article, the live
+         preview, RecipeCard and the manage table. */
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 11px;
+        font-weight: 700;
+        padding: 3px 10px;
+        border-radius: 999px;
+        text-transform: capitalize;
+        border: 1px solid transparent;
+      }
+      .badge[data-difficulty="easy"] {
+        background: var(--difficulty-easy-bg);
+        color: var(--difficulty-easy);
+        border-color: color-mix(in oklab, var(--difficulty-easy) 28%, transparent);
+      }
+      .badge[data-difficulty="medium"] {
+        background: var(--difficulty-medium-bg);
+        color: var(--difficulty-medium);
+        border-color: color-mix(in oklab, var(--difficulty-medium) 28%, transparent);
+      }
+      .badge[data-difficulty="hard"] {
+        background: var(--difficulty-hard-bg);
+        color: var(--difficulty-hard);
+        border-color: color-mix(in oklab, var(--difficulty-hard) 28%, transparent);
+      }
+      /* ANNOTATION — scaffolding for this mockup only. Nothing in this block
+         corresponds to anything that should be built. */
+      .mock-only {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-top: 10px;
+        padding: 9px 11px;
+        border: 1px dashed color-mix(in oklab, var(--note) 45%, transparent);
+        background: var(--note-bg);
+        border-radius: 10px;
+      }
+      .mock-only > .tag {
+        font-size: 9.5px;
+        font-weight: 800;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        color: var(--note);
+        border: 1px solid color-mix(in oklab, var(--note) 40%, transparent);
+        border-radius: 5px;
+        padding: 1px 5px;
+      }
+      .mock-only > .cap {
+        font-size: 11px;
+        color: var(--note);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      }
+      .art-title {
+        font-size: 22px;
+        font-weight: 800;
+        letter-spacing: -0.015em;
+        margin-top: 10px;
+        line-height: 1.2;
+      }
+      .art-title.empty {
+        color: var(--muted-foreground);
+        font-style: italic;
+        font-weight: 600;
+      }
+      .art-desc {
+        color: var(--muted-foreground);
+        margin-top: 8px;
+        font-size: 13.5px;
+      }
+      .art-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 22px;
+        margin-top: 16px;
+      }
+      .art-meta dt {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        color: var(--muted-foreground);
+      }
+      .art-meta dd {
+        font-size: 13.5px;
+        font-weight: 600;
+      }
+      .art-body {
+        padding: 18px;
+      }
+      .art-h2 {
+        font-size: 15px;
+        font-weight: 700;
+        margin-bottom: 10px;
+      }
+      .art-ing {
+        display: flex;
+        gap: 12px;
+        border-bottom: 1px solid var(--border);
+        padding: 5px 0;
+        font-size: 13.5px;
+      }
+      .art-ing:last-child {
+        border-bottom: 0;
+      }
+      .art-ing b {
+        font-variant-numeric: tabular-nums;
+        font-weight: 600;
+        flex: 0 0 auto;
+      }
+      .art-ing span {
+        color: var(--muted-foreground);
+      }
+      .art-step {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 14px;
+      }
+      .art-step .n {
+        width: 26px;
+        height: 26px;
+        border-radius: 999px;
+        background: var(--tint);
+        display: grid;
+        place-items: center;
+        font-size: 12px;
+        font-weight: 700;
+        flex: 0 0 auto;
+        font-variant-numeric: tabular-nums;
+      }
+      .art-step p {
+        font-size: 13.5px;
+      }
+      .art-step .note {
+        font-size: 12.5px;
+        color: var(--muted-foreground);
+        font-style: italic;
+        margin-top: 3px;
+      }
+      .art-sep {
+        height: 1px;
+        background: var(--border);
+        margin: 18px 0;
+      }
+      .pv-empty {
+        color: var(--muted-foreground);
+        font-size: 13px;
+        font-style: italic;
+      }
+
+      /* ---------- review ---------- */
+      .checklist {
+        display: grid;
+        gap: 10px;
+      }
+      .check {
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+        padding: 11px 13px;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+      }
+      .check .ic {
+        color: var(--ok);
+        margin-top: 1px;
+      }
+      .check b {
+        font-size: 13.5px;
+      }
+      .check p {
+        font-size: 12.5px;
+        color: var(--muted-foreground);
+      }
+      .publish-box {
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+        margin-top: 18px;
+        padding: 14px;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        background: var(--tint);
+      }
+      .switch {
+        width: 40px;
+        height: 23px;
+        border-radius: 999px;
+        background: var(--border);
+        border: 0;
+        position: relative;
+        cursor: pointer;
+        flex: 0 0 auto;
+        margin-top: 1px;
+      }
+      .switch::after {
+        content: "";
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        width: 17px;
+        height: 17px;
+        border-radius: 999px;
+        background: var(--card);
+        transition: left 0.15s;
+        box-shadow: var(--shadow-sm);
+      }
+      .switch[aria-checked="true"] {
+        background: var(--primary);
+      }
+      .switch[aria-checked="true"]::after {
+        left: 20px;
+      }
+      .review-article {
+        margin-top: 18px;
+        overflow: hidden;
+      }
+      .review-article .art-head,
+      .review-article .art-body {
+        padding: 28px 32px;
+      }
+      .review-article .art-title {
+        font-size: 32px;
+      }
+      .review-article .art-desc,
+      .review-article .art-ing,
+      .review-article .art-step p {
+        font-size: 15px;
+      }
+      .review-article .art-h2 {
+        font-size: 20px;
+        margin-bottom: 14px;
+      }
+
+      /* ---------- legend ---------- */
+      .legend {
+        margin-top: 26px;
+        border: 1px dashed var(--border);
+        border-radius: 12px;
+        padding: 16px 18px;
+        background: var(--card);
+      }
+      .legend h3 {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted-foreground);
+        margin-bottom: 10px;
+      }
+      .legend ul {
+        list-style: none;
+        display: grid;
+        gap: 7px;
+      }
+      .legend li {
+        display: flex;
+        gap: 9px;
+        font-size: 13px;
+        align-items: baseline;
+      }
+      .legend .x {
+        color: var(--destructive);
+        font-weight: 800;
+        flex: 0 0 auto;
+      }
+      .legend .why {
+        color: var(--muted-foreground);
+      }
+      .hidden {
+        display: none !important;
+      }
+      svg {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="toolbar">
+      <button id="t-theme" type="button">Dark</button>
+      <button id="t-fill" type="button" aria-pressed="true">Prefilled</button>
+      <button id="t-clash" type="button" aria-pressed="false">Slug collision</button>
+    </div>
+
+    <div class="wrap">
+      <h1 class="doc-h1">Recipe Creator — <code>/admin/create</code></h1>
+      <p class="doc-sub">
+        A four-step wizard over the existing single-submit write path. Click the stepper to move between panels; the three form steps are always reachable, Review &amp; Publish unlocks only once they
+        all validate. Use <b>Prefilled</b> to empty the form and watch the locks and empty states appear, and <b>Slug collision</b> to see the one case where the hidden URL becomes editable.
+      </p>
+
+      <div class="frame">
+        <div class="frame-bar">
+          <span class="dots"><i></i><i></i><i></i></span>
+          <span>chiques-swiet-mofo.local/admin/create</span>
+        </div>
+
+        <div class="shell">
+          <!-- ============ sidebar rail (static context) ============ -->
+          <aside class="rail">
+            <div class="rail-head">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6Z" />
+                <path d="M6 17h12" />
+              </svg>
+              Admin
+            </div>
+            <div class="rail-group">
+              <div class="rail-label">Recipes</div>
+              <div class="rail-item">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                  <path d="M3 5h18M3 12h18M3 19h18" />
+                </svg>
+                Manage Recipes
+              </div>
+              <div class="rail-item active">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14" /></svg>
+                Create Recipes
+              </div>
+            </div>
+            <div class="rail-group">
+              <div class="rail-label">Tags</div>
+              <div class="rail-item">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                  <path d="M3 8V5a2 2 0 0 1 2-2h3l11 11-5 5L3 8Z" />
+                  <circle cx="7.5" cy="7.5" r="1.2" fill="currentColor" />
+                </svg>
+                Manage Tags
+              </div>
+            </div>
+          </aside>
+
+          <!-- ============ main ============ -->
+          <main class="main">
+            <div class="page-h">
+              <h1>Recipe Creator</h1>
+              <p>Add a recipe to the site.</p>
+            </div>
+
+            <!-- stepper -->
+            <div class="card stepper" id="stepper">
+              <div class="snode">
+                <button class="sbtn" type="button" data-go="0">
+                  <span class="sdot">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                      <circle cx="12" cy="12" r="9" />
+                      <path d="M12 16v-4M12 8h.01" />
+                    </svg>
+                  </span>
+                  <span>
+                    <span class="stitle">Details <span class="tick"></span></span>
+                    <span class="sstatus"></span>
+                  </span>
+                </button>
+                <div class="sline" data-line="0"></div>
+              </div>
+
+              <div class="snode">
+                <button class="sbtn" type="button" data-go="1">
+                  <span class="sdot">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                      <path d="M4 20s4-1 8-5 5-8 5-8-4 1-8 5-5 8-5 8Z" />
+                      <path d="M14 7l3-3" />
+                    </svg>
+                  </span>
+                  <span>
+                    <span class="stitle">Ingredients <span class="tick"></span></span>
+                    <span class="sstatus"></span>
+                  </span>
+                </button>
+                <div class="sline" data-line="1"></div>
+              </div>
+
+              <div class="snode">
+                <button class="sbtn" type="button" data-go="2">
+                  <span class="sdot">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                      <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
+                    </svg>
+                  </span>
+                  <span>
+                    <span class="stitle">Steps <span class="tick"></span></span>
+                    <span class="sstatus"></span>
+                  </span>
+                </button>
+                <div class="sline" data-line="2"></div>
+              </div>
+
+              <div class="snode">
+                <button class="sbtn" type="button" data-go="3">
+                  <span class="sdot">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                      <path d="M5 13s2-7 9-8c1 7-4 10-4 10l-3 1-2-3Z" />
+                      <path d="M7 16l-2 3 3-2" />
+                    </svg>
+                  </span>
+                  <span>
+                    <span class="stitle">Review &amp; Publish <span class="tick"></span></span>
+                    <span class="sstatus"></span>
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            <div id="banner"></div>
+
+            <!-- body -->
+            <div class="body-grid" id="bodygrid">
+              <div id="panels">
+                <!-- ---------- STEP 1: DETAILS ---------- -->
+                <section class="card card-pad panel" data-panel="0">
+                  <div class="card-h">Details</div>
+                  <div class="card-sub">The basics of your recipe.</div>
+
+                  <div class="field" style="margin-top: 20px">
+                    <label class="lab" for="f-title">Recipe title <span class="req">*</span></label>
+                    <div class="ctl">
+                      <input id="f-title" type="text" maxlength="100" placeholder="Gestoofde bakbanaan" />
+                      <span class="counter" id="c-title">0/100</span>
+                    </div>
+                    <div class="urlline" id="urlline">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                        <path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1" />
+                        <path d="M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1" />
+                      </svg>
+                      <code id="urltext">/recipes/…</code>
+                      <span class="why" id="urlwhy">— the address, taken from the title</span>
+                    </div>
+                  </div>
+
+                  <div class="field">
+                    <label class="lab" for="f-desc">Short description</label>
+                    <div class="ctl">
+                      <textarea id="f-desc" maxlength="160" rows="2" placeholder="One or two lines that show under the title."></textarea>
+                      <span class="counter" id="c-desc">0/160</span>
+                    </div>
+                  </div>
+
+                  <div class="field row3">
+                    <div>
+                      <label class="lab" for="f-diff">Difficulty</label>
+                      <select id="f-diff">
+                        <option value="">Not set</option>
+                        <option value="easy">Easy</option>
+                        <option value="medium">Medium</option>
+                        <option value="hard">Hard</option>
+                      </select>
+                      <div class="mock-only" aria-hidden="true">
+                        <span class="tag">Mockup only</span>
+                        <span class="cap">&lt;DifficultyBadge /&gt;</span>
+                        <span class="badge" data-difficulty="easy">easy</span>
+                        <span class="badge" data-difficulty="medium">medium</span>
+                        <span class="badge" data-difficulty="hard">hard</span>
+                      </div>
+                    </div>
+                    <div>
+                      <label class="lab" for="f-prep">Prep time</label>
+                      <div class="suffix-wrap"><input id="f-prep" type="text" inputmode="numeric" placeholder="15" /><span class="suffix">minutes</span></div>
+                    </div>
+                    <div>
+                      <label class="lab" for="f-cook">Cook time</label>
+                      <div class="suffix-wrap"><input id="f-cook" type="text" inputmode="numeric" placeholder="30" /><span class="suffix">minutes</span></div>
+                    </div>
+                  </div>
+
+                  <div class="navrow">
+                    <span class="grow"></span>
+                    <button class="btn primary" type="button" data-go="1">
+                      Next: Ingredients
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+                    </button>
+                  </div>
+                </section>
+
+                <!-- ---------- STEP 2: INGREDIENTS ---------- -->
+                <section class="card card-pad panel hidden" data-panel="1">
+                  <div class="card-h">Ingredients</div>
+                  <div class="card-sub">At least one. Amount and unit are optional.</div>
+
+                  <div class="field" style="margin-top: 18px; max-width: 260px">
+                    <label class="lab" for="f-serv">Servings</label>
+                    <div class="suffix-wrap"><input id="f-serv" type="text" inputmode="numeric" placeholder="4" /><span class="suffix">people</span></div>
+                    <p class="hint">The amounts below make this many portions.</p>
+                  </div>
+
+                  <div class="ing-head" style="margin-top: 20px">
+                    <div>Amount</div>
+                    <div>Unit</div>
+                    <div>Ingredient</div>
+                    <div></div>
+                  </div>
+                  <div id="ing-list"></div>
+
+                  <p class="hint" style="margin-top: 10px">The order here is the order on the page. Use the arrows to rearrange.</p>
+
+                  <button class="btn" type="button" id="add-ing" style="margin-top: 12px">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14" /></svg>
+                    Add ingredient
+                  </button>
+
+                  <div class="navrow">
+                    <button class="btn" type="button" data-go="0">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 12H5M11 18l-6-6 6-6" /></svg>
+                      Back
+                    </button>
+                    <span class="grow"></span>
+                    <button class="btn primary" type="button" data-go="2">
+                      Next: Steps
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+                    </button>
+                  </div>
+                </section>
+
+                <!-- ---------- STEP 3: STEPS ---------- -->
+                <section class="card card-pad panel hidden" data-panel="2">
+                  <div class="card-h">Method</div>
+                  <div class="card-sub">At least one step. Numbering follows the order here.</div>
+
+                  <div style="margin-top: 18px" id="step-list"></div>
+
+                  <button class="btn" type="button" id="add-step" style="margin-top: 4px">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14" /></svg>
+                    Add step
+                  </button>
+
+                  <div class="navrow">
+                    <button class="btn" type="button" data-go="1">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 12H5M11 18l-6-6 6-6" /></svg>
+                      Back
+                    </button>
+                    <span class="grow"></span>
+                    <button class="btn primary" type="button" data-go="3" id="to-review">
+                      Next: Review &amp; Publish
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+                    </button>
+                  </div>
+                </section>
+
+                <!-- ---------- STEP 4: REVIEW ---------- -->
+                <section class="panel hidden" data-panel="3">
+                  <div id="clash-alert"></div>
+
+                  <div class="card card-pad">
+                    <div class="card-h">Review &amp; publish</div>
+                    <div class="card-sub">Everything below is what gets written in one save.</div>
+
+                    <div class="checklist" style="margin-top: 18px" id="checklist"></div>
+
+                    <div class="publish-box">
+                      <button class="switch" id="sw-pub" type="button" role="switch" aria-checked="false"></button>
+                      <div>
+                        <label for="sw-pub" style="font-weight: 700; font-size: 13.5px">Publish immediately</label>
+                        <p style="font-size: 12.5px; color: var(--muted-foreground)">Off saves it as a draft, visible only to you at <code>/admin/preview/…</code>.</p>
+                      </div>
+                    </div>
+
+                    <div class="navrow">
+                      <button class="btn" type="button" data-go="2">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 12H5M11 18l-6-6 6-6" /></svg>
+                        Back
+                      </button>
+                      <span class="grow"></span>
+                      <button class="btn primary" type="button" id="save-btn">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z" />
+                          <path d="M17 21v-8H7v8M7 3v5h8" />
+                        </svg>
+                        Save recipe
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="card review-article" id="review-article"></div>
+                </section>
+              </div>
+
+              <!-- ---------- LIVE PREVIEW RAIL ---------- -->
+              <aside class="card preview" id="preview-rail">
+                <div class="preview-h">
+                  <div class="card-h" style="font-size: 15px">Live Preview</div>
+                  <div class="card-sub" style="font-size: 12.5px">This updates as you fill in the form.</div>
+                </div>
+                <div class="preview-scroll" id="preview-scroll"></div>
+              </aside>
+            </div>
+          </main>
+        </div>
+      </div>
+
+      <div class="legend">
+        <h3>Deliberate omissions — everything the reference layout had that this does not</h3>
+        <ul>
+          <li>
+            <span class="x">✕</span><b>Category, Cuisine</b><span class="why">— no such columns on <code>recipes</code>. Adding them is a migration, not a form change.</span>
+          </li>
+          <li>
+            <span class="x">✕</span><b>Recipe image</b><span class="why">— no Storage bucket exists (<code>docs/image-storage.md</code>). <code>image_path</code> stays null.</span>
+          </li>
+          <li>
+            <span class="x">✕</span><b>Slug field</b><span class="why">— derived from the title, read-only, never editable. A 23505 collision just says <i>choose a different title</i>.</span>
+          </li>
+          <li><span class="x">✕</span><b>Notes field</b><span class="why">— deferred. The column stays, the form sends null.</span></li>
+          <li><span class="x">✕</span><b>Tags</b><span class="why">— sidebar placeholder only; no schema behind it yet. Still open in the README.</span></li>
+          <li><span class="x">✕</span><b>Save Draft button</b><span class="why">— one save, on Review. The publish switch decides draft vs live.</span></li>
+          <li>
+            <span class="x">✕</span><b>Autosave / refresh recovery</b><span class="why">— out of scope; to be logged in <code>docs/known-issues.md</code>.</span>
+          </li>
+          <li>
+            <span class="x">✕</span><b>Ingredient groups</b
+            ><span class="why"
+              >— <b>removed outright</b>, not just hidden: <code>group_label</code> dropped from <code>recipe_ingredients</code>, read out of <code>save_recipe()</code>, and
+              <code>hasContiguousGroups</code> deleted from the zod schema. Supersedes decision 7 of <code>recipe-schema-redesign</code>.</span
+            >
+          </li>
+        </ul>
+
+        <h3 style="margin-top: 18px">Mockup scaffolding — present here, not to be built</h3>
+        <ul>
+          <li>
+            <span style="color: var(--note); font-weight: 800">◇</span><b>The swatch strip under Difficulty</b
+            ><span class="why"
+              >— marked <code>.mock-only</code> and blue-tinted wherever it appears. It exists so all three badge colours can be judged side by side; the real Details panel shows no badge at all, only
+              the select. The badge renders in the preview, the article and the Review checklist.</span
+            >
+          </li>
+          <li>
+            <span style="color: var(--note); font-weight: 800">◇</span><b>The toolbar (Dark / Prefilled / Slug collision)</b
+            ><span class="why">— state toggles for inspecting this file. No equivalent in the app.</span>
+          </li>
+          <li><span style="color: var(--note); font-weight: 800">◇</span><b>The browser frame and the sidebar rail</b><span class="why">— context only; the rail already exists.</span></li>
+        </ul>
+
+        <h3 style="margin-top: 18px">New shared pieces this slice introduces</h3>
+        <ul>
+          <li>
+            <span style="color: var(--difficulty-easy); font-weight: 800">＋</span><b>&lt;DifficultyBadge /&gt;</b
+            ><span class="why"
+              >— <code>components/shared/</code>, backed by six new tokens in <code>globals.css</code>. Used by the article, the live preview, <code>RecipeCard</code> and the manage table. Not mapped
+              onto <code>--secondary</code>/<code>--primary</code>/<code>--destructive</code>: &ldquo;hard&rdquo; must not track your danger colour.</span
+            >
+          </li>
+          <li>
+            <span style="color: var(--difficulty-easy); font-weight: 800">＋</span><b>Split zod schemas</b
+            ><span class="why">— <code>detailsSchema</code> · <code>ingredientsSchema</code> · <code>stepsSchema</code>, composed into <code>recipeSchema</code>. Drives the stepper's ✓ marks.</span>
+          </li>
+          <li>
+            <span style="color: var(--difficulty-easy); font-weight: 800">＋</span><b>Numeric fields are <code>inputMode="numeric"</code> text, sanitised on input</b
+            ><span class="why"
+              >— not <code>type="number"</code>: no spinner means the suffix has the right edge to itself. Prep/Cook/Servings take digits only; ingredient <b>Amount</b> also takes a comma, a dot or a
+              fraction (<code>1/2</code>, <code>0,5</code>), normalised to a decimal in the payload. Sanitising is what lets the ✓ come straight from zod.</span
+            >
+          </li>
+          <li>
+            <span style="color: var(--difficulty-easy); font-weight: 800">＋</span><b>Fractions in <code>formatAmount()</code></b
+            ><span class="why">— <code>0.5 → ½</code>, <code>1.5 → 1½</code>, <code>0.25 → ¼</code>. The column stays <code>numeric</code>; the public page gets this too.</span>
+          </li>
+        </ul>
+
+        <h3 style="margin-top: 18px">Structural decisions you can't see</h3>
+        <ul>
+          <li>
+            <span style="color: var(--muted-foreground); font-weight: 800">§</span><b>Steps 1&ndash;3 are not inside a <code>&lt;form&gt;</code></b
+            ><span class="why"
+              >— only the Review panel is. Enter therefore cannot submit from a half-filled step, because there is no form to submit into. The hidden <code>payload</code> field reads React state, so
+              the inputs living outside the form costs nothing.</span
+            >
+          </li>
+          <li>
+            <span style="color: var(--muted-foreground); font-weight: 800">§</span><b>The preview is gone below 1024px</b
+            ><span class="why">— <code>AdminSidebar</code> is <code>collapsible="none"</code> with a fixed rail, so <code>/admin</code> is already desktop-first. Resize this page to see it.</span>
+          </li>
+          <li>
+            <span style="color: var(--muted-foreground); font-weight: 800">§</span><b>The slug follows the title, forever</b
+            ><span class="why">— including on edit, where a rename changes a live URL. Edit warns on this line before saving; create doesn't, because nothing is linked yet.</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <script>
+      // ---------- state ----------
+      const SEED = {
+        title: "Gestoofde bakbanaan",
+        desc: "Zoete bakbanaan gestoofd in kokosmelk met een lichte kruidigheid.",
+        diff: "easy",
+        prep: "15",
+        cook: "30",
+        serv: "4",
+        ingredients: [
+          { amount: "4", unit: "", name: "bakbananen" },
+          { amount: "400", unit: "ml", name: "kokosmelk" },
+          { amount: "1/2", unit: "tl", name: "kaneel" }, // typed as a fraction, renders as ½
+          { amount: "2", unit: "", name: "rode pepers" },
+          { amount: "0,5", unit: "el", name: "trassi" }, // typed with a comma, renders as ½
+        ],
+        steps: [
+          { instruction: "Snijd de bakbananen in schuine plakken van een centimeter dik.", note: "Rijpe, zwart gevlekte bananen zijn het zoetst." },
+          { instruction: "Fruit de plakken kort in olie tot ze goudbruin kleuren.", note: "" },
+          { instruction: "Voeg de kokosmelk en kaneel toe en laat 25 minuten zachtjes stoven.", note: "Deksel schuin erop, anders wordt het te dun." },
+        ],
+      };
+      const EMPTY = { title: "", desc: "", diff: "", prep: "", cook: "", serv: "", ingredients: [{ amount: "", unit: "", name: "" }], steps: [{ instruction: "", note: "" }] };
+
+      let S = structuredClone(SEED);
+      let step = 0;
+      let published = false;
+      let clash = false;
+
+      const $ = (s) => document.querySelector(s);
+      const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+
+      /* ---------- input sanitisers ----------
+         Two of them, because the schema has two rules: prep/cook/servings are
+         optionalNumber({ integer: true }), amount is { integer: false }. Sanitising here
+         is what makes the stepper's ✓ honest — NaN and negatives become unreachable, so
+         `detailsSchema.safeParse(draft).success` can drive the tick directly. */
+      const digitsOnly = (v) => v.replace(/\D/g, "");
+
+      function amountChars(v) {
+        let seen = false;
+        return [...v.replace(/[^\d.,/]/g, "")]
+          .filter((c) => {
+            if (/\d/.test(c)) return true;
+            if (seen) return false;
+            seen = true;
+            return true;
+          })
+          .join("");
+      }
+
+      /** "0,5" · "0.5" · "1/2" all mean the same number. Comma normalised to dot for the payload. */
+      function parseAmount(v) {
+        const s = String(v).trim().replace(",", ".");
+        if (!s) return null;
+        const frac = s.match(/^(\d+)\s*\/\s*(\d+)$/);
+        if (frac) return Number(frac[2]) ? Number(frac[1]) / Number(frac[2]) : null;
+        const n = Number(s);
+        return Number.isFinite(n) ? n : null;
+      }
+
+      /* Type 1/2, store 0.5, read back ½. Belongs in RecipeArticle's formatAmount so the
+         public page gets it too — the column stays numeric. */
+      const GLYPHS = { 0.5: "½", 0.25: "¼", 0.75: "¾", 0.33: "⅓", 0.67: "⅔" };
+
+      function formatAmount(raw) {
+        const n = parseAmount(raw);
+        if (n === null) return String(raw).trim();
+        const whole = Math.floor(n);
+        const glyph = GLYPHS[Number((n - whole).toFixed(2))];
+        if (!glyph) return String(n);
+        return whole ? `${whole}${glyph}` : glyph;
+      }
+
+      // Mirrors lib/utils.ts slugify().
+      const slugify = (s) =>
+        s
+          .normalize("NFD")
+          .replace(/[̀-ͯ]/g, "")
+          .toLowerCase()
+          .trim()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, "");
+
+      // ---------- validity, mirroring lib/recipes/schema.ts ----------
+      const okDetails = () => S.title.trim().length > 0 && slugify(S.title).length > 0;
+      const okIngredients = () => S.ingredients.length > 0 && S.ingredients.every((i) => i.name.trim());
+      const okSteps = () => S.steps.every((s) => s.instruction.trim()) && S.steps.length > 0;
+      const allOk = () => okDetails() && okIngredients() && okSteps();
+
+      // ---------- render: stepper ----------
+      function renderStepper() {
+        const ok = [okDetails(), okIngredients(), okSteps()];
+        const btns = document.querySelectorAll(".sbtn");
+        const CHECK = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M4 12l6 6L20 6"/></svg>';
+        const LOCK =
+          '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>';
+
+        btns.forEach((b, i) => {
+          const isReview = i === 3;
+          const locked = isReview && !allOk();
+          const complete = isReview ? false : ok[i];
+          const current = step === i;
+
+          b.disabled = locked;
+          b.dataset.state = current ? "current" : complete ? "complete" : "idle";
+          b.querySelector(".tick").innerHTML = complete ? CHECK : "";
+
+          let status;
+          if (locked) status = LOCK + " Locked";
+          else if (complete) status = "Complete";
+          else if (isReview) status = "Ready";
+          else if (current) status = "In progress";
+          else status = "Not started";
+          b.querySelector(".sstatus").innerHTML = status;
+        });
+
+        document.querySelectorAll(".sline").forEach((l, i) => l.classList.toggle("done", ok[i]));
+        $("#to-review").disabled = !allOk();
+      }
+
+      // ---------- render: banner ----------
+      function renderBanner() {
+        const b = $("#banner");
+        if (step === 3) return (b.innerHTML = "");
+        if (allOk()) {
+          b.innerHTML = `<div class="banner ok">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M4 12l6 6L20 6"/></svg>
+            <span class="grow">All three sections are filled in. You can review and publish.</span>
+            <button class="btn primary" type="button" data-go="3" style="padding:6px 12px">Go to Review &amp; Publish</button>
+          </div>`;
+        } else {
+          const missing = [!okDetails() && "Details", !okIngredients() && "Ingredients", !okSteps() && "Steps"].filter(Boolean);
+          b.innerHTML = `<div class="banner warn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+            <span class="grow">Review &amp; Publish unlocks once <b>${missing.join("</b>, <b>")}</b> ${missing.length > 1 ? "are" : "is"} complete.</span>
+          </div>`;
+        }
+      }
+
+      // ---------- render: details ----------
+      function renderDetails() {
+        $("#c-title").textContent = `${S.title.length}/100`;
+        $("#c-desc").textContent = `${S.desc.length}/160`;
+        const slug = slugify(S.title);
+        // A non-empty title can still slugify to nothing ("№1", emoji, non-Latin script).
+        // recipeSchema requires slug.min(1), so without this the wizard locks with no reason given.
+        const unsluggable = S.title.trim().length > 0 && !slug;
+
+        $("#urlline").classList.toggle("clash", (clash && !!slug) || unsluggable);
+
+        if (unsluggable) {
+          $("#urltext").textContent = "No web address";
+          $("#urlwhy").textContent = "— this title has no letters or numbers to build one from";
+        } else {
+          $("#urltext").textContent = slug ? `/recipes/${slug}` : "/recipes/…";
+          $("#urlwhy").textContent = clash && slug ? "— already taken, pick a different title" : "— the address, taken from the title";
+        }
+      }
+
+      // ---------- render: ingredients ----------
+      const ARROW_UP = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg>';
+      const ARROW_DOWN = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M6 13l6 6 6-6"/></svg>';
+      const XMARK = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+
+      function renderIngredients() {
+        $("#ing-list").innerHTML = S.ingredients
+          .map(
+            (r, i) => `<div class="ing-row">
+              <input type="text" inputmode="decimal" value="${esc(r.amount)}" data-ing="${i}" data-k="amount" placeholder="4" aria-label="Amount" />
+              <input type="text" value="${esc(r.unit)}" data-ing="${i}" data-k="unit" placeholder="ml" aria-label="Unit" />
+              <input type="text" value="${esc(r.name)}" data-ing="${i}" data-k="name" placeholder="bakbananen" aria-label="Ingredient" />
+              <div class="iconrow">
+                <button class="ibtn" type="button" data-mv="ing" data-i="${i}" data-d="-1" ${i === 0 ? "disabled" : ""} aria-label="Move up">${ARROW_UP}</button>
+                <button class="ibtn" type="button" data-mv="ing" data-i="${i}" data-d="1" ${i === S.ingredients.length - 1 ? "disabled" : ""} aria-label="Move down">${ARROW_DOWN}</button>
+                <button class="ibtn" type="button" data-rm="ing" data-i="${i}" ${S.ingredients.length === 1 ? "disabled" : ""} aria-label="Remove">${XMARK}</button>
+              </div>
+            </div>`
+          )
+          .join("");
+      }
+
+      // ---------- render: steps ----------
+      function renderSteps() {
+        $("#step-list").innerHTML = S.steps
+          .map(
+            (s, i) => `<div class="step-row">
+              <div class="step-n">${i + 1}</div>
+              <div>
+                <textarea data-step="${i}" data-k="instruction" rows="2" placeholder="What happens in this step?" aria-label="Step ${i + 1}">${esc(s.instruction)}</textarea>
+                <input class="note" type="text" data-step="${i}" data-k="note" value="${esc(s.note)}" placeholder="Note (optional)" aria-label="Step ${i + 1} note" />
+              </div>
+              <div class="iconrow">
+                <button class="ibtn" type="button" data-mv="step" data-i="${i}" data-d="-1" ${i === 0 ? "disabled" : ""} aria-label="Move up">${ARROW_UP}</button>
+                <button class="ibtn" type="button" data-mv="step" data-i="${i}" data-d="1" ${i === S.steps.length - 1 ? "disabled" : ""} aria-label="Move down">${ARROW_DOWN}</button>
+                <button class="ibtn" type="button" data-rm="step" data-i="${i}" ${S.steps.length === 1 ? "disabled" : ""} aria-label="Remove">${XMARK}</button>
+              </div>
+            </div>`
+          )
+          .join("");
+      }
+
+      // ---------- the shared article renderer (stands in for RecipeArticle) ----------
+      function fmtMinutes(n) {
+        if (n < 60) return `${n} min`;
+        const h = Math.floor(n / 60),
+          r = n % 60;
+        return r === 0 ? `${h} h` : `${h} h ${r}`;
+      }
+      const difficultyBadge = (d) => (d ? `<span class="badge" data-difficulty="${esc(d)}">${esc(d)}</span>` : "");
+
+      function articleHTML() {
+        const prep = Number(S.prep) || null,
+          cook = Number(S.cook) || null,
+          serv = Number(S.serv) || null;
+        const total = (prep ?? 0) + (cook ?? 0);
+        const meta = [
+          prep && { l: "Prep", v: fmtMinutes(prep) },
+          cook && { l: "Cooking", v: fmtMinutes(cook) },
+          prep && cook && { l: "Total", v: fmtMinutes(total) },
+          serv && { l: "Serves", v: String(serv) },
+        ].filter(Boolean);
+
+        const ings = S.ingredients.filter((i) => i.name.trim());
+        const stps = S.steps.filter((s) => s.instruction.trim());
+
+        const head = `<div class="art-head">
+          ${difficultyBadge(S.diff)}
+          <h1 class="art-title ${S.title.trim() ? "" : "empty"}">${S.title.trim() ? esc(S.title) : "Untitled recipe"}</h1>
+          ${S.desc.trim() ? `<p class="art-desc">${esc(S.desc)}</p>` : `<p class="art-desc pv-empty">No description yet.</p>`}
+          ${
+            meta.length
+              ? `<dl class="art-meta">${meta.map((m) => `<div><dt>${m.l}</dt><dd>${m.v}</dd></div>`).join("")}</dl>`
+              : `<dl class="art-meta"><div><dt>Prep</dt><dd>—</dd></div><div><dt>Cooking</dt><dd>—</dd></div><div><dt>Serves</dt><dd>—</dd></div></dl>`
+          }
+        </div>`;
+
+        const ingHTML = ings.length
+          ? ings
+              .map((i) => {
+                const a = [formatAmount(i.amount), i.unit.trim()].filter(Boolean).join(" ");
+                return `<div class="art-ing">${a ? `<b>${esc(a)}</b>` : ""}<span>${esc(i.name)}</span></div>`;
+              })
+              .join("")
+          : `<p class="pv-empty">No ingredients yet.</p>`;
+
+        const stepHTML = stps.length
+          ? stps
+              .map(
+                (s, i) => `<div class="art-step"><div class="n">${i + 1}</div><div>
+                  <p>${esc(s.instruction)}</p>${s.note.trim() ? `<p class="note">${esc(s.note)}</p>` : ""}
+                </div></div>`
+              )
+              .join("")
+          : `<p class="pv-empty">No steps yet.</p>`;
+
+        return `<div class="pv-sec" data-sec="0">${head}</div>
+          <div class="art-body">
+            <div class="pv-sec" data-sec="1"><h2 class="art-h2">Ingredients</h2>${ingHTML}</div>
+            <div class="art-sep"></div>
+            <div class="pv-sec" data-sec="2"><h2 class="art-h2">Method</h2>${stepHTML}</div>
+          </div>`;
+      }
+
+      function renderPreview() {
+        const scroll = $("#preview-scroll");
+        scroll.innerHTML = articleHTML();
+        scroll.dataset.focus = "1";
+        scroll.querySelectorAll(".pv-sec").forEach((el) => el.classList.toggle("on", Number(el.dataset.sec) === step));
+        const target = scroll.querySelector(`.pv-sec[data-sec="${step}"]`);
+        if (target) scroll.scrollTop = Math.max(0, target.offsetTop - scroll.offsetTop - 8);
+      }
+
+      // ---------- render: review ----------
+      function renderReview() {
+        const CHECK = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M4 12l6 6L20 6"/></svg>';
+        const count = S.ingredients.filter((i) => i.name.trim()).length;
+        const times = [S.prep && `${S.prep} min prep`, S.cook && `${S.cook} min cooking`].filter(Boolean).join(" + ") || "no times";
+        const rows = [
+          ["Details", [S.title.trim(), S.diff || "no difficulty", times].filter(Boolean).join(" · ")],
+          ["Ingredients", `${count} ingredient${count === 1 ? "" : "s"}${S.serv ? `, serves ${S.serv}` : ""}`],
+          ["Steps", `${S.steps.filter((s) => s.instruction.trim()).length} steps`],
+        ];
+        // No DifficultyBadge here — it renders in the article below, and in the manage table.
+        $("#checklist").innerHTML = rows.map(([t, d]) => `<div class="check"><span class="ic">${CHECK}</span><div><b>${esc(t)}</b><p>${esc(d)}</p></div></div>`).join("");
+
+        $("#clash-alert").innerHTML = clash
+          ? `<div class="banner bad" style="margin-bottom:16px">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="flex:0 0 auto"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
+              <span class="grow">A recipe with the address <code>${esc(slugify(S.title))}</code> already exists. Choose a different title.</span>
+              <button class="btn" type="button" data-go="0" style="padding:6px 12px">Back to Details</button>
+            </div>`
+          : "";
+
+        $("#review-article").innerHTML = articleHTML();
+        $("#sw-pub").setAttribute("aria-checked", String(published));
+      }
+
+      // ---------- render all ----------
+      function render() {
+        document.querySelectorAll(".panel").forEach((p) => p.classList.toggle("hidden", Number(p.dataset.panel) !== step));
+        $("#bodygrid").classList.toggle("full", step === 3);
+        $("#preview-rail").classList.toggle("hidden", step === 3);
+
+        renderStepper();
+        renderBanner();
+        renderDetails();
+        renderIngredients();
+        renderSteps();
+        if (step === 3) renderReview();
+        else renderPreview();
+      }
+
+      function syncInputs() {
+        $("#f-title").value = S.title;
+        $("#f-desc").value = S.desc;
+        $("#f-diff").value = S.diff;
+        $("#f-prep").value = S.prep;
+        $("#f-cook").value = S.cook;
+        $("#f-serv").value = S.serv;
+      }
+
+      // ---------- events ----------
+      function go(n) {
+        if (n === 3 && !allOk()) return;
+        step = n;
+        render();
+      }
+      document.addEventListener("click", (e) => {
+        const goEl = e.target.closest("[data-go]");
+        if (goEl && !goEl.disabled) return go(Number(goEl.dataset.go));
+
+        const mv = e.target.closest("[data-mv]");
+        if (mv) {
+          const list = mv.dataset.mv === "ing" ? S.ingredients : S.steps;
+          const i = Number(mv.dataset.i),
+            j = i + Number(mv.dataset.d);
+          if (j < 0 || j >= list.length) return;
+          [list[i], list[j]] = [list[j], list[i]];
+          return render();
+        }
+
+        const rm = e.target.closest("[data-rm]");
+        if (rm) {
+          const key = rm.dataset.rm === "ing" ? "ingredients" : "steps";
+          S[key].splice(Number(rm.dataset.i), 1);
+          return render();
+        }
+      });
+
+      $("#add-ing").onclick = () => {
+        S.ingredients.push({ amount: "", unit: "", name: "" });
+        render();
+      };
+      $("#add-step").onclick = () => {
+        S.steps.push({ instruction: "", note: "" });
+        render();
+      };
+      $("#sw-pub").onclick = () => {
+        published = !published;
+        renderReview();
+      };
+      $("#save-btn").onclick = () => alert(`saveRecipe() → save_recipe() with published: ${published}\nthen redirect to /admin/preview/${slugify(S.title)}`);
+      // typing — patch state and re-render only what depends on it
+      document.addEventListener("input", (e) => {
+        const t = e.target;
+        if (t.id === "f-title") {
+          S.title = t.value;
+          renderDetails();
+          renderStepper();
+          renderBanner();
+          renderPreview();
+        } else if (t.id === "f-desc") {
+          S.desc = t.value;
+          renderDetails();
+          renderPreview();
+        } else if (["f-prep", "f-cook", "f-serv"].includes(t.id)) {
+          t.value = digitsOnly(t.value); // integer:true in the schema — nothing else can be typed
+          S[{ "f-prep": "prep", "f-cook": "cook", "f-serv": "serv" }[t.id]] = t.value;
+          renderStepper();
+          renderBanner();
+          renderPreview();
+        } else if (t.dataset.ing !== undefined) {
+          if (t.dataset.k === "amount") t.value = amountChars(t.value); // integer:false — one separator, or a fraction
+          S.ingredients[Number(t.dataset.ing)][t.dataset.k] = t.value;
+          renderStepper();
+          renderBanner();
+          renderPreview();
+        } else if (t.dataset.step !== undefined) {
+          S.steps[Number(t.dataset.step)][t.dataset.k] = t.value;
+          renderStepper();
+          renderBanner();
+          renderPreview();
+        }
+      });
+      $("#f-diff").onchange = (e) => {
+        S.diff = e.target.value;
+        renderPreview();
+      };
+
+      // ---------- toolbar ----------
+      $("#t-theme").onclick = (e) => {
+        document.documentElement.classList.toggle("dark");
+        e.target.textContent = document.documentElement.classList.contains("dark") ? "Light" : "Dark";
+      };
+      $("#t-fill").onclick = (e) => {
+        const on = e.target.getAttribute("aria-pressed") !== "true";
+        e.target.setAttribute("aria-pressed", String(on));
+        e.target.textContent = on ? "Prefilled" : "Empty";
+        S = structuredClone(on ? SEED : EMPTY);
+        if (!on && step === 3) step = 0;
+        syncInputs();
+        render();
+      };
+      $("#t-clash").onclick = (e) => {
+        clash = !clash;
+        e.target.setAttribute("aria-pressed", String(clash));
+        render();
+      };
+
+      syncInputs();
+      render();
+    </script>
+  </body>
+</html>
