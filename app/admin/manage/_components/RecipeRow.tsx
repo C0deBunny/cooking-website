@@ -227,12 +227,17 @@ export default function RecipeRow({ recipe, isOpen, onToggle }: Props) {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
-            {/* onSelect + preventDefault keeps the dialog open while the delete runs, so a failure
-                has somewhere to report back to instead of closing over its own error. */}
+            {/* onClick, not onSelect: this is Radix's Close button, a plain <button>, so onSelect
+                binds the DOM `select` event — which fires on text selection and never on a click.
+                It typechecks (ButtonHTMLAttributes declares it) and silently does nothing.
+
+                preventDefault is what keeps the dialog open while the delete runs, so a failure has
+                somewhere to report back to instead of closing over its own error: Radix composes
+                its own close handler behind ours and skips it when the event is defaultPrevented. */}
             <AlertDialogAction
               variant="destructive"
               disabled={isPending}
-              onSelect={(event) => {
+              onClick={(event) => {
                 event.preventDefault();
                 handleDelete();
               }}
