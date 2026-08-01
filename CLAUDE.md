@@ -12,9 +12,15 @@ npm run lint           # eslint
 npm run typecheck      # tsc --noEmit
 npm run format         # prettier --write .
 npm run format:check   # prettier --check .
+
+npm run db:push        # apply pending supabase/migrations/ to the linked project
+npm run db:types       # regenerate types/database.ts from the live schema
+npm run db:pull        # ⚠ needs Docker — unavailable, see "Database schema & migrations"
+npm run db:diff        # ⚠ needs Docker — unavailable, same
 ```
 
-All four checks pass on a clean tree. Run `lint` + `typecheck` before declaring work done.
+All four checks (`lint`, `typecheck`, `format`, `format:check`) pass on a clean tree. Run `lint` +
+`typecheck` before declaring work done.
 
 There is no test suite. Verify changes with `npx tsc --noEmit` plus a manual pass in `npm run dev`.
 
@@ -43,7 +49,8 @@ lib/auth/           queries.ts (cache()'d reads) · actions.ts ("use server") ·
 lib/recipes/        queries.ts only — the write path was removed and is being rebuilt
 lib/supabase/       three clients — pick the right one, see below
 lib/utils.ts        cn() helper — path must match the `utils` alias in components.json
-types/              shared types
+supabase/           config.toml + migrations/ — the schema, see "Database schema & migrations"
+types/              shared types · database.ts is GENERATED, don't hand-edit
 proxy.ts            Next 16's renamed middleware — refreshes the Supabase session cookie
 ```
 
@@ -78,6 +85,55 @@ Route-specific **components** colocate under the route in `_components/` (e.g.
 
 Never use `server-client.ts` inside a `"use cache"` function — reading cookies there is
 illegal in Next 16. That's why `lib/recipes/queries.ts` uses the public client.
+
+All three are typed with `<Database>` from `types/database.ts`, so a misspelled column or table in
+`.from("recipes").select(...)` is a compile error rather than a runtime one. Keep the generic on
+any new client.
+
+## Database schema & migrations
+
+The schema lives in `supabase/migrations/` as hand-written SQL; `types/database.ts` is generated
+from it. Both are committed. Four tables:
+
+```
+recipes              slug (unique), title, description, difficulty, time_minutes,
+                     servings, published, created_at, updated_at
+recipe_steps         recipe_id → recipes, step_number, instruction, image_path
+recipe_ingredients   recipe_id → recipes, sort_order, name, amount, unit
+recipe_images        recipe_id → recipes, storage_path, alt, sort_order, is_primary
+```
+
+Every child table's `recipe_id` is a real foreign key with `on delete cascade` — deleting a recipe
+removes its steps, ingredients and images, so don't write cleanup code for that. Each child also
+has `unique (recipe_id, <ordering column>)`, so a duplicate position fails at the database.
+`recipe_images` has a partial unique index limiting each recipe to one `is_primary` row.
+`difficulty` is a Postgres enum, which `db:types` emits as `"easy" | "medium" | "hard"`.
+`updated_at` is maintained by a trigger, not by the app.
+
+**Docker is not installed, and `db pull`, `db diff` and `db dump` all require it** — each
+provisions a local shadow Postgres. Don't retry them expecting a different result. `db:push` and
+`gen types --linked` work fine without it (direct Postgres connection and the Supabase API
+respectively); `db:push` prints a non-fatal Docker warning about caching a catalog _after_ it has
+already applied the migration.
+
+The loop for a schema change:
+
+```bash
+npx supabase migration new <name>   # creates an empty timestamped file to write SQL into
+npm run db:push                     # apply it
+npm run db:types                    # regenerate types/database.ts
+npm run typecheck                   # the payoff: a dropped column breaks every reader
+```
+
+The consequence of no `db:diff` is that **there is no drift detection**. Never change structure in
+the Supabase Table Editor — a clicked column is invisible to the migration history and nothing
+will warn you. The Table Editor is for reading and editing _rows_ only. `npm run db:types` doubles
+as the only Docker-free way to inspect the live schema.
+
+`types/recipes.ts` derives its aliases from the generated types
+(`Database["public"]["Tables"]["recipes"]["Row"]`) rather than restating columns. That is what
+caught a hand-written `description: string` disagreeing with a column that was always nullable —
+don't reintroduce hand-written row types.
 
 ## Caching
 
@@ -120,6 +176,17 @@ prerendering so the gate blocks and nothing ships until the user is known; the o
 static shell.
 
 `requireUser()` is not a substitute for RLS, and neither is the gate. See the environment note above.
+
+**RLS, and the assumption underneath it.** All four recipe tables have RLS enabled with explicit
+policies: `anon` may read published recipes, plus the steps, ingredients and images belonging to a
+published recipe; `authenticated` may read and write everything, drafts included, so `/admin` can
+list them.
+
+`authenticated` means **any logged-in user, not specifically the owner.** That equivalence holds
+only while public signups are disabled in Supabase Auth. If signups are ever enabled, tighten the
+policies to pin `auth.uid()` to the owner's id — otherwise anyone who registers can write recipes.
+Table-level `grant`s are a separate layer from the policies and both must permit an operation; the
+migration sets them explicitly rather than relying on the project's default privileges.
 
 ## Conventions
 
