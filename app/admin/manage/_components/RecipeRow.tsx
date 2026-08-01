@@ -8,7 +8,6 @@ import { cn, formatTimestamp } from "@/lib/utils";
 import { deleteRecipe, togglePublished } from "@/lib/recipes/actions";
 
 // import components
-import Link from "next/link";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -77,10 +76,6 @@ export default function RecipeRow({ recipe, isOpen, onToggle }: Props) {
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const detailId = `recipe-detail-${recipe.id}`;
-
-  // Both destinations exist. A draft has no public page — RLS 404s it even for the owner — so it
-  // points at the preview route, which reads with the authenticated client instead.
-  const viewHref = recipe.published ? `/recipes/${recipe.slug}` : `/admin/preview/${recipe.slug}`;
 
   function handleTogglePublished() {
     startTransition(async () => {
@@ -158,15 +153,22 @@ export default function RecipeRow({ recipe, isOpen, onToggle }: Props) {
               <TooltipContent>{recipe.published ? "Unpublish" : "Publish"}</TooltipContent>
             </Tooltip>
 
+            {/* Disabled until both destinations actually render: neither /recipes/[slug] nor
+                /admin/preview/[slug] is working yet, so the link would only ever lead somewhere
+                broken. Re-enabling means restoring the href, which differs by state — a draft has
+                no public page (RLS 404s it even for the owner), so it points at the preview route,
+                which reads with the authenticated client instead:
+                  recipe.published ? `/recipes/${recipe.slug}` : `/admin/preview/${recipe.slug}` */}
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon-sm" asChild aria-label={recipe.published ? "View on site" : "Preview draft"}>
-                  <Link href={viewHref}>
+                {/* Same wrapper as Edit — a disabled button swallows the pointer events the tooltip needs. */}
+                <span>
+                  <Button variant="ghost" size="icon-sm" disabled aria-label={recipe.published ? "View on site" : "Preview draft"}>
                     <ExternalLink />
-                  </Link>
-                </Button>
+                  </Button>
+                </span>
               </TooltipTrigger>
-              <TooltipContent>{recipe.published ? "View on site" : "Preview draft"}</TooltipContent>
+              <TooltipContent>{recipe.published ? "The public recipe page isn't working yet" : "Draft preview isn't working yet"}</TooltipContent>
             </Tooltip>
 
             <Tooltip>
