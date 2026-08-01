@@ -36,7 +36,7 @@ This project aims to preserve family recipes by turning them into a searchable o
 
 Future improvements may include:
 
-- Recipe categories
+- Recipe tags
 - Recipe images
 - Ingredient lists
 - Cooking instructions
