@@ -71,6 +71,7 @@ export type Database = {
       recipe_ingredients: {
         Row: {
           amount: number | null;
+          group_label: string | null;
           id: number;
           name: string;
           recipe_id: number;
@@ -79,6 +80,7 @@ export type Database = {
         };
         Insert: {
           amount?: number | null;
+          group_label?: string | null;
           id?: number;
           name: string;
           recipe_id: number;
@@ -87,6 +89,7 @@ export type Database = {
         };
         Update: {
           amount?: number | null;
+          group_label?: string | null;
           id?: number;
           name?: string;
           recipe_id?: number;
@@ -108,6 +111,7 @@ export type Database = {
           id: number;
           image_path: string | null;
           instruction: string;
+          note: string | null;
           recipe_id: number;
           step_number: number;
         };
@@ -115,6 +119,7 @@ export type Database = {
           id?: number;
           image_path?: string | null;
           instruction: string;
+          note?: string | null;
           recipe_id: number;
           step_number: number;
         };
@@ -122,6 +127,7 @@ export type Database = {
           id?: number;
           image_path?: string | null;
           instruction?: string;
+          note?: string | null;
           recipe_id?: number;
           step_number?: number;
         };
@@ -137,38 +143,44 @@ export type Database = {
       };
       recipes: {
         Row: {
+          cook_minutes: number | null;
           created_at: string;
           description: string | null;
           difficulty: Database["public"]["Enums"]["recipe_difficulty"] | null;
           id: number;
+          notes: string | null;
+          prep_minutes: number | null;
           published: boolean;
           servings: number | null;
           slug: string;
-          time_minutes: number | null;
           title: string;
           updated_at: string;
         };
         Insert: {
+          cook_minutes?: number | null;
           created_at?: string;
           description?: string | null;
           difficulty?: Database["public"]["Enums"]["recipe_difficulty"] | null;
           id?: number;
+          notes?: string | null;
+          prep_minutes?: number | null;
           published?: boolean;
           servings?: number | null;
           slug: string;
-          time_minutes?: number | null;
           title: string;
           updated_at?: string;
         };
         Update: {
+          cook_minutes?: number | null;
           created_at?: string;
           description?: string | null;
           difficulty?: Database["public"]["Enums"]["recipe_difficulty"] | null;
           id?: number;
+          notes?: string | null;
+          prep_minutes?: number | null;
           published?: boolean;
           servings?: number | null;
           slug?: string;
-          time_minutes?: number | null;
           title?: string;
           updated_at?: string;
         };
@@ -179,7 +191,7 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      save_recipe: { Args: { payload: Json }; Returns: number };
     };
     Enums: {
       recipe_difficulty: "easy" | "medium" | "hard";
