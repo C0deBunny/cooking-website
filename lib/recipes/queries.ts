@@ -4,7 +4,7 @@ import { createPublicClient } from "@/lib/supabase/public-client";
 import { createClient } from "@/lib/supabase/server-client";
 
 // import types
-import type { Recipe, RecipeWithChildren } from "@/types/recipes";
+import type { Recipe, Recipes, RecipeWithChildren } from "@/types/recipes";
 
 /** The children the detail page renders, ordered by their ordering columns rather than by luck. */
 const RECIPE_WITH_CHILDREN = "*, recipe_ingredients(*), recipe_steps(*)";
@@ -22,6 +22,28 @@ export async function getRecipes(): Promise<Recipe[]> {
   cacheTag("recipes");
 
   const supabase = createPublicClient();
+
+  const { data, error } = await supabase.from("recipes").select("*").order("created_at", { ascending: false });
+
+  if (error) {
+    throw new Error("Failed to fetch recipes: " + error.message);
+  }
+
+  return data ?? [];
+}
+
+/**
+ * The manage page's list, and deliberately not getRecipes().
+ *
+ * getRecipes() is cached and therefore always anonymous, and RLS limits anon to published rows —
+ * so reusing it here would render a management page with every draft silently missing. Nothing
+ * would throw and nothing would log; the page would simply be wrong, and wrong about precisely
+ * the rows it exists to manage. The cookie-backed client is the only one that is
+ * `authenticated`, and it cannot be cached, because reading cookies inside "use cache" is
+ * illegal in Next 16.
+ */
+export async function getRecipesForAdmin(): Promise<Recipes> {
+  const supabase = await createClient();
 
   const { data, error } = await supabase.from("recipes").select("*").order("created_at", { ascending: false });
 
