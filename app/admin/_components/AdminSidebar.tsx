@@ -2,7 +2,7 @@
 
 // import lib
 import { usePathname } from "next/navigation";
-import type { PointerEvent } from "react";
+import { spawnRipple } from "@/lib/ripple";
 
 // import components
 import Link from "next/link";
@@ -14,34 +14,6 @@ const items = [
   { href: "/admin/manage", label: "Manage Recipes", icon: LayoutList },
   { href: "/admin/create", label: "Create Recipes", icon: Plus },
 ];
-
-/**
- * Click ripple. Ripples are appended to a dedicated empty layer rather than to the link
- * itself, so React never has to reconcile around DOM it did not create.
- *
- * The radius reaches the farthest corner from the click point, which keeps the circle
- * covering the row wherever it lands. Each ripple removes itself on animationend, so
- * nothing accumulates. Styling and the reduced-motion opt-out live in app/globals.css.
- */
-function spawnRipple(event: PointerEvent<HTMLElement>) {
-  const layer = event.currentTarget.querySelector<HTMLElement>("[data-ripple-layer]");
-  if (!layer) return;
-
-  const rect = layer.getBoundingClientRect();
-  const x = event.clientX - rect.left;
-  const y = event.clientY - rect.top;
-  const radius = Math.hypot(Math.max(x, rect.width - x), Math.max(y, rect.height - y));
-
-  const ripple = document.createElement("span");
-  ripple.className = "sidebar-ripple";
-  ripple.style.width = `${radius * 2}px`;
-  ripple.style.height = `${radius * 2}px`;
-  ripple.style.left = `${x - radius}px`;
-  ripple.style.top = `${y - radius}px`;
-  ripple.addEventListener("animationend", () => ripple.remove());
-
-  layer.appendChild(ripple);
-}
 
 /**
  * The /admin rail. Client-side only because it needs usePathname() to mark the active item;

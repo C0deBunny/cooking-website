@@ -2,6 +2,7 @@
 
 // import lib
 import { useCallback, useEffect, useRef, useState } from "react";
+import { spawnRipple } from "@/lib/ripple";
 import { SECTIONS } from "./sections";
 
 // import components
@@ -132,7 +133,9 @@ export default function DevNav() {
                       isActive={active === section.id}
                       className="relative rounded-none px-3 py-2 data-active:font-semibold data-active:before:absolute data-active:before:inset-y-0 data-active:before:left-0 data-active:before:w-1 data-active:before:bg-primary"
                     >
-                      <a href={`#${section.id}`} aria-current={active === section.id ? "true" : undefined} onClick={() => pin(section.id)}>
+                      <a href={`#${section.id}`} aria-current={active === section.id ? "true" : undefined} onPointerDown={spawnRipple} onClick={() => pin(section.id)}>
+                        {/* Ripple host. Kept first so the base style's [&>span:last-child]:truncate still targets the label. */}
+                        <span data-ripple-layer aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden" />
                         <span>{section.title}</span>
                       </a>
                     </SidebarMenuButton>

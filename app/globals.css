@@ -182,7 +182,7 @@
   }
 }
 
-/* Click ripple for the /admin rail — see app/admin/_components/AdminSidebar.tsx.
+/* Click ripple for the /admin and /dev rails — see lib/ripple.ts.
    The handler sets size and position inline; everything visual lives here. */
 @keyframes sidebar-ripple {
   to {
