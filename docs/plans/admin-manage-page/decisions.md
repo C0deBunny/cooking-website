@@ -9,10 +9,11 @@
   placeholder, so building edit here would drag an unbuilt second screen into this session.
   Delete and publish are two small actions against columns that already exist, so the page
   becomes genuinely useful without waiting for anything.
-- **Trade-off:** two of the four row actions ship pointing nowhere. _Edit_ renders disabled;
-  _view on site_ renders disabled because `/recipes/[slug]` does not exist, and stays disabled
-  on drafts permanently since a draft has no public URL. A row of mostly-disabled buttons is a
-  visible reminder of unfinished work, which is accepted over hiding them and forgetting.
+- **Trade-off:** two of the four row actions were expected to ship pointing nowhere. **Half of
+  that cost disappeared before implementation** — `8bb5c4f` landed the public detail page and
+  the draft preview route, so only _edit_ ships disabled. See decision 14. A single disabled
+  button is a visible reminder of unfinished work, which is accepted over hiding it and
+  forgetting.
 
 ## 2. The expanded row shows metadata only
 
@@ -180,3 +181,24 @@
   `app/error.tsx`, which was scoped out as broader than this page. Separately, no error boundary
   can catch a server action, so `togglePublished` and `deleteRecipe` still need their own
   `{ error?: string }` return and a `sonner` toast.
+
+---
+
+Decision 14 came out of implementation, after the repository moved underneath the plan.
+
+## 14. The view action targets the preview route for drafts
+
+- **Date:** 2026-08-01
+- **Considered:** leave _view on site_ disabled as planned · enable it for published recipes and
+  disable it on drafts · point it at `/recipes/[slug]` when published and
+  `/admin/preview/[slug]` when not
+- **Chosen:** the third. Decision 1 had accepted a permanently dead button on the reasoning that
+  no public recipe page existed; `8bb5c4f` landed both `/recipes/[slug]` and
+  `/admin/preview/[slug]` between this plan being agreed and being implemented, which removed
+  the reason. Disabling it on drafts was the obvious next fallback and is still worse than
+  branching, because a draft is exactly the row you most want to look at before publishing —
+  and the route that can show one already exists.
+- **Trade-off:** the button's destination now depends on state, so the same icon means two
+  things. Mitigated by the tooltip, which reads "View on site" or "Preview draft" accordingly.
+  Worth recording rather than absorbing silently: it is a direct contradiction of decision 1's
+  trade-off, and a reader comparing the plan to the code would otherwise find them disagreeing.

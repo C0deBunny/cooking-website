@@ -15,8 +15,9 @@ due here, which is why two of the four row actions ship pointing at routes that 
 - **The edit form and its route.** The button ships disabled. Where it points is an open
   question below; decision 12 of the schema redesign means edit is a UI-only addition with no
   schema or function change, so this stays cheap.
-- **A public `/recipes/[slug]` to link to.** Also unbuilt, which is why _view on site_ is
-  disabled on every row and permanently disabled on drafts.
+- ~~**A public `/recipes/[slug]` to link to.**~~ **No longer a non-goal** — `8bb5c4f` landed
+  both `/recipes/[slug]` and `/admin/preview/[slug]` while this plan was being written, so
+  _view on site_ became a real link instead of a disabled button. See decision 14.
 - **Tags.** That vertical is owned by its own session — see decision 15 of the schema redesign.
   A Tags column is purely additive later.
 - **Images and Storage.** No bucket exists; see `docs/image-storage.md`.
@@ -26,11 +27,18 @@ due here, which is why two of the four row actions ship pointing at routes that 
 
 ## Context
 
-**What exists.** `app/admin/manage/page.tsx` is a placeholder card, as is `app/admin/create/`.
-`app/admin/layout.tsx` already provides the gate and the sidebar shell, so a new page under
-`/admin` inherits both. `lib/recipes/` contains **only** `queries.ts`, with a single
-`getRecipes()`; `actions.ts` and `schema.ts` do not exist, so this plan introduces the
-project's first recipe write path.
+**What exists.** _Corrected after `8bb5c4f`, which landed between this plan being agreed and
+being implemented._ `app/admin/manage/page.tsx` is the only remaining placeholder;
+`/admin/create` has a real `RecipeForm`, and `/recipes/[slug]` and `/admin/preview/[slug]` both
+exist. `lib/recipes/` has all three files — `queries.ts`, `actions.ts` (with `saveRecipe`) and
+`schema.ts` — so this work **extends** the recipe write path rather than introducing it.
+`app/admin/layout.tsx` provides the gate and the sidebar shell, so a new page under `/admin`
+inherits both.
+
+`Toaster` and `TooltipProvider` are mounted **only** in `app/dev/layout.tsx`, which
+`app/dev/_components/OverlaysSection.tsx` warns about explicitly. Neither degrades gracefully:
+a `Tooltip` without a provider throws, and `toast()` without a `Toaster` silently does nothing.
+This work mounts both in the admin layout.
 
 **The schema is ready.** Contrary to an assumption made early in the brainstorm and corrected
 before this plan was written: the schema-redesign migrations _are_ applied and
@@ -38,12 +46,9 @@ before this plan was written: the schema-redesign migrations _are_ applied and
 `save_recipe` function are all present. Nothing needs pushing or regenerating before this work
 starts.
 
-**Sequencing, and the thing that will bite first.** Although the schema is ready, the _write_
-path is not — nothing creates a recipe through the UI. Building this page first means building
-it against rows hand-inserted through the Supabase SQL editor, which is the same technique the
-schema-redesign plan already prescribes for proving its detail page. That works, but it means
-the empty state is what you see until you insert something. Whether this ships before or after
-`/admin/create` is left open below.
+**Sequencing.** Resolved by events rather than by decision: `/admin/create` shipped first, so
+this page is built against recipes the form can actually produce and the empty state is
+exercised once rather than lived in.
 
 **Available primitives.** `components/ui/` already has `table`, `collapsible`, `alert-dialog`,
 `badge`, `tooltip`, `skeleton`, `switch`, `sonner` and `pagination`. It does **not** have
@@ -123,14 +128,23 @@ The choices that produced this shape, including the ones reversed mid-discussion
   `"use cache"`, **no** `cacheTag`, and this file stays out of `"use server"`. Selects `*`
   ordered by `created_at desc`; no filtering in the query, since the client does it.
 
-- **`lib/recipes/actions.ts`** (new) — `"use server"`. `togglePublished` and `deleteRecipe`.
-  Both call `requireUser()` first, both call `updateTag("recipes")` to kill the cached public
-  list and `revalidatePath("/admin/manage")` for this page's router cache, and both return
-  `{ error?: string }` rather than throwing, since an error boundary cannot catch a server
-  action. Failures surface through `sonner`.
+- **`lib/recipes/actions.ts`** — extended alongside the existing `saveRecipe` with
+  `togglePublished` and `deleteRecipe`. Both call `requireUser()` first, both `updateTag`
+  and `revalidatePath` as above, and both return `{ error?: string }` rather than throwing,
+  since an error boundary cannot catch a server action. Failures surface through `sonner`.
+  Both also `.select("id")` and check the returned row count: a write RLS refuses comes back
+  with no error and zero rows, so a silent no-op would otherwise be reported as success.
 
-- **`lib/recipes/schema.ts`** (new) — zod for both action inputs and the shared state type,
-  per the domain-module shape. Small now; it grows when the create form lands.
+- **`lib/recipes/schema.ts`** — extended with `recipeIdSchema`, `publishToggleSchema` and
+  `RecipeMutationState`. The state type is separate from `RecipeFormState` on purpose: these
+  mutations are not forms and are not driven by `useActionState`.
+
+- **`app/admin/layout.tsx`** — mounts `Toaster` and `TooltipProvider`, which the manage page's
+  action feedback and icon labels both depend on. See Context.
+
+- **`lib/utils.ts`** — gains `formatTimestamp()`. Day granularity and a pinned locale, both
+  because the table is server-rendered then hydrated and anything finer risks the two renders
+  disagreeing.
 
 ## Risks
 
@@ -175,14 +189,14 @@ The choices that produced this shape, including the ones reversed mid-discussion
 
 - **Where the edit route lives** — `/admin/edit/[slug]` or `/admin/recipes/[id]/edit`. Whatever
   is chosen, decision 20 of the schema redesign warns that the slug's title-autosync must stop
-  for saved recipes, or fixing a typo silently changes a live URL.
-- **Whether this ships before or after `/admin/create`.** Before means developing against
-  hand-inserted rows; after means the empty state is exercised once and then never again.
+  for saved recipes, or fixing a typo silently changes a live URL. Now the only thing standing
+  between this page and a complete action row: `RecipeForm` takes no props and is create-only,
+  so edit means threading an optional recipe through it as well as adding the route.
 - **Whether the slug needs a home.** Decision 12 removed it from this page entirely, so no
   screen currently shows which URL a recipe maps to. Reconsider when the edit form lands, since
   that form will have to show it anyway.
-- **Relative vs absolute dates in the Updated column.** Drawn as relative in the mockup; a
-  formatter has to be chosen, and "2 days ago" for a row you edited this morning can mislead.
+- ~~**Relative vs absolute dates.**~~ Settled during implementation: `formatTimestamp()` is
+  relative for the past week and an absolute short date after that.
 
 ## Assets
 
