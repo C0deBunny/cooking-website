@@ -13,3 +13,13 @@ export type RecipeIngredient = Database["public"]["Tables"]["recipe_ingredients"
 export type RecipeImage = Database["public"]["Tables"]["recipe_images"]["Row"];
 
 export type RecipeDifficulty = Database["public"]["Enums"]["recipe_difficulty"];
+
+/**
+ * A recipe with the children the detail page renders, matching the embedded select in
+ * `getRecipeBySlug`. Composed from the aliases above rather than restated, so a column change
+ * still surfaces here. Images are absent on purpose — no Storage bucket exists yet.
+ */
+export type RecipeWithChildren = Recipe & {
+  recipe_ingredients: RecipeIngredient[];
+  recipe_steps: RecipeStep[];
+};
