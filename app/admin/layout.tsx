@@ -30,7 +30,9 @@ export default function AdminLayout({
         <AdminGate />
       </Suspense>
 
-      <SidebarProvider className="min-h-0">
+      {/* SidebarProvider spreads ...style after its own defaults, so overriding the width
+          here beats fighting tailwind-merge over a w-* class on the rail itself. */}
+      <SidebarProvider className="min-h-0" style={{ "--sidebar-width": "14rem" } as React.CSSProperties}>
         <AdminSidebar />
 
         {/* flex column so a page can claim the region's height with flex-1 rather than a percentage */}

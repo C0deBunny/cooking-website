@@ -81,11 +81,14 @@
   --chart-3: oklch(0.5465 0.2455 262.8657);
   --chart-4: oklch(0.4878 0.2432 264.4045);
   --chart-5: oklch(0.4242 0.1982 265.4989);
-  --sidebar: oklch(0.98 0.016 73.684);
+  /* A step deeper than --background so the rail reads as its own surface. */
+  --sidebar: oklch(0.965 0.014 73.684);
   --sidebar-foreground: oklch(0.147 0.004 49.25);
   --sidebar-primary: oklch(0.75 0.183 55.934);
   --sidebar-primary-foreground: oklch(0.9851 0 0);
-  --sidebar-accent: oklch(0.901 0.076 70.697);
+  /* Hover/active tint. Deliberately quiet — the active row is marked by the
+     orange edge bar and font weight, not by this fill. */
+  --sidebar-accent: oklch(0.945 0.012 73.684);
   --sidebar-accent-foreground: oklch(0.2046 0 0);
   --sidebar-border: oklch(0.9219 0 0);
   --sidebar-ring: oklch(0.709 0 0);
@@ -136,13 +139,15 @@
   --chart-3: oklch(0.5465 0.2455 262.8657);
   --chart-4: oklch(0.4878 0.2432 264.4045);
   --chart-5: oklch(0.4242 0.1982 265.4989);
-  --sidebar: oklch(0.2046 0 0);
-  --sidebar-foreground: oklch(0.9851 0 0);
-  --sidebar-primary: oklch(0.4878 0.2432 264.4045);
+  /* This whole block was stock shadcn neutral grey while every other dark token
+     is warmed to hue 75, so the rail read visibly colder than the page. */
+  --sidebar: oklch(0.215 0.012 75);
+  --sidebar-foreground: oklch(0.96 0.01 75);
+  --sidebar-primary: oklch(0.75 0.183 55.934);
   --sidebar-primary-foreground: oklch(0.9851 0 0);
-  --sidebar-accent: oklch(0.2686 0 0);
+  --sidebar-accent: oklch(0.26 0.012 75);
   --sidebar-accent-foreground: oklch(0.9851 0 0);
-  --sidebar-border: oklch(1 0 0);
+  --sidebar-border: oklch(0.3 0.008 75);
   --sidebar-ring: oklch(0.5555 0 0);
   --font-sans: Alan Sans, ui-sans-serif, sans-serif, system-ui;
   --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
@@ -174,5 +179,30 @@
   }
   html {
     @apply font-sans;
+  }
+}
+
+/* Click ripple for the /admin rail — see app/admin/_components/AdminSidebar.tsx.
+   The handler sets size and position inline; everything visual lives here. */
+@keyframes sidebar-ripple {
+  to {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+
+.sidebar-ripple {
+  position: absolute;
+  border-radius: 9999px;
+  background: currentColor;
+  opacity: 0.22;
+  transform: scale(0);
+  pointer-events: none;
+  animation: sidebar-ripple 520ms cubic-bezier(0.2, 0.6, 0.35, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-ripple {
+    animation-duration: 1ms;
   }
 }
