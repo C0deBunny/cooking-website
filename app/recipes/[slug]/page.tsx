@@ -51,7 +51,7 @@ function RecipeFallback() {
   return (
     <div className="w-full">
       <div className="bg-foreground/5 w-full">
-        <div className="w-full max-w-3xl mx-auto px-6 py-12 space-y-4">
+        <div className="w-full max-w-3xl mx-auto px-6 py-8 space-y-4">
           <Skeleton className="h-10 w-2/3" />
           <Skeleton className="h-6 w-full" />
         </div>

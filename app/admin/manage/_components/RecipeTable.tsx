@@ -135,16 +135,16 @@ export default function RecipeTable({ recipes }: { recipes: Recipes }) {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <div className="relative w-full sm:w-64">
-          <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search recipes…" aria-label="Search recipes by title" className="pl-8" />
-        </div>
-
         <ToggleGroup type="single" variant="outline" value={status} onValueChange={(value) => value && setStatus(value as StatusFilter)} spacing={0}>
           <ToggleGroupItem value="all">All</ToggleGroupItem>
           <ToggleGroupItem value="published">Published</ToggleGroupItem>
           <ToggleGroupItem value="draft">Drafts</ToggleGroupItem>
         </ToggleGroup>
+
+        <div className="relative w-full sm:w-64">
+          <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search recipes…" aria-label="Search recipes by title" className="pl-8" />
+        </div>
 
         <p className="ml-auto text-sm text-muted-foreground tabular-nums">
           {visible.length === recipes.length ? `${recipes.length} recipes · ${published} published · ${recipes.length - published} drafts` : `Showing ${visible.length} of ${recipes.length}`}
@@ -158,7 +158,7 @@ export default function RecipeTable({ recipes }: { recipes: Recipes }) {
               <TableHead className="w-10" />
               <SortableHead label="Title" column="title" sortKey={sortKey} direction={direction} onSort={handleSort} />
               <TableHead className="w-32 text-center">Status</TableHead>
-              <SortableHead label="Updated" column="updated_at" sortKey={sortKey} direction={direction} onSort={handleSort} className="w-32" />
+              <SortableHead label="Updated" column="updated_at" sortKey={sortKey} direction={direction} onSort={handleSort} className="w-32 pl-8" />
               <TableHead className="w-40" />
             </TableRow>
           </TableHeader>

@@ -21,7 +21,7 @@ export default function ManageRecipesPage() {
   return (
     <section className="w-full flex-1 text-foreground">
       <div className="bg-foreground/5 w-full">
-        <div className="mx-auto flex w-full max-w-7xl flex-wrap items-end justify-between gap-4 px-6 py-12">
+        <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-4 px-6 py-8">
           <div>
             <h1 className="text-4xl font-bold">Manage Recipes</h1>
             <p className="mt-2 text-sm text-muted-foreground">Every recipe, drafts included.</p>

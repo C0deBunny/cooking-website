@@ -132,7 +132,7 @@ export default function RecipeRow({ recipe, isOpen, onToggle }: Props) {
 
         <TableCell className="w-32 text-center">{recipe.published ? <Badge variant="secondary">Published</Badge> : <Badge variant="outline">Draft</Badge>}</TableCell>
 
-        <TableCell className="w-32 text-muted-foreground tabular-nums">{formatTimestamp(recipe.updated_at)}</TableCell>
+        <TableCell className="w-32 pl-8 text-muted-foreground tabular-nums">{formatTimestamp(recipe.updated_at)}</TableCell>
 
         <TableCell className="w-40 pr-4">
           {/* One stopPropagation for the whole group rather than four. */}

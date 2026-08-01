@@ -71,7 +71,7 @@ export default function RecipeArticle({ recipe }: { recipe: RecipeWithChildren }
   return (
     <article className="w-full text-foreground">
       <header className="bg-foreground/5 w-full">
-        <div className="w-full max-w-3xl mx-auto px-6 py-12">
+        <div className="w-full max-w-3xl mx-auto px-6 py-8">
           <div className="flex flex-wrap items-center gap-2 mb-4">{recipe.difficulty ? <Badge variant="secondary">{recipe.difficulty}</Badge> : null}</div>
 
           <h1 className="text-4xl font-bold mb-4">{recipe.title}</h1>

@@ -37,7 +37,7 @@ export default function DevPage() {
           page out sideways — flex items default to min-width:auto, which refuses to go below content. */}
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="bg-foreground/5">
-          <div className="mx-auto max-w-7xl px-6 py-12">
+          <div className="mx-auto max-w-7xl px-6 py-8">
             <h1 className="text-3xl font-semibold tracking-tight text-foreground">Component gallery</h1>
             <p className="mt-2 max-w-2xl text-foreground/60">
               Every shadcn primitive in this project, rendered against the real theme tokens and fonts. Dev-only — this route 404s in production. Use the navbar toggle to check both colour schemes.
