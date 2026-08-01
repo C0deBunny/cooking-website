@@ -37,6 +37,9 @@ yarn-error.log*
 # claude code (local machine-specific overrides)
 .claude/settings.local.json
 
+# playwright mcp — page snapshots, console logs and screenshots it writes into the cwd
+.playwright-mcp/
+
 # vercel
 .vercel
 
