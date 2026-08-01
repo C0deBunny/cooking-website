@@ -1,0 +1,859 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Current database schema — Chique's Swiet Mofo</title>
+    <style>
+      :root {
+        --bg: #0e1116;
+        --panel: #161b22;
+        --panel-2: #1c232c;
+        --line: #2b333d;
+        --line-soft: #232a33;
+        --fg: #e6edf3;
+        --fg-dim: #9aa7b4;
+        --fg-faint: #6e7c8a;
+        --accent: #f0883e;
+        --accent-soft: rgba(240, 136, 62, 0.14);
+        --green: #57ab5a;
+        --blue: #6cb6ff;
+        --purple: #b083f0;
+        --red: #e5534b;
+        --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        padding: 40px 28px 72px;
+        background: radial-gradient(1200px 600px at 20% -10%, #17202b 0%, transparent 60%), var(--bg);
+        color: var(--fg);
+        font:
+          15px/1.5 system-ui,
+          -apple-system,
+          "Segoe UI",
+          sans-serif;
+      }
+
+      .wrap {
+        max-width: 1360px;
+        margin: 0 auto;
+      }
+
+      /* ---------- header ---------- */
+
+      header {
+        border-bottom: 1px solid var(--line);
+        padding-bottom: 22px;
+        margin-bottom: 32px;
+      }
+
+      h1 {
+        margin: 0 0 6px;
+        font-size: 26px;
+        font-weight: 650;
+        letter-spacing: -0.01em;
+      }
+
+      .sub {
+        color: var(--fg-dim);
+        font-size: 14px;
+        margin: 0 0 16px;
+      }
+
+      .source {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--fg-faint);
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 5px 10px;
+      }
+
+      /* ---------- legend ---------- */
+
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 18px 0 0;
+      }
+
+      /* ---------- badges ---------- */
+
+      .b {
+        display: inline-block;
+        font-family: var(--mono);
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        padding: 2px 5px;
+        border-radius: 4px;
+        border: 1px solid transparent;
+        white-space: nowrap;
+      }
+      .b-pk {
+        color: var(--accent);
+        background: var(--accent-soft);
+        border-color: rgba(240, 136, 62, 0.35);
+      }
+      .b-fk {
+        color: var(--blue);
+        background: rgba(108, 182, 255, 0.12);
+        border-color: rgba(108, 182, 255, 0.32);
+      }
+      .b-uq {
+        color: var(--purple);
+        background: rgba(176, 131, 240, 0.12);
+        border-color: rgba(176, 131, 240, 0.32);
+      }
+      .b-nn {
+        color: var(--fg-dim);
+        background: rgba(154, 167, 180, 0.1);
+        border-color: rgba(154, 167, 180, 0.24);
+      }
+      .b-chk {
+        color: var(--green);
+        background: rgba(87, 171, 90, 0.12);
+        border-color: rgba(87, 171, 90, 0.3);
+      }
+      .b-def {
+        color: var(--fg-faint);
+        background: rgba(110, 124, 138, 0.1);
+        border-color: rgba(110, 124, 138, 0.24);
+      }
+      .b-null {
+        color: var(--fg-faint);
+        background: transparent;
+        border-color: var(--line);
+        font-style: italic;
+      }
+
+      /* ---------- diagram ---------- */
+
+      .diagram {
+        position: relative;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 110px minmax(0, 1.05fr);
+        gap: 0 0;
+        align-items: center;
+      }
+
+      #links {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        overflow: visible;
+      }
+
+      .col-children {
+        display: flex;
+        flex-direction: column;
+        gap: 22px;
+      }
+
+      /* ---------- table card ---------- */
+
+      .table {
+        position: relative;
+        z-index: 1;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 1px 0 rgba(255, 255, 255, 0.02) inset;
+      }
+
+      .table.parent {
+        border-color: rgba(240, 136, 62, 0.4);
+        box-shadow: 0 0 0 1px rgba(240, 136, 62, 0.08);
+      }
+
+      .t-head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 11px 14px;
+        background: var(--panel-2);
+        border-bottom: 1px solid var(--line);
+      }
+
+      .t-name {
+        font-family: var(--mono);
+        font-size: 14px;
+        font-weight: 600;
+      }
+      .table.parent .t-name {
+        color: var(--accent);
+      }
+
+      .t-role {
+        font-size: 11px;
+        color: var(--fg-faint);
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+      }
+
+      .t-cols {
+        display: block;
+      }
+
+      .col {
+        display: grid;
+        grid-template-columns: minmax(120px, 1.15fr) minmax(90px, 0.85fr) auto;
+        gap: 10px;
+        align-items: center;
+        padding: 7px 14px;
+        border-bottom: 1px solid var(--line-soft);
+      }
+      .col:last-child {
+        border-bottom: 0;
+      }
+
+      .c-name {
+        font-family: var(--mono);
+        font-size: 12.5px;
+      }
+      .c-name.key {
+        font-weight: 600;
+      }
+
+      .c-type {
+        font-family: var(--mono);
+        font-size: 11.5px;
+        color: var(--fg-dim);
+      }
+      .c-type .enum {
+        color: var(--purple);
+      }
+
+      .c-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        justify-content: flex-end;
+      }
+
+      .t-foot {
+        padding: 9px 14px;
+        background: rgba(0, 0, 0, 0.22);
+        border-top: 1px solid var(--line);
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+      }
+
+      .foot-line {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--fg-dim);
+        display: flex;
+        gap: 7px;
+        align-items: baseline;
+      }
+      .foot-line .tag {
+        color: var(--fg-faint);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        font-size: 9.5px;
+        min-width: 52px;
+        flex: none;
+        padding-top: 1px;
+      }
+      .foot-line code {
+        font-family: var(--mono);
+      }
+      .foot-line .cascade {
+        color: var(--red);
+      }
+
+      /* ---------- section blocks ---------- */
+
+      section {
+        margin-top: 44px;
+      }
+
+      h2 {
+        font-size: 13px;
+        font-weight: 650;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--fg-dim);
+        margin: 0 0 14px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .grid-2 {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+        gap: 18px;
+      }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 16px 18px;
+      }
+
+      .panel h3 {
+        margin: 0 0 10px;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--fg);
+      }
+
+      .panel p {
+        margin: 0 0 10px;
+        font-size: 13px;
+        color: var(--fg-dim);
+      }
+      .panel p:last-child {
+        margin-bottom: 0;
+      }
+
+      .panel code,
+      p code,
+      li code {
+        font-family: var(--mono);
+        font-size: 12px;
+        background: rgba(255, 255, 255, 0.05);
+        padding: 1px 5px;
+        border-radius: 4px;
+        color: var(--fg);
+      }
+
+      /* ---------- RLS matrix ---------- */
+
+      .matrix-scroll {
+        overflow-x: auto;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--panel);
+      }
+
+      table.matrix {
+        border-collapse: collapse;
+        width: 100%;
+        min-width: 720px;
+        font-size: 13px;
+      }
+
+      table.matrix th,
+      table.matrix td {
+        padding: 10px 14px;
+        text-align: left;
+        border-bottom: 1px solid var(--line-soft);
+        vertical-align: middle;
+      }
+
+      table.matrix thead th {
+        background: var(--panel-2);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        color: var(--fg-dim);
+        font-weight: 600;
+        border-bottom: 1px solid var(--line);
+      }
+
+      table.matrix tbody tr:last-child td {
+        border-bottom: 0;
+      }
+
+      table.matrix td.tbl {
+        font-family: var(--mono);
+        font-size: 12.5px;
+        white-space: nowrap;
+      }
+
+      .allow {
+        color: var(--green);
+        font-family: var(--mono);
+        font-size: 12px;
+      }
+      .deny {
+        color: var(--red);
+        font-family: var(--mono);
+        font-size: 12px;
+        opacity: 0.75;
+      }
+      .cond {
+        font-family: var(--mono);
+        font-size: 11.5px;
+        color: var(--fg-dim);
+      }
+
+      /* ---------- observations ---------- */
+
+      ol.obs {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        counter-reset: o;
+        display: grid;
+        gap: 12px;
+      }
+
+      ol.obs li {
+        counter-increment: o;
+        position: relative;
+        padding: 13px 16px 13px 46px;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-left: 2px solid var(--accent);
+        border-radius: 8px;
+        font-size: 13.5px;
+        color: var(--fg-dim);
+      }
+
+      ol.obs li::before {
+        content: counter(o);
+        position: absolute;
+        left: 15px;
+        top: 13px;
+        font-family: var(--mono);
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--accent);
+        background: var(--accent-soft);
+        border: 1px solid rgba(240, 136, 62, 0.3);
+        border-radius: 4px;
+        width: 19px;
+        height: 19px;
+        display: grid;
+        place-items: center;
+      }
+
+      ol.obs strong {
+        color: var(--fg);
+        font-weight: 600;
+      }
+
+      footer {
+        margin-top: 48px;
+        padding-top: 18px;
+        border-top: 1px solid var(--line);
+        font-size: 12px;
+        color: var(--fg-faint);
+      }
+
+      @media (max-width: 900px) {
+        .diagram {
+          grid-template-columns: 1fr;
+          gap: 22px;
+        }
+        #links {
+          display: none;
+        }
+        .col-parent {
+          margin-bottom: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <h1>Current database schema</h1>
+        <p class="sub">
+          Chique's Swiet Mofo — one <code style="font-family: var(--mono)">recipes</code> aggregate with three ordered child tables. Everything below is read straight from the migration; nothing is
+          inferred.
+        </p>
+        <span class="source">supabase/migrations/20260801122716_initial_schema.sql</span>
+        <div class="legend">
+          <span class="b b-pk">PK</span>
+          <span class="b b-fk">FK</span>
+          <span class="b b-uq">UNIQUE</span>
+          <span class="b b-nn">NOT NULL</span>
+          <span class="b b-chk">CHECK</span>
+          <span class="b b-def">DEFAULT</span>
+          <span class="b b-null">nullable</span>
+        </div>
+      </header>
+
+      <!-- ================= DIAGRAM ================= -->
+
+      <div class="diagram" id="diagram">
+        <svg id="links" aria-hidden="true"></svg>
+
+        <div class="col-parent">
+          <div class="table parent" id="t-recipes">
+            <div class="t-head">
+              <span class="t-name">recipes</span>
+              <span class="t-role">aggregate root</span>
+            </div>
+            <div class="t-cols">
+              <div class="col">
+                <span class="c-name key">id</span><span class="c-type">bigint</span>
+                <span class="c-badges"><span class="b b-pk">PK</span><span class="b b-def">identity</span></span>
+              </div>
+              <div class="col">
+                <span class="c-name key">slug</span><span class="c-type">text</span>
+                <span class="c-badges"><span class="b b-nn">NN</span><span class="b b-uq">UQ</span><span class="b b-chk">CHK</span></span>
+              </div>
+              <div class="col">
+                <span class="c-name">title</span><span class="c-type">text</span>
+                <span class="c-badges"><span class="b b-nn">NN</span><span class="b b-chk">CHK</span></span>
+              </div>
+              <div class="col">
+                <span class="c-name">description</span><span class="c-type">text</span>
+                <span class="c-badges"><span class="b b-null">nullable</span></span>
+              </div>
+              <div class="col">
+                <span class="c-name">difficulty</span><span class="c-type"><span class="enum">recipe_difficulty</span></span>
+                <span class="c-badges"><span class="b b-null">nullable</span></span>
+              </div>
+              <div class="col">
+                <span class="c-name">time_minutes</span><span class="c-type">int</span>
+                <span class="c-badges"><span class="b b-chk">&gt; 0</span><span class="b b-null">nullable</span></span>
+              </div>
+              <div class="col">
+                <span class="c-name">servings</span><span class="c-type">int</span>
+                <span class="c-badges"><span class="b b-chk">&gt; 0</span><span class="b b-null">nullable</span></span>
+              </div>
+              <div class="col">
+                <span class="c-name">published</span><span class="c-type">boolean</span>
+                <span class="c-badges"><span class="b b-nn">NN</span><span class="b b-def">false</span></span>
+              </div>
+              <div class="col">
+                <span class="c-name">created_at</span><span class="c-type">timestamptz</span>
+                <span class="c-badges"><span class="b b-nn">NN</span><span class="b b-def">now()</span></span>
+              </div>
+              <div class="col">
+                <span class="c-name">updated_at</span><span class="c-type">timestamptz</span>
+                <span class="c-badges"><span class="b b-nn">NN</span><span class="b b-def">trigger</span></span>
+              </div>
+            </div>
+            <div class="t-foot">
+              <div class="foot-line"><span class="tag">check</span><code>slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$'</code></div>
+              <div class="foot-line"><span class="tag">index</span><code>(published, created_at desc)</code></div>
+              <div class="foot-line"><span class="tag">trigger</span><code>before update → set_updated_at()</code></div>
+            </div>
+          </div>
+        </div>
+
+        <div aria-hidden="true"></div>
+
+        <div class="col-children">
+          <div class="table" id="t-steps">
+            <div class="t-head">
+              <span class="t-name">recipe_steps</span>
+              <span class="t-role">ordered · 1 → n</span>
+            </div>
+            <div class="t-cols">
+              <div class="col">
+                <span class="c-name key">id</span><span class="c-type">bigint</span>
+                <span class="c-badges"><span class="b b-pk">PK</span></span>
+              </div>
+              <div class="col">
+                <span class="c-name key">recipe_id</span><span class="c-type">bigint</span>
+                <span class="c-badges"><span class="b b-fk">FK</span><span class="b b-nn">NN</span></span>
+              </div>
+              <div class="col">
+                <span class="c-name">step_number</span><span class="c-type">int</span>
+                <span class="c-badges"><span class="b b-nn">NN</span><span class="b b-chk">&gt; 0</span><span class="b b-uq">UQ</span></span>
+              </div>
+              <div class="col">
+                <span class="c-name">instruction</span><span class="c-type">text</span>
+                <span class="c-badges"><span class="b b-nn">NN</span><span class="b b-chk">CHK</span></span>
+              </div>
+              <div class="col">
+                <span class="c-name">image_path</span><span class="c-type">text</span>
+                <span class="c-badges"><span class="b b-null">nullable</span></span>
+              </div>
+            </div>
+            <div class="t-foot">
+              <div class="foot-line"><span class="tag">fk</span><code>recipe_id → recipes.id</code> <span class="cascade">on delete cascade</span></div>
+              <div class="foot-line"><span class="tag">unique</span><code>(recipe_id, step_number)</code></div>
+            </div>
+          </div>
+
+          <div class="table" id="t-ingredients">
+            <div class="t-head">
+              <span class="t-name">recipe_ingredients</span>
+              <span class="t-role">ordered · 1 → n</span>
+            </div>
+            <div class="t-cols">
+              <div class="col">
+                <span class="c-name key">id</span><span class="c-type">bigint</span>
+                <span class="c-badges"><span class="b b-pk">PK</span></span>
+              </div>
+              <div class="col">
+                <span class="c-name key">recipe_id</span><span class="c-type">bigint</span>
+                <span class="c-badges"><span class="b b-fk">FK</span><span class="b b-nn">NN</span></span>
+              </div>
+              <div class="col">
+                <span class="c-name">sort_order</span><span class="c-type">int</span>
+                <span class="c-badges"><span class="b b-nn">NN</span><span class="b b-chk">&ge; 0</span><span class="b b-uq">UQ</span></span>
+              </div>
+              <div class="col">
+                <span class="c-name">name</span><span class="c-type">text</span>
+                <span class="c-badges"><span class="b b-nn">NN</span><span class="b b-chk">CHK</span></span>
+              </div>
+              <div class="col">
+                <span class="c-name">amount</span><span class="c-type">numeric</span>
+                <span class="c-badges"><span class="b b-chk">&gt; 0</span><span class="b b-null">nullable</span></span>
+              </div>
+              <div class="col">
+                <span class="c-name">unit</span><span class="c-type">text</span>
+                <span class="c-badges"><span class="b b-null">nullable</span></span>
+              </div>
+            </div>
+            <div class="t-foot">
+              <div class="foot-line"><span class="tag">fk</span><code>recipe_id → recipes.id</code> <span class="cascade">on delete cascade</span></div>
+              <div class="foot-line"><span class="tag">unique</span><code>(recipe_id, sort_order)</code></div>
+            </div>
+          </div>
+
+          <div class="table" id="t-images">
+            <div class="t-head">
+              <span class="t-name">recipe_images</span>
+              <span class="t-role">gallery · 1 → n</span>
+            </div>
+            <div class="t-cols">
+              <div class="col">
+                <span class="c-name key">id</span><span class="c-type">bigint</span>
+                <span class="c-badges"><span class="b b-pk">PK</span></span>
+              </div>
+              <div class="col">
+                <span class="c-name key">recipe_id</span><span class="c-type">bigint</span>
+                <span class="c-badges"><span class="b b-fk">FK</span><span class="b b-nn">NN</span></span>
+              </div>
+              <div class="col">
+                <span class="c-name">storage_path</span><span class="c-type">text</span>
+                <span class="c-badges"><span class="b b-nn">NN</span><span class="b b-chk">CHK</span><span class="b b-uq">UQ</span></span>
+              </div>
+              <div class="col">
+                <span class="c-name">alt</span><span class="c-type">text</span>
+                <span class="c-badges"><span class="b b-null">nullable</span></span>
+              </div>
+              <div class="col">
+                <span class="c-name">sort_order</span><span class="c-type">int</span>
+                <span class="c-badges"><span class="b b-nn">NN</span><span class="b b-def">0</span></span>
+              </div>
+              <div class="col">
+                <span class="c-name">is_primary</span><span class="c-type">boolean</span>
+                <span class="c-badges"><span class="b b-nn">NN</span><span class="b b-def">false</span><span class="b b-uq">partial UQ</span></span>
+              </div>
+            </div>
+            <div class="t-foot">
+              <div class="foot-line"><span class="tag">fk</span><code>recipe_id → recipes.id</code> <span class="cascade">on delete cascade</span></div>
+              <div class="foot-line"><span class="tag">unique</span><code>(recipe_id, storage_path)</code></div>
+              <div class="foot-line"><span class="tag">index</span><code>unique (recipe_id) where is_primary</code></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= TYPES & MACHINERY ================= -->
+
+      <section>
+        <h2>Types &amp; database-side machinery</h2>
+        <div class="grid-2">
+          <div class="panel">
+            <h3>enum <code>public.recipe_difficulty</code></h3>
+            <p><code>'easy'</code> · <code>'medium'</code> · <code>'hard'</code></p>
+            <p><code>db:types</code> emits this as a TypeScript union, so a bad value is a compile error. Adding a value later is cheap; removing or reordering is not.</p>
+          </div>
+          <div class="panel">
+            <h3>function <code>public.set_updated_at()</code></h3>
+            <p>
+              <code>security invoker</code>, <code>search_path = ''</code>. Fires <code>before update</code> on <code>recipes</code> only — the three child tables have no <code>updated_at</code> and
+              no trigger.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= RLS ================= -->
+
+      <section>
+        <h2>Row-level security — the actual write boundary</h2>
+        <div class="matrix-scroll">
+          <table class="matrix">
+            <thead>
+              <tr>
+                <th>Table</th>
+                <th><code>anon</code> select</th>
+                <th><code>authenticated</code> select</th>
+                <th><code>authenticated</code> insert / update / delete</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="tbl">recipes</td>
+                <td><span class="allow">allow</span> <span class="cond">using (published)</span></td>
+                <td><span class="allow">allow</span> <span class="cond">using (true)</span></td>
+                <td><span class="allow">allow</span> <span class="cond">using (true) with check (true)</span></td>
+              </tr>
+              <tr>
+                <td class="tbl">recipe_steps</td>
+                <td><span class="allow">allow</span> <span class="cond">exists(parent where published)</span></td>
+                <td><span class="allow">allow</span> <span class="cond">using (true)</span></td>
+                <td><span class="allow">allow</span> <span class="cond">using (true) with check (true)</span></td>
+              </tr>
+              <tr>
+                <td class="tbl">recipe_ingredients</td>
+                <td><span class="allow">allow</span> <span class="cond">exists(parent where published)</span></td>
+                <td><span class="allow">allow</span> <span class="cond">using (true)</span></td>
+                <td><span class="allow">allow</span> <span class="cond">using (true) with check (true)</span></td>
+              </tr>
+              <tr>
+                <td class="tbl">recipe_images</td>
+                <td><span class="allow">allow</span> <span class="cond">exists(parent where published)</span></td>
+                <td><span class="allow">allow</span> <span class="cond">using (true)</span></td>
+                <td><span class="allow">allow</span> <span class="cond">using (true) with check (true)</span></td>
+              </tr>
+              <tr>
+                <td class="tbl">— <span style="font-family: system-ui; color: var(--fg-faint)">anon writes, all four tables</span></td>
+                <td colspan="3"><span class="deny">denied</span> <span class="cond">no policy, and no table-level grant</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="grid-2" style="margin-top: 18px">
+          <div class="panel">
+            <h3>Two layers, both must pass</h3>
+            <p>
+              Table <code>grant</code>s are checked separately from policies. <code>select</code> is granted to <code>anon, authenticated</code>; <code>insert/update/delete</code> only to
+              <code>authenticated</code>. RLS then narrows further.
+            </p>
+          </div>
+          <div class="panel">
+            <h3>Two roles by design: visitor and admin</h3>
+            <p>
+              Every logged-in account <em>is</em> an admin — there are no normal user accounts. So <code>using (true)</code> is correct, and no table needs a <code>user_id</code>: recipes aren't owned
+              by an account. The trade-off accepted: account creation is the only admission control, so signups stay disabled and accounts are made by hand.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= OBSERVATIONS ================= -->
+
+      <section>
+        <h2>What the schema itself tells us — input for the redesign</h2>
+        <ol class="obs">
+          <li>
+            <strong>The permission model stops at the table boundary — Storage isn't covered.</strong> <code>recipe_images.storage_path</code> and <code>recipe_steps.image_path</code> point into a
+            Supabase Storage bucket, and no bucket is defined: <code>config.toml</code> has only the stock commented-out examples, and no migration touches <code>storage.objects</code>. Files get
+            their own separate policies, so "visitors read, admins write" is currently enforced for rows and not at all for the images those rows name.
+          </li>
+          <li>
+            <strong>The ordering uniques are not deferrable.</strong> <code>unique (recipe_id, step_number)</code> and <code>unique (recipe_id, sort_order)</code> fire per-statement, so swapping two
+            rows' positions collides mid-update. Reordering needs a temp value, a negative-offset pass, or delete-and-reinsert.
+          </li>
+          <li>
+            <strong><code>recipe_images.sort_order</code> has no unique constraint</strong> — unlike the other two children. Its unique is on <code>(recipe_id, storage_path)</code> instead, so two
+            images can share a position and the gallery order becomes non-deterministic. CLAUDE.md currently describes all three children as unique on their ordering column.
+          </li>
+          <li>
+            <strong>The primary image is a flag, not a reference.</strong> A partial unique index caps it at one per recipe, but <code>recipes</code> has no pointer to it — so "recipe + cover image"
+            is always a join plus a <code>where is_primary</code>, and a recipe can legally have images with no primary at all.
+          </li>
+          <li>
+            <strong>Ingredients are free text.</strong> <code>name</code> and <code>unit</code> are unconstrained <code>text</code>, so "tbsp" / "tbsp." / "tablespoon" are three different units and
+            nothing can aggregate across recipes. Deliberate — the rejected alternatives are recorded — but it is the wall you hit for shopping lists or "recipes with plantain".
+          </li>
+          <li>
+            <strong>No categorisation and no publish history.</strong> No tags, cuisine, or course; <code>published</code> is a single boolean with no <code>published_at</code>, so the public list
+            orders by <code>created_at</code> and un-publishing loses when it went live.
+          </li>
+          <li>
+            <strong>Child rows carry no timestamps.</strong> Only <code>recipes</code> has <code>created_at</code>/<code>updated_at</code>, and its <code>updated_at</code> does not move when a step or
+            ingredient changes — an edit to instructions leaves the parent looking untouched.
+          </li>
+        </ol>
+      </section>
+
+      <footer>
+        Generated from the committed migration on 2026-08-01. Regenerate after any schema change — there is no <code>db:diff</code> in this project, so this file is a manual mirror, not a derived one.
+      </footer>
+    </div>
+
+    <script>
+      // Draw the parent→child connectors after layout, so the curve endpoints land on
+      // the real card edges regardless of how tall each card renders.
+      (function () {
+        var diagram = document.getElementById("diagram");
+        var svg = document.getElementById("links");
+        var parent = document.getElementById("t-recipes");
+        var children = ["t-steps", "t-ingredients", "t-images"].map(function (id) {
+          return document.getElementById(id);
+        });
+
+        var NS = "http://www.w3.org/2000/svg";
+
+        function draw() {
+          while (svg.firstChild) svg.removeChild(svg.firstChild);
+          if (window.innerWidth <= 900) return;
+
+          var base = diagram.getBoundingClientRect();
+          svg.setAttribute("viewBox", "0 0 " + base.width + " " + base.height);
+
+          var p = parent.getBoundingClientRect();
+          var x1 = p.right - base.left;
+          var y1 = p.top - base.top + p.height / 2;
+
+          children.forEach(function (child) {
+            var c = child.getBoundingClientRect();
+            var x2 = c.left - base.left;
+            var y2 = c.top - base.top + c.height / 2;
+            var mid = x1 + (x2 - x1) / 2;
+
+            var path = document.createElementNS(NS, "path");
+            path.setAttribute("d", "M " + x1 + " " + y1 + " C " + mid + " " + y1 + ", " + mid + " " + y2 + ", " + x2 + " " + y2);
+            path.setAttribute("fill", "none");
+            path.setAttribute("stroke", "#f0883e");
+            path.setAttribute("stroke-width", "1.5");
+            path.setAttribute("stroke-opacity", "0.55");
+            svg.appendChild(path);
+
+            // "1" on the parent side, crow's foot "n" on the child side.
+            var one = document.createElementNS(NS, "text");
+            one.setAttribute("x", x1 + 9);
+            one.setAttribute("y", y1 - 7);
+            one.setAttribute("fill", "#f0883e");
+            one.setAttribute("font-size", "11");
+            one.setAttribute("font-family", "ui-monospace, Consolas, monospace");
+            one.textContent = "1";
+            svg.appendChild(one);
+
+            var many = document.createElementNS(NS, "text");
+            many.setAttribute("x", x2 - 16);
+            many.setAttribute("y", y2 - 7);
+            many.setAttribute("fill", "#f0883e");
+            many.setAttribute("font-size", "11");
+            many.setAttribute("font-family", "ui-monospace, Consolas, monospace");
+            many.textContent = "n";
+            svg.appendChild(many);
+
+            var dot = document.createElementNS(NS, "circle");
+            dot.setAttribute("cx", x1);
+            dot.setAttribute("cy", y1);
+            dot.setAttribute("r", "3");
+            dot.setAttribute("fill", "#f0883e");
+            svg.appendChild(dot);
+          });
+        }
+
+        draw();
+        window.addEventListener("resize", draw);
+        if (document.fonts && document.fonts.ready) document.fonts.ready.then(draw);
+      })();
+    </script>
+  </body>
+</html>
