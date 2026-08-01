@@ -17,6 +17,8 @@ npm run db:push        # apply pending supabase/migrations/ to the linked projec
 npm run db:types       # regenerate types/database.ts from the live schema
 npm run db:pull        # ⚠ needs Docker — unavailable, see "Database schema & migrations"
 npm run db:diff        # ⚠ needs Docker — unavailable, same
+
+npx supabase db query --linked "select …"   # arbitrary SQL, no Docker — see below
 ```
 
 All four checks (`lint`, `typecheck`, `format`, `format:check`) pass on a clean tree. Run `lint` +
@@ -145,8 +147,19 @@ npm run typecheck                   # the payoff: a dropped column breaks every 
 
 The consequence of no `db:diff` is that **there is no drift detection**. Never change structure in
 the Supabase Table Editor — a clicked column is invisible to the migration history and nothing
-will warn you. The Table Editor is for reading and editing _rows_ only. `npm run db:types` doubles
-as the only Docker-free way to inspect the live schema.
+will warn you. The Table Editor is for reading and editing _rows_ only.
+
+**`npx supabase db query --linked "<sql>"` runs arbitrary SQL against the live database without
+Docker**, because it goes through the Management API — the same path the dashboard's SQL editor
+uses — rather than a shadow Postgres. The CLI is already linked and authenticated. That is the
+Docker-free way to inspect _data_; `npm run db:types` is the Docker-free way to inspect _schema_.
+Reach for it before writing a migration that assumes a table is empty, and before asking someone
+to go and click around the dashboard.
+
+A destructive migration should still carry its own gate rather than relying on that check having
+been run. `20260801190718_remove_ingredient_groups.sql` is the pattern: a `do $$ … raise
+exception $$` block, placed before the destructive statements, that refuses to proceed if the
+data it is about to destroy still exists.
 
 `types/recipes.ts` derives its aliases from the generated types
 (`Database["public"]["Tables"]["recipes"]["Row"]`) rather than restating columns. That is what
