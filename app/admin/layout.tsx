@@ -22,7 +22,7 @@ import { Toaster } from "@/components/ui/sonner";
  * shell is stretched to fill it — see app/layout.tsx.
  *
  * The content region is a plain div rather than SidebarInset because that renders a <main>, and
- * <main> may not nest.
+ * <main> may not nest. It is also where Toaster is mounted — see the note there before hoisting it.
  */
 export default function AdminLayout({
   children,
@@ -34,8 +34,6 @@ export default function AdminLayout({
       <Suspense fallback={null}>
         <AdminGate />
       </Suspense>
-
-      <Toaster />
 
       {/* SidebarProvider spreads ...style after its own defaults, so overriding the width
           here beats fighting tailwind-merge over a w-* class on the rail itself. */}
@@ -51,6 +49,13 @@ export default function AdminLayout({
         {/* flex column so a page can claim the region's height with flex-1 rather than a percentage */}
         <div className="flex flex-1 flex-col">
           <TooltipProvider>{children}</TooltipProvider>
+
+          {/* Mounted inside the shell, not as a sibling of it. sonner's <Toaster> renders an in-flow
+              <section> — only the <ol> inside it is position: fixed — so at the top level it became a
+              second grid item in <main>'s single 1fr row, took all the free height, and pushed this
+              whole shell into an implicit auto row below it. Here it is a zero-height flex child and
+              costs nothing. */}
+          <Toaster />
         </div>
       </SidebarProvider>
     </>
