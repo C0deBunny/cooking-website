@@ -44,7 +44,7 @@ app/admin/          /admin redirects to /admin/manage · children: manage/ creat
 app/admin/layout.tsx  the owner-only gate + the sidebar shell — see "Auth gating" below
 components/ui/      shadcn primitives (generated — regenerate, don't hand-edit)
 components/feature/ feature components, grouped by area (hero, layout/navbar, layout/footer, login)
-components/shared/  reused across features (RecipeCard, RecipeArticle)
+components/shared/  reused across features (RecipeCard, RecipeArticle, DifficultyBadge)
 lib/auth/           queries.ts (cache()'d reads) · actions.ts ("use server") · schema.ts (zod)
 lib/recipes/        the same three files — queries.ts · actions.ts · schema.ts
 lib/supabase/       three clients — pick the right one, see below
@@ -266,6 +266,14 @@ settled, follow them as written rather than drifting from them.
   transitive through `next` and `eslint` themselves, and `next` is already at the latest
   16.2.12 — there is nothing to fix here directly. **Never run `npm audit fix --force`**: it
   proposes "fixing" them by installing `next@9.3.3`.
+- **A brand-new file's Tailwind classes do not exist until `.next` is cleared.** Turbopack's dev
+  cache does not invalidate Tailwind's source scan when a source file is _created_ — editing an
+  existing file is picked up, adding one is not. The utilities for any class that appears only in
+  the new file are silently absent, so the component renders with correct-looking `class`
+  attributes and no styling, and restarting `next dev` does not help. `rm -rf .next` does.
+  `npm run build` is unaffected and is the way to confirm the CSS is genuinely right — it scans
+  cold every time. Hit while adding `DifficultyBadge.tsx`; costs an hour if you assume the theme
+  token is wrong, because that is the thing that looks suspicious.
 - The whole tree was formatted with prettier in one pass, so `npm run format:check` is clean.
   Keep it that way — run `npm run format` before committing rather than letting drift
   accumulate into another repo-wide reformat.

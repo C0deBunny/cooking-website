@@ -1,5 +1,5 @@
 // import components
-import { Badge } from "@/components/ui/badge";
+import DifficultyBadge from "@/components/shared/DifficultyBadge";
 import { Separator } from "@/components/ui/separator";
 
 // import types
@@ -23,9 +23,38 @@ function formatMinutes(minutes: number) {
   return rest === 0 ? `${hours} h` : `${hours} h ${rest}`;
 }
 
-/** Amounts are numeric in the database, so 0.5 arrives as 0.5 and 2 as 2 — no trailing ".0". */
+/**
+ * Recipes are written with fractions, so they should read back as fractions.
+ *
+ * `amount` is `numeric`, which is the right storage — it keeps arithmetic and exact decimals —
+ * but it means "½ tl" typed into the form is stored as 0.5 and would otherwise render as
+ * "0.5 tl". This maps the decimals a cook actually types back to the glyph, so the round trip
+ * looks like what was entered. Presentation only; the column does not change.
+ *
+ * Keyed on the fractional part rounded to two places, so 1/3 (0.3333…) finds ⅓. Anything without
+ * a clean glyph prints as the number — 0.4 stays "0.4" rather than being forced into a fraction
+ * it is not.
+ */
+const FRACTION_GLYPHS: Record<string, string> = {
+  "0.5": "½",
+  "0.25": "¼",
+  "0.75": "¾",
+  "0.33": "⅓",
+  "0.67": "⅔",
+};
+
+function formatQuantity(amount: number) {
+  const whole = Math.floor(amount);
+  const glyph = FRACTION_GLYPHS[String(Number((amount - whole).toFixed(2)))];
+
+  if (!glyph) return String(amount);
+
+  // 1.5 is "1½", but 0.5 is "½" and not "0½".
+  return whole > 0 ? `${whole}${glyph}` : glyph;
+}
+
 function formatAmount(ingredient: RecipeIngredient) {
-  const parts = [ingredient.amount === null ? null : String(ingredient.amount), ingredient.unit].filter(Boolean);
+  const parts = [ingredient.amount === null ? null : formatQuantity(ingredient.amount), ingredient.unit].filter(Boolean);
   return parts.join(" ");
 }
 
@@ -46,7 +75,9 @@ export default function RecipeArticle({ recipe }: { recipe: RecipeWithChildren }
     <article className="w-full text-foreground">
       <header className="bg-foreground/5 w-full">
         <div className="w-full max-w-3xl mx-auto px-6 py-8">
-          <div className="flex flex-wrap items-center gap-2 mb-4">{recipe.difficulty ? <Badge variant="secondary">{recipe.difficulty}</Badge> : null}</div>
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            <DifficultyBadge difficulty={recipe.difficulty} />
+          </div>
 
           <h1 className="text-4xl font-bold mb-4">{recipe.title}</h1>
 

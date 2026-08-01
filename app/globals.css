@@ -36,6 +36,12 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-difficulty-easy: var(--difficulty-easy);
+  --color-difficulty-easy-bg: var(--difficulty-easy-bg);
+  --color-difficulty-medium: var(--difficulty-medium);
+  --color-difficulty-medium-bg: var(--difficulty-medium-bg);
+  --color-difficulty-hard: var(--difficulty-hard);
+  --color-difficulty-hard-bg: var(--difficulty-hard-bg);
 
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
@@ -92,6 +98,17 @@
   --sidebar-accent-foreground: oklch(0.2046 0 0);
   --sidebar-border: oklch(0.9219 0 0);
   --sidebar-ring: oklch(0.709 0 0);
+  /* Difficulty. Deliberately NOT aliases of --secondary / --primary / --destructive: those
+     three already mean things that collide. "hard" tracking the danger colour would make
+     restyling a delete button restyle a recipe, and "medium" tracking the brand orange would
+     make the brand mean "medium" wherever a badge sits beside a primary button. Six lines to
+     decouple them. See decision 4 of docs/plans/admin-create-wizard. */
+  --difficulty-easy: oklch(0.45 0.13 150);
+  --difficulty-easy-bg: oklch(0.93 0.06 150);
+  --difficulty-medium: oklch(0.52 0.14 55);
+  --difficulty-medium-bg: oklch(0.94 0.06 65);
+  --difficulty-hard: oklch(0.51 0.19 25);
+  --difficulty-hard-bg: oklch(0.94 0.05 25);
   --font-sans: Alan Sans, ui-sans-serif, sans-serif, system-ui;
   --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
@@ -149,6 +166,14 @@
   --sidebar-accent-foreground: oklch(0.9851 0 0);
   --sidebar-border: oklch(0.3 0.008 75);
   --sidebar-ring: oklch(0.5555 0 0);
+  /* Not the light values reused — foreground and background swap roles, so each pair is
+     re-picked for a dark surface rather than inverted. */
+  --difficulty-easy: oklch(0.82 0.14 150);
+  --difficulty-easy-bg: oklch(0.3 0.06 150);
+  --difficulty-medium: oklch(0.85 0.13 70);
+  --difficulty-medium-bg: oklch(0.31 0.06 65);
+  --difficulty-hard: oklch(0.8 0.15 25);
+  --difficulty-hard-bg: oklch(0.31 0.07 25);
   --font-sans: Alan Sans, ui-sans-serif, sans-serif, system-ui;
   --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;

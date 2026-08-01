@@ -9,6 +9,7 @@ import { deleteRecipe, togglePublished } from "@/lib/recipes/actions";
 
 // import components
 import Link from "next/link";
+import DifficultyBadge from "@/components/shared/DifficultyBadge";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -205,7 +206,7 @@ export default function RecipeRow({ recipe, isOpen, onToggle }: Props) {
               </div>
 
               <dl className="grid grid-cols-[7rem_minmax(0,1fr)] content-start gap-x-4 gap-y-2">
-                <Field label="Difficulty">{recipe.difficulty ? <span className="capitalize">{recipe.difficulty}</span> : NOT_SET}</Field>
+                <Field label="Difficulty">{recipe.difficulty ? <DifficultyBadge difficulty={recipe.difficulty} /> : NOT_SET}</Field>
                 <Field label="Time">{formatDuration(recipe) ?? NOT_SET}</Field>
                 <Field label="Serves">{recipe.servings ?? NOT_SET}</Field>
                 <Field label="Created">{formatTimestamp(recipe.created_at)}</Field>

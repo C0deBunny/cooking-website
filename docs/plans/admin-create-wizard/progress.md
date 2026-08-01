@@ -7,6 +7,34 @@
      - Next: <what remains> / Blocked: <on what>
 -->
 
+## 2026-08-01 — Phase 2: DifficultyBadge, tokens, fraction glyphs
+
+- **Did:** six `--difficulty-*` tokens in `:root` and `.dark`, exposed through `@theme inline` as
+  `--color-difficulty-*` so they are reachable as ordinary utilities. New
+  `components/shared/DifficultyBadge.tsx`. Both call sites: `RecipeArticle`'s flat
+  `<Badge variant="secondary">`, which painted all three difficulties the same green, and
+  `RecipeRow`'s Difficulty field, which was plain capitalised text. `formatAmount()` in
+  `RecipeArticle` gained fraction glyphs.
+- **The badge map is typed `Record<RecipeDifficulty, string>` on purpose.** A fourth difficulty
+  then fails to compile here rather than rendering an unstyled pill — the enum is generated, so
+  adding a value and running `db:types` is what trips it.
+- **Cost an hour, and would cost it again: a brand-new file's Tailwind classes do not exist until
+  `.next` is cleared.** Turbopack's dev cache does not invalidate Tailwind's source scan when a
+  file is _created_ (editing an existing one is fine). `bg-difficulty-hard-bg` was in the
+  rendered `class` attribute and had no rule behind it; restarting `next dev` twice changed
+  nothing; `git add`-ing the file changed nothing. `npm run build` generated all twelve
+  utilities correctly, which is what proved the code right and the dev cache wrong.
+  `rm -rf .next` fixed dev. Written into `CLAUDE.md` under dependency gotchas, because phase 4
+  adds several new files at once and will hit it again.
+- **Verified:** `npm run lint`, `npm run typecheck`, `npm run build`, `npm run format:check`.
+  Rendered `/admin/preview/zzz-phase1-smoke` — chosen because that route is uncached, so a direct
+  database write shows up without a cache dance. Every glyph case: `½ tl`, `¼ el`, `¾`,
+  `⅓ kop` (from 0.3333…), `⅔ kop`, `1½ l`, `0.4 g` left alone because it has no clean fraction,
+  `400 ml` unchanged, and an ingredient with no amount rendering as its name only. The `hard`
+  badge resolves to `color-mix(in oklab, var(--difficulty-hard) 30%, transparent)` for its border,
+  with the flat-colour fallback above it.
+- **Next:** phase 3.
+
 ## 2026-08-01 — Phase 1: ingredient groups removed
 
 - **Did:** `20260801190718_remove_ingredient_groups.sql` — gate, then `save_recipe()` without
