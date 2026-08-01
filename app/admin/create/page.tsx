@@ -1,7 +1,7 @@
 // import components
 import { Card, CardContent } from "@/components/ui/card";
 
-/** Placeholder — the real create form lands here. */
+/** Placeholder. */
 export default function CreateRecipesPage() {
   return (
     <div className="flex flex-1 items-center justify-center p-6">

@@ -10,8 +10,6 @@ import { SidebarProvider } from "@/components/ui/sidebar";
  * One gate for everything under /admin. Put new owner-only routes below this segment rather
  * than repeating the check per page.
  *
- * The shell below the gate is a rail plus a content region.
- *
  * min-h-0 cancels SidebarProvider's own min-h-svh, which would otherwise push the footer a full
  * viewport down. Nothing here has to claim the height: <main> is a single-1fr-row grid, so this
  * shell is stretched to fill it — see app/layout.tsx.

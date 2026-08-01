@@ -6,37 +6,41 @@ import { spawnRipple } from "@/lib/ripple";
 
 // import components
 import Link from "next/link";
-import { ChefHat, LayoutList, Plus } from "lucide-react";
+import { ChefHat, LayoutList, Plus, Tags } from "lucide-react";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
 
-/** Add a destination here and it appears in the rail — nothing else needs touching. */
-const items = [
-  { href: "/admin/manage", label: "Manage Recipes", icon: LayoutList },
-  { href: "/admin/create", label: "Create Recipes", icon: Plus },
+const groups = [
+  {
+    label: "Recipes",
+    items: [
+      { href: "/admin/manage", label: "Manage Recipes", icon: LayoutList },
+      { href: "/admin/create", label: "Create Recipes", icon: Plus },
+    ],
+  },
+  {
+    label: "Tags",
+    items: [{ href: "/admin/tags", label: "Manage Tags", icon: Tags }],
+  },
 ];
 
 /**
- * The /admin rail. Client-side only because it needs usePathname() to mark the active item;
- * everything it renders is otherwise static.
+ * The /admin rail. Client-side only for usePathname(), to mark the active item.
  *
  * collapsible="none" is deliberate: the default ("offcanvas") positions itself fixed at h-svh,
  * which would slide under the navbar and across the footer. "none" renders a plain in-flow
  * column instead, which is what sitting inside the site chrome needs.
  *
- * Two states share one token upstream — sidebarMenuButtonVariants sets the same
- * bg-sidebar-accent for hover: and for data-active:, so colour alone cannot tell them apart.
- * The active row is therefore marked by two things hover does not get: font-semibold and a
- * full-height orange bar on the rail's left edge. That is what lets --sidebar-accent stay as
- * quiet as it is.
+ * sidebarMenuButtonVariants sets the same bg-sidebar-accent for hover: and for data-active:, so
+ * colour alone cannot tell the two apart. The active row is therefore marked by two things hover
+ * does not get: font-semibold and a full-height bar on the rail's left edge.
  *
  * Rows are full-bleed (px-0 on the group, rounded-none on the button) so the highlight spans
  * the rail edge to edge and the former gutters are clickable.
  *
  * The nav block is sticky, not the rail. Sticking the <Sidebar> itself would need a clamped height,
  * which would end its bg-sidebar and border-r at the fold and leave a tinted column that stops
- * mid-page. Leaving the rail stretched and sticking only the block keeps both spanning to the footer.
- * The wrapper also has to sit *outside* SidebarContent: that has overflow-auto, which is a scroll
- * container, so a sticky inside it would pin to its own scrollport instead of the viewport.
+ * mid-page. The wrapper also has to sit *outside* SidebarContent: that has overflow-auto, so a
+ * sticky inside it would pin to its own scrollport instead of the viewport.
  * top-16 is the header's pinned height — see components/feature/layout/navbar/Navbar.tsx.
  */
 export default function AdminSidebar() {
@@ -53,29 +57,31 @@ export default function AdminSidebar() {
         </SidebarHeader>
 
         <SidebarContent>
-          <SidebarGroup className="px-0">
-            <SidebarGroupLabel className="px-3">Recipes</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {items.map((item) => (
-                  <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={pathname === item.href}
-                      className="relative rounded-none px-3 py-2 data-active:font-semibold data-active:before:absolute data-active:before:inset-y-0 data-active:before:left-0 data-active:before:w-1 data-active:before:bg-primary"
-                    >
-                      <Link href={item.href} onPointerDown={spawnRipple}>
-                        {/* Ripple host. Kept first so the base style's [&>span:last-child]:truncate still targets the label. */}
-                        <span data-ripple-layer aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden" />
-                        <item.icon />
-                        <span>{item.label}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
+          {groups.map((group) => (
+            <SidebarGroup key={group.label} className="px-0">
+              <SidebarGroupLabel className="px-3">{group.label}</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {group.items.map((item) => (
+                    <SidebarMenuItem key={item.href}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={pathname === item.href}
+                        className="relative rounded-none px-3 py-2 data-active:font-semibold data-active:before:absolute data-active:before:inset-y-0 data-active:before:left-0 data-active:before:w-1 data-active:before:bg-primary"
+                      >
+                        <Link href={item.href} onPointerDown={spawnRipple}>
+                          {/* Ripple host. Kept first so the base style's [&>span:last-child]:truncate still targets the label. */}
+                          <span data-ripple-layer aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden" />
+                          <item.icon />
+                          <span>{item.label}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          ))}
         </SidebarContent>
       </div>
     </Sidebar>
