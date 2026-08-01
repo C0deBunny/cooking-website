@@ -124,7 +124,7 @@ export default function ReviewPanel({ draft, payload, preview, state, formAction
       {/* The real article at full width, rather than a summary that would drift from the page it
           claims to preview. Same component the two recipe routes render. */}
       <Card className="mt-5 py-0">
-        <RecipeArticle recipe={preview} />
+        <RecipeArticle recipe={preview} placeholders align="start" />
       </Card>
     </>
   );

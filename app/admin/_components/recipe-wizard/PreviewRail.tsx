@@ -50,7 +50,7 @@ export default function PreviewRail({ recipe, step }: { recipe: RecipeView; step
 
       {/* relative, because the scroll maths above reads offsetTop against this container. */}
       <div ref={scrollRef} className="relative max-h-[38rem] overflow-y-auto">
-        <RecipeArticle recipe={recipe} />
+        <RecipeArticle recipe={recipe} placeholders />
       </div>
     </Card>
   );

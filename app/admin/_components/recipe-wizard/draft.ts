@@ -146,11 +146,16 @@ export function toPayload(draft: Draft): RecipeInput {
  * Draft → what the live preview renders, which is the real `RecipeArticle` and not a second
  * renderer built to look like it (decision 15).
  *
- * Three presentation-only differences from `toPayload`, and they exist because this runs against
- * a half-filled form rather than a saved recipe: blank rows are dropped so an untouched
- * ingredient line does not render as an empty bullet, a missing title becomes a placeholder
- * instead of a bare empty heading, and the numbers are coerced loosely — `Number("")` is 0, so
- * anything that is not a positive number becomes null and the article simply omits that entry.
+ * Two presentation-only differences from `toPayload`, and they exist because this runs against a
+ * half-filled form rather than a saved recipe: blank rows are dropped so an untouched ingredient
+ * line does not render as an empty bullet, and the numbers are coerced loosely — `Number("")` is
+ * 0, so anything that is not a positive number becomes null and the article simply omits that
+ * entry.
+ *
+ * What is *missing* is not filled in here. An empty title stays empty and the article renders
+ * "Untitled recipe" itself, under its `placeholders` prop, along with the rest of the empty
+ * skeleton — a placeholder smuggled into the data would also be what the checklist and any future
+ * reader of this view see.
  */
 export function toPreview(draft: Draft): RecipeView {
   const minutes = (value: string) => {
@@ -159,7 +164,7 @@ export function toPreview(draft: Draft): RecipeView {
   };
 
   return {
-    title: draft.title.trim() || "Untitled recipe",
+    title: draft.title.trim(),
     description: draft.description.trim() || null,
     difficulty: draft.difficulty === NO_DIFFICULTY ? null : (draft.difficulty as RecipeView["difficulty"]),
     prep_minutes: minutes(draft.prep_minutes),
