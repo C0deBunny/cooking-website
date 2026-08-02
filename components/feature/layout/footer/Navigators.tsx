@@ -26,7 +26,9 @@ export default async function Navigators() {
         </Link>
 
         {isLoggedIn && (
-          <Link href="/admin" className="hover:underline">
+          /* /admin/manage, not /admin — see the note in app/admin/page.tsx. A client-side nav
+             to the redirect-only /admin fails in production. */
+          <Link href="/admin/manage" className="hover:underline">
             Admin
           </Link>
         )}
