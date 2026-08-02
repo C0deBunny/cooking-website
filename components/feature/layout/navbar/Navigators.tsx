@@ -33,7 +33,9 @@ export default async function Navigators() {
         <>
           <Separator orientation="vertical" className="mx-2 h-6 border-l border-border" />
 
-          <Link href="/admin" className="text-sm hover:underline">
+          {/* /admin/manage, not /admin — see the note in app/admin/page.tsx. A client-side nav
+              to the redirect-only /admin fails in production. */}
+          <Link href="/admin/manage" className="text-sm hover:underline">
             Admin
           </Link>
         </>
