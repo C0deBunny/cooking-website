@@ -1,6 +1,7 @@
 // import components
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
+import Link from "next/link";
 
 export default function HeroSection() {
   return (
@@ -13,8 +14,8 @@ export default function HeroSection() {
           <p className="mt-5 max-w-md text-base leading-7 text-muted-foreground sm:text-lg">Discover Surinamese/Caribian/Asian cuisine that bring warmth to your table.</p>
 
           <div className="mt-8">
-            <Button size="lg" className="rounded-xl px-6 shadow-md">
-              Browse Recipes
+            <Button asChild size="lg" className="rounded-xl px-6 shadow-md">
+              <Link href="/recipes">Browse Recipes</Link>
             </Button>
           </div>
 
