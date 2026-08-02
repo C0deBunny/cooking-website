@@ -1,5 +1,11 @@
 # Decisions: Recipe Creator wizard
 
+> **Historical record, not current guidance.** Decisions turning on ingredient groups were overtaken
+> by `c2c231d` (2026-08-01), which removed the feature entirely — grouping is gone from both the UI
+> and the schema. The decisions are kept as written because the reasoning still explains the shape of
+> what shipped. Current rules: [CLAUDE.md](../../../CLAUDE.md).
+> _Banner added 2026-08-02 during the docs audit; prose left untouched on purpose._
+
 ## 1. Four steps, held in client state on one route
 
 - **Date:** 2026-08-01

@@ -30,7 +30,7 @@ export default function Stepper({ step, complete, onGo }: { step: number; comple
   const allComplete = complete.every(Boolean);
 
   return (
-    <Card className="mb-6 grid gap-4 px-6 py-5 sm:grid-cols-2 lg:grid-cols-4">
+    <Card className="mb-6 grid gap-4 px-6 py-5 sm:grid-cols-2 lg:grid-cols-4 lg:gap-0">
       {STEPS.map((entry, index) => {
         const isReview = index === 3;
         const isLocked = isReview && !allComplete;
@@ -41,36 +41,42 @@ export default function Stepper({ step, complete, onGo }: { step: number; comple
         const status = isLocked ? "Locked" : isComplete ? "Complete" : isReview ? "Ready" : isCurrent ? "In progress" : "Not started";
 
         return (
-          <button
-            key={entry.title}
-            type="button"
-            disabled={isLocked}
-            onClick={() => onGo(index)}
-            aria-current={isCurrent ? "step" : undefined}
-            className="flex min-w-0 items-start gap-3 rounded-xl p-1 text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <span
-              className={cn(
-                "grid size-9 shrink-0 place-items-center rounded-full border border-transparent bg-muted text-muted-foreground transition-colors",
-                isCurrent && "bg-primary text-primary-foreground",
-                isComplete && !isCurrent && "border-difficulty-easy/35 bg-difficulty-easy-bg text-difficulty-easy"
-              )}
+          <div key={entry.title} className="flex min-w-0 items-start">
+            <button
+              type="button"
+              disabled={isLocked}
+              onClick={() => onGo(index)}
+              aria-current={isCurrent ? "step" : undefined}
+              className="flex min-w-0 items-start gap-3 rounded-xl p-1 text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <Icon className="size-4" />
-            </span>
-
-            <span className="min-w-0">
-              <span className="flex items-center gap-1.5 text-sm font-bold">
-                <span className="truncate">{entry.title}</span>
-                {isComplete ? <Check className="size-3.5 shrink-0 text-difficulty-easy" /> : null}
+              <span
+                className={cn(
+                  "grid size-9 shrink-0 place-items-center rounded-full border border-transparent bg-muted text-muted-foreground transition-colors",
+                  isCurrent && "bg-primary text-primary-foreground",
+                  isComplete && !isCurrent && "border-difficulty-easy/35 bg-difficulty-easy-bg text-difficulty-easy"
+                )}
+              >
+                <Icon className="size-4" />
               </span>
 
-              <span className={cn("flex items-center gap-1 text-xs text-muted-foreground", isComplete && "text-difficulty-easy")}>
-                {isLocked ? <Lock className="size-3" /> : null}
-                {status}
+              <span className="min-w-0">
+                <span className="flex items-center gap-1.5 text-sm font-bold">
+                  <span className="truncate">{entry.title}</span>
+                  {isComplete ? <Check className="size-3.5 shrink-0 text-difficulty-easy" /> : null}
+                </span>
+
+                <span className={cn("flex items-center gap-1 text-xs text-muted-foreground", isComplete && "text-difficulty-easy")}>
+                  {isLocked ? <Lock className="size-3" /> : null}
+                  {status}
+                </span>
               </span>
-            </span>
-          </button>
+            </button>
+
+            {/* Connector to the next step — only in the one-row layout, where "next" is to the right. It greens with the step it leaves, so the line reads as progress, not decoration. */}
+            {isReview ? null : (
+              <div aria-hidden className={cn("mx-auto mt-5.5 hidden h-0.5 max-w-24 min-w-3 flex-1 rounded-full bg-border transition-colors lg:block", complete[index] && "bg-difficulty-easy/55")} />
+            )}
+          </div>
         );
       })}
     </Card>

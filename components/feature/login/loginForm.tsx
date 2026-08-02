@@ -50,7 +50,7 @@ export default function Loginform() {
 
       {/* Error message */}
       {state.error && (
-        <p className="text-sm text-red-600" role="alert">
+        <p className="text-destructive text-sm" role="alert">
           {state.error}
         </p>
       )}

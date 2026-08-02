@@ -1,0 +1,108 @@
+{
+  "$comment": [
+    "Hand-maintained companion to scripts/gen-schema-doc.mjs.",
+    "",
+    "types/database.ts is generated from the live schema and is authoritative for tables, columns,",
+    "types, nullability, defaults, enums, functions and foreign keys. It carries NOTHING about",
+    "unique constraints, check constraints, partial indexes or RLS policies — Postgres has them,",
+    "the generated types don't. That is what this file supplies.",
+    "",
+    "So: never edit column facts here (the generator ignores them). Do update this file in the same",
+    "commit as any migration that adds or changes a constraint, index or policy. The generator warns",
+    "loudly and marks the HTML when a table in types/database.ts has no entry here."
+  ],
+
+  "tables": {
+    "recipes": {
+      "purpose": "One recipe. The only table with no foreign key — everything else hangs off it.",
+      "constraints": [
+        "primary key (id)",
+        "unique (slug)",
+        "check (slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$')",
+        "check (length(trim(title)) > 0)",
+        "check (prep_minutes > 0)",
+        "check (cook_minutes > 0)",
+        "check (servings > 0)",
+        "check (notes is null or length(trim(notes)) > 0)"
+      ],
+      "indexes": ["recipes_published_created_at_idx on (published, created_at desc) — serves the public list: filter to published, newest first"],
+      "notes": ["updated_at is maintained by a trigger, not by the app.", "slug is derived from the title and never editable — a rename changes a live URL."]
+    },
+
+    "recipe_steps": {
+      "purpose": "Ordered instructions for one recipe. Rewritten wholesale by save_recipe() on every save.",
+      "constraints": [
+        "primary key (id)",
+        "foreign key (recipe_id) references recipes (id) on delete cascade",
+        "unique (recipe_id, step_number)",
+        "check (step_number > 0)",
+        "check (length(trim(instruction)) > 0)",
+        "check (note is null or length(trim(note)) > 0)"
+      ],
+      "indexes": [],
+      "notes": ["image_path is unused — no Storage bucket exists. See docs/image-storage.md."]
+    },
+
+    "recipe_ingredients": {
+      "purpose": "Ordered ingredients for one recipe. Rewritten wholesale by save_recipe() on every save.",
+      "constraints": [
+        "primary key (id)",
+        "foreign key (recipe_id) references recipes (id) on delete cascade",
+        "unique (recipe_id, sort_order)",
+        "check (sort_order >= 0)",
+        "check (length(trim(name)) > 0)",
+        "check (amount > 0)"
+      ],
+      "indexes": [],
+      "notes": ["group_label existed briefly and was removed in c2c231d (2026-08-01) — ingredient grouping is not a feature."]
+    },
+
+    "recipe_images": {
+      "purpose": "Gallery images for one recipe. Nothing writes this table yet — no Storage bucket exists.",
+      "constraints": [
+        "primary key (id)",
+        "foreign key (recipe_id) references recipes (id) on delete cascade",
+        "unique (recipe_id, storage_path)",
+        "unique (recipe_id, sort_order)",
+        "check (length(trim(storage_path)) > 0)"
+      ],
+      "indexes": ["recipe_images_one_primary_idx — unique on (recipe_id) where is_primary: unlimited images per recipe, at most one primary"],
+      "notes": [
+        "The ONLY table save_recipe() does not write. Steps and ingredients are replaced as a whole set, so their positions never collide; images would be patched row by row, and unique (recipe_id, sort_order) is not deferrable. See issue 1 in docs/known-issues.md.",
+        "storage_path holds a path inside a bucket, not a URL.",
+        "on delete cascade removes these rows but NOT the files they name."
+      ]
+    }
+  },
+
+  "rls": {
+    "summary": "Enabled on all four tables. Two roles: visitor (anon) and admin (authenticated) — every logged-in account is an admin. Full model: docs/permission-model.md.",
+    "grants": ["grant select on <all four> to anon, authenticated", "grant insert, update, delete on <all four> to authenticated"],
+    "policies": [
+      { "table": "recipes", "role": "anon", "op": "select", "expr": "using (published)" },
+      { "table": "recipes", "role": "authenticated", "op": "select", "expr": "using (true)" },
+      { "table": "recipes", "role": "authenticated", "op": "all", "expr": "using (true) with check (true)" },
+      { "table": "recipe_steps", "role": "anon", "op": "select", "expr": "using (parent recipe is published)" },
+      { "table": "recipe_steps", "role": "authenticated", "op": "select", "expr": "using (true)" },
+      { "table": "recipe_steps", "role": "authenticated", "op": "all", "expr": "using (true) with check (true)" },
+      { "table": "recipe_ingredients", "role": "anon", "op": "select", "expr": "using (parent recipe is published)" },
+      { "table": "recipe_ingredients", "role": "authenticated", "op": "select", "expr": "using (true)" },
+      { "table": "recipe_ingredients", "role": "authenticated", "op": "all", "expr": "using (true) with check (true)" },
+      { "table": "recipe_images", "role": "anon", "op": "select", "expr": "using (parent recipe is published)" },
+      { "table": "recipe_images", "role": "authenticated", "op": "select", "expr": "using (true)" },
+      { "table": "recipe_images", "role": "authenticated", "op": "all", "expr": "using (true) with check (true)" }
+    ]
+  },
+
+  "functions": {
+    "save_recipe": {
+      "summary": "The only write path for a recipe and its children.",
+      "security": "security invoker · set search_path = '' · execute revoked from public and anon, granted to authenticated",
+      "notes": [
+        "Exists because Supabase JS sends every statement as its own transaction, so a delete-then-insert of children could leave a recipe with no steps.",
+        "Writes recipe_steps and recipe_ingredients as whole sets, taking position from array order. Does not touch recipe_images.",
+        "Extend it by reading another key off the payload, never by adding parameters."
+      ]
+    }
+  }
+}

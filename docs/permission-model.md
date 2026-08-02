@@ -47,8 +47,10 @@ can't silently widen access.
 
 ## What the app-level checks are, and aren't
 
-- `requireUser()` in every server action, and `AdminGate` for `/admin` pages, are **UX and
-  defence-in-depth**. They keep a logged-out visitor out of the admin UI.
+- `requireUser()` in every **mutating** server action, and `AdminGate` for `/admin` pages, are **UX
+  and defence-in-depth**. They keep a logged-out visitor out of the admin UI. `checkSlugTaken` is the
+  one action that skips it on purpose — it fires on a keystroke, and `requireUser()` redirects. It
+  calls `getCurrentUser()` instead and returns only a boolean, so RLS covers what it reads.
 - **RLS is the real boundary.** The publishable key ships to every visitor's browser, so anyone can
   call the Supabase API directly as `anon` without going through the app at all. Nothing in
   `app/` is in the request path for that.

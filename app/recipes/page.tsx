@@ -18,7 +18,11 @@ export default async function Recipes() {
 
       <div className="w-full max-w-7xl mx-auto px-6 py-12">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {recipes.length > 0 ? recipes.map((recipe) => <RecipeCard key={recipe.id} title={recipe.title} description={recipe.description} />) : <p className="text-gray-500">No recipes found.</p>}
+          {recipes.length > 0 ? (
+            recipes.map((recipe) => <RecipeCard key={recipe.id} title={recipe.title} description={recipe.description} />)
+          ) : (
+            <p className="text-muted-foreground">No recipes found.</p>
+          )}
         </div>
       </div>
     </section>

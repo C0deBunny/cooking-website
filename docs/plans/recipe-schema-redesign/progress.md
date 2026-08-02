@@ -9,7 +9,9 @@
 
 ## 2026-08-01
 
-- **Did:** implemented the whole create-only slice, uncommitted.
+- **Did:** implemented the whole create-only slice. _(Was logged as "uncommitted"; it landed in
+  `b6ba587` later the same day. Corrected 2026-08-02 during the docs audit. Note `group_label`,
+  added below, was removed again in `c2c231d` — see the banner on this folder's plan.md.)_
   - `20260801145317_recipe_content_fields.sql` — dropped `time_minutes`, added `prep_minutes`,
     `cook_minutes`, `notes` to `recipes`, `group_label` to `recipe_ingredients`, `note` to
     `recipe_steps`, and `unique (recipe_id, sort_order)` to `recipe_images`. Added

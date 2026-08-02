@@ -3,7 +3,8 @@
 Things found and deliberately not fixed yet. Each entry records what is wrong, why it was deferred,
 and what fixing it would take — so a later session doesn't have to rediscover it.
 
-Companion to [schema-current.html](schema-current.html), which mirrors the live schema.
+Companion to [schema-current.html](schema-current.html), which is generated from the live schema —
+see [database-workflow.md](database-workflow.md).
 
 Two larger open topics have their own docs rather than an entry here:
 [image-storage.md](image-storage.md) (no bucket exists yet — blocks the create form) and
@@ -80,25 +81,22 @@ times a month by one person.
   second click inserts a second recipe, or trips 23505 on the slug. That is why `saveRecipe`
   redirects rather than returning.
 
-## 3. `recipe_images.sort_order` is not unique per recipe
+## 3. ~~`recipe_images.sort_order` is not unique per recipe~~ — RESOLVED
 
 - **Found:** 2026-08-01, same pass
-- **Status:** agreed to fix — it should be unique. Folded into the schema redesign.
-- **Where:** same migration, `recipe_images`
+- **Resolved:** 2026-08-01, in the migration written the same day
+- **Status:** **fixed.** `20260801145317_recipe_content_fields.sql:72` adds
+  `constraint recipe_images_recipe_id_sort_order_key unique (recipe_id, sort_order)`.
+- **Where:** `recipe_images`
 
-`recipe_steps` and `recipe_ingredients` are each unique on `(recipe_id, <ordering column>)`.
-`recipe_images` is unique on `(recipe_id, storage_path)` instead — which prevents the same file being
-attached twice, but says nothing about position. Two images in one recipe can hold `sort_order = 0`,
-and since row order in Postgres is never guaranteed, the gallery renders them in an arbitrary and
-potentially unstable order.
+Kept as a record because the fix moved the problem rather than ending it: gaining the constraint is
+exactly what pulled `recipe_images` into issue 1 above. See that entry for the live problem.
 
-`sort_order` also defaults to `0`, so inserting several images without setting it explicitly is the
-easy path into exactly that state.
+**The original gap**, for context: `recipe_steps` and `recipe_ingredients` were each unique on
+`(recipe_id, <ordering column>)` from the start, while `recipe_images` was unique on
+`(recipe_id, storage_path)` only — which prevents the same file being attached twice but says nothing
+about position. Two images could hold `sort_order = 0`, and `sort_order` defaults to `0`, so
+inserting several images without setting it explicitly was the easy path into exactly that state.
 
-Fixing it means adding `unique (recipe_id, sort_order)` — which then inherits issue 1 above, so the
-two should be decided together. Existing duplicate positions would have to be renumbered before the
-constraint can be added.
-
-**Note:** `CLAUDE.md` described all three child tables as unique on their ordering column. That line
-was corrected on 2026-08-01 to describe the schema as it actually is; it goes back to the simpler
-wording once this is fixed.
+All three child tables are now unique on their ordering column, so that is the correct wording for
+`CLAUDE.md` and [database-workflow.md](database-workflow.md).

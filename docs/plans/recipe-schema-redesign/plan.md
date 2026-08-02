@@ -1,5 +1,12 @@
 # Plan: Recipe schema redesign
 
+> **Superseded in part — historical record, not current guidance.** Ingredient groups were removed
+> from the product and the schema in `c2c231d` (2026-08-01), after this plan was written. Every
+> mention of `group_label` or ingredient grouping below describes a feature that **no longer exists**
+> — do not build against it. The rest of the plan shipped as written. Current schema rules live in
+> [CLAUDE.md](../../../CLAUDE.md) and [database-workflow.md](../../database-workflow.md).
+> _Banner added 2026-08-02 during the docs audit; prose left untouched on purpose._
+
 ## Goal
 
 Reshape the recipe schema so the two screens that need it can actually be built: the create

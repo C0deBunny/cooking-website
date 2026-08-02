@@ -1,5 +1,13 @@
 # Decisions: Recipe schema redesign
 
+> **One decision here was later reversed — historical record, not current guidance.** Ingredient
+> groups were removed from the product and the schema in `c2c231d` (2026-08-01). Decisions below
+> that turn on `group_label` or ingredient grouping record what was decided **at the time** and were
+> undone; they are kept because the reasoning explains why the reversal was cheap. Everything else
+> still holds. Current rules: [CLAUDE.md](../../../CLAUDE.md) and
+> [database-workflow.md](../../database-workflow.md).
+> _Banner added 2026-08-02 during the docs audit; prose left untouched on purpose._
+
 ## 1. Make `recipe_images.sort_order` unique per recipe
 
 - **Date:** 2026-08-01
