@@ -30,7 +30,12 @@ export async function login(_prevState: LoginState, formData: FormData): Promise
     return { error: "Invalid email or password." };
   }
 
-  redirect("/admin");
+  // Straight to the real destination, not via /admin. /admin is a redirect-only page, and
+  // chaining a second hop off a server action's redirect breaks on Vercel: the edge collapses
+  // the hop while serving the action response, emitting a Location (/admin/manage) that
+  // disagrees with x-action-redirect (/admin), and the router's follow-up request 403s.
+  // Reproduces only in production — next dev has no edge layer resolving redirects.
+  redirect("/admin/manage");
 }
 
 export async function signOut() {
