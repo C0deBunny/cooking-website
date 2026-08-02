@@ -36,21 +36,16 @@ async function PreviewContent({ params }: Props) {
   return (
     <>
       <div className="flex flex-wrap items-center gap-4 border-b border-border bg-foreground/5 px-6 py-4">
-        <Badge variant={recipe.published ? "default" : "secondary"}>{recipe.published ? "Published" : "Draft"}</Badge>
+        {/* Same variants the manage table uses, so a recipe's status reads identically in both places. */}
+        <Badge variant={recipe.published ? "secondary" : "outline"}>{recipe.published ? "Published" : "Draft"}</Badge>
 
         <p className="text-sm text-muted-foreground">{recipe.published ? "This is live on the site." : "Only you can see this. It won't appear on /recipes until it's published."}</p>
 
-        <div className="ml-auto flex gap-2">
-          {recipe.published ? (
-            <Button asChild variant="outline" size="sm">
-              <Link href={`/recipes/${recipe.slug}`}>View public page</Link>
-            </Button>
-          ) : null}
-
-          <Button asChild variant="outline" size="sm">
-            <Link href="/admin/create">New recipe</Link>
+        {recipe.published ? (
+          <Button asChild variant="outline" size="sm" className="ml-auto">
+            <Link href={`/recipes/${recipe.slug}`}>View public page</Link>
           </Button>
-        </div>
+        ) : null}
       </div>
 
       <RecipeArticle recipe={toRecipeView(recipe)} />
