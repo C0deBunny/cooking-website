@@ -1,5 +1,13 @@
 # Plan: Recipe Creator wizard
 
+> **Superseded in part — historical record, not current guidance.** Ingredient groups were removed
+> in `c2c231d` (2026-08-01), so the nine mentions of `group_label` / grouped ingredients below
+> describe UI and schema that **no longer exist** — the Ingredients step has no grouping. Everything
+> else shipped as written (`ee36175`). CLAUDE.md links here for wizard reasoning, so read it with
+> that caveat; the four load-bearing invariants are restated current in
+> [CLAUDE.md](../../../CLAUDE.md).
+> _Banner added 2026-08-02 during the docs audit; prose left untouched on purpose._
+
 ## Goal
 
 Replace the single scrolling form at `/admin/create` with a four-step wizard — **Details ·

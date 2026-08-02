@@ -33,6 +33,14 @@ Picking the wrong one of these is silent: the page just serves stale data.
 - **`revalidateTag("recipes", profile)` — marks entries stale for a later background refresh.** The
   second argument is **required** in Next 16, and it does not guarantee freshness on the next read.
   For webhooks and external syncs, not form submissions.
+- **`revalidatePath("/admin/manage")` — refreshes one route's entry in the client router cache.**
+  Needed for pages that are _uncached_, so no tag covers them. `togglePublished` calls it **alongside**
+  `updateTag` and both are load-bearing: `updateTag` kills the cached public reads, without which a
+  freshly published recipe stays missing from `/recipes` for the revalidate window, while
+  `revalidatePath` is what stops the manage-page row re-rendering its pre-click state.
+
+A tag and a path are not alternatives — a mutation that changes both a cached read and an uncached
+admin view needs both calls. See `lib/recipes/actions.ts:127`.
 
 ## Request data fails the build, it doesn't merely degrade
 

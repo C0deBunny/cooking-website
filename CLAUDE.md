@@ -8,7 +8,7 @@ Rules and traps live here. The reasoning behind them lives in `docs/`, linked pe
 ## Commands
 
 `npm run` scripts: `dev` · `build` · `lint` · `typecheck` · `format` · `format:check` · `db:push` ·
-`db:types`.
+`db:types` · `db:doc`.
 
 - **Run `lint` + `typecheck` before declaring work done.** All four checks pass on a clean tree; keep
   it that way.
@@ -47,6 +47,10 @@ Non-obvious files:
 - `proxy.ts` — Next 16's renamed middleware; refreshes the Supabase session cookie.
 - `types/database.ts` — GENERATED, don't hand-edit. Same for `components/ui/` (shadcn: regenerate).
 - `lib/utils.ts` — path must match the `utils` alias in `components.json`.
+- `app/admin/page.tsx` — redirects to `/admin/manage`. **Never link or redirect to `/admin`**; target
+  `/admin/manage` directly. The route only survives a hard load — on Vercel, client-router `<Link>`
+  navigation and server-action redirects to it both fail, and **it is invisible in dev.** Symptoms
+  and cause are in the file's own comment.
 
 `components/feature/` vs `components/shared/` is still being unwound. The target: route-specific
 components colocate under their route, leaving `components/` for genuinely cross-route pieces
@@ -70,7 +74,8 @@ any new client.
 
 Four tables — `recipes` (`slug` unique, `published`, …), plus `recipe_steps`, `recipe_ingredients`
 and `recipe_images`, each keyed on `recipe_id`. Live schema:
-[docs/schema-current.html](docs/schema-current.html).
+[docs/schema-current.html](docs/schema-current.html) — **generated, don't hand-edit** (`npm run db:doc`,
+also run by `db:types`).
 
 - **`save_recipe(payload jsonb)` is the only write path** for a recipe and its children. Extend it by
   reading another key off the payload, never by adding parameters.
@@ -128,8 +133,10 @@ Cache lifetimes, each request-data trap with the file it bit, and the `/admin` p
 
 ## Auth & permissions
 
-- **Writes** — every action calls `await requireUser()` before touching the database. Keep it in
-  every new action.
+- **Writes** — every mutating action calls `await requireUser()` before touching the database. Keep
+  it in every new one. The one exception is deliberate: `checkSlugTaken` runs on a keystroke and
+  `requireUser()` redirects, so it uses `getCurrentUser()` and reads nothing it wouldn't show a
+  visitor.
 - **Pages** — `app/admin/layout.tsx` renders `AdminGate` inside `Suspense`. New owner-only routes go
   under `app/admin/` so the gate covers them; don't repeat the check per page.
 - **`/admin` is not hard-gated.** Its shell is flushed before the gate resolves, so an anonymous

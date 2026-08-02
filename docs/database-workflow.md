@@ -1,7 +1,7 @@
 # Database workflow
 
 How to change and inspect the schema, and the reasoning behind the one write path. Companion to
-[schema-current.html](schema-current.html) (the live schema, mirrored),
+[schema-current.html](schema-current.html) (the live schema, generated),
 [known-issues.md](known-issues.md) and [permission-model.md](permission-model.md).
 
 Docker is unavailable here, which shapes everything below — see [toolchain.md](toolchain.md).
@@ -11,12 +11,23 @@ Docker is unavailable here, which shapes everything below — see [toolchain.md]
 ```bash
 npx supabase migration new <name>   # creates an empty timestamped file to write SQL into
 npm run db:push                     # apply it
-npm run db:types                    # regenerate types/database.ts
+npm run db:types                    # regenerate types/database.ts AND docs/schema-current.html
 npm run typecheck                   # the payoff: a dropped column breaks every reader
 ```
 
 The schema lives in `supabase/migrations/` as hand-written SQL; `types/database.ts` is generated from
-it. Both are committed.
+the live database. Both are committed.
+
+**If the migration added or changed a constraint, index or policy, edit
+`scripts/schema-annotations.json` in the same commit.** Generated types carry columns, types,
+nullability, defaults, enums, functions and foreign keys — and nothing about `unique`, `check`,
+partial indexes or RLS. That sidecar supplies the rest, and
+[schema-current.html](schema-current.html) is built from the two together by
+`scripts/gen-schema-doc.mjs` (`npm run db:doc` to run it alone).
+
+The generator warns, on the console and in the page itself, when a table exists in one and not the
+other — which is the only drift signal this project has. It writes no timestamp, so regenerating an
+unchanged schema is a no-op in `git diff`.
 
 ## There is no drift detection
 

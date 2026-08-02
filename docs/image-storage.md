@@ -20,9 +20,11 @@ Both hold a **path inside a bucket, not a URL.** That is the right call — it k
 CDN hostname out of the database, so the rows survive a project move and the URL shape can change
 without a data migration.
 
-**In the app** — nothing. No code reads `recipe_images`, constructs a public URL, or calls
-`supabase.storage`. The only reference anywhere is a type alias in `types/recipes.ts`.
-`lib/recipes/queries.ts` selects from `recipes` alone and doesn't join the images table.
+**In the app** — nothing executable. No code reads `recipe_images`, constructs a public URL, or calls
+`supabase.storage`. `lib/recipes/queries.ts` selects from `recipes` alone and doesn't join the images
+table. The only references are inert: the `RecipeImage` type alias in `types/recipes.ts` (with a note
+on `RecipeWithChildren` saying images are omitted on purpose), and a comment on `deleteRecipe` in
+`lib/recipes/actions.ts` flagging the orphan trap below.
 
 **In `supabase/config.toml`** — `[storage] enabled = true`, and a commented-out
 `[storage.buckets.images]` example.
