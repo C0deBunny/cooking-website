@@ -1,0 +1,835 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Schema redesign — A vs C</title>
+    <style>
+      :root {
+        --bg: #0e1116;
+        --panel: #161b22;
+        --panel-2: #1c232c;
+        --line: #2b333d;
+        --line-soft: #232a33;
+        --fg: #e6edf3;
+        --fg-dim: #9aa7b4;
+        --fg-faint: #6e7c8a;
+        --accent: #f0883e;
+        --accent-soft: rgba(240, 136, 62, 0.14);
+        --cyan: #39c5cf;
+        --cyan-soft: rgba(57, 197, 207, 0.12);
+        --green: #57ab5a;
+        --blue: #6cb6ff;
+        --purple: #b083f0;
+        --red: #e5534b;
+        --yellow: #daaa3f;
+        --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        padding: 40px 28px 72px;
+        background: radial-gradient(1200px 600px at 20% -10%, #17202b 0%, transparent 60%), var(--bg);
+        color: var(--fg);
+        font:
+          15px/1.55 system-ui,
+          -apple-system,
+          "Segoe UI",
+          sans-serif;
+      }
+
+      .wrap {
+        max-width: 1420px;
+        margin: 0 auto;
+      }
+
+      header {
+        border-bottom: 1px solid var(--line);
+        padding-bottom: 22px;
+        margin-bottom: 14px;
+      }
+
+      h1 {
+        margin: 0 0 8px;
+        font-size: 26px;
+        font-weight: 650;
+        letter-spacing: -0.01em;
+      }
+
+      .sub {
+        color: var(--fg-dim);
+        font-size: 14px;
+        margin: 0;
+        max-width: 96ch;
+      }
+
+      .crux {
+        margin: 22px 0 34px;
+        padding: 14px 18px;
+        background: var(--accent-soft);
+        border: 1px solid rgba(240, 136, 62, 0.3);
+        border-left: 3px solid var(--accent);
+        border-radius: 8px;
+        font-size: 14px;
+        color: var(--fg);
+      }
+      .crux strong {
+        color: var(--accent);
+      }
+
+      /* ---------- section scaffolding ---------- */
+
+      .row-label {
+        display: flex;
+        align-items: baseline;
+        gap: 12px;
+        margin: 38px 0 14px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--line);
+      }
+      .row-label h2 {
+        margin: 0;
+        font-size: 13px;
+        font-weight: 650;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--fg-dim);
+      }
+      .row-label .why {
+        font-size: 12.5px;
+        color: var(--fg-faint);
+      }
+
+      .pair {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 18px;
+        align-items: start;
+      }
+
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        overflow: hidden;
+      }
+      .card.a {
+        border-top: 2px solid var(--accent);
+      }
+      .card.c {
+        border-top: 2px solid var(--cyan);
+      }
+
+      .card-head {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 15px;
+        background: var(--panel-2);
+        border-bottom: 1px solid var(--line);
+      }
+      .pill {
+        font-family: var(--mono);
+        font-size: 11px;
+        font-weight: 700;
+        padding: 2px 7px;
+        border-radius: 4px;
+      }
+      .pill.a {
+        color: var(--accent);
+        background: var(--accent-soft);
+        border: 1px solid rgba(240, 136, 62, 0.35);
+      }
+      .pill.c {
+        color: var(--cyan);
+        background: var(--cyan-soft);
+        border: 1px solid rgba(57, 197, 207, 0.35);
+      }
+      .card-head .name {
+        font-size: 13.5px;
+        font-weight: 600;
+      }
+      .card-head .rec {
+        margin-left: auto;
+        font-size: 10.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--accent);
+      }
+
+      .card-body {
+        padding: 14px 15px;
+      }
+      .card-body > p {
+        margin: 0 0 10px;
+        font-size: 13px;
+        color: var(--fg-dim);
+      }
+      .card-body > p:last-child {
+        margin-bottom: 0;
+      }
+
+      pre {
+        margin: 0;
+        font-family: var(--mono);
+        font-size: 11.5px;
+        line-height: 1.65;
+        color: var(--fg);
+        white-space: pre;
+        overflow-x: auto;
+      }
+      pre .k {
+        color: var(--purple);
+      }
+      pre .t {
+        color: var(--blue);
+      }
+      pre .c1 {
+        color: var(--fg-faint);
+        font-style: italic;
+      }
+      pre .add {
+        color: var(--green);
+      }
+      pre .del {
+        color: var(--red);
+      }
+      pre .warn {
+        color: var(--yellow);
+      }
+      pre .str {
+        color: var(--cyan);
+      }
+
+      code {
+        font-family: var(--mono);
+        font-size: 12px;
+        background: rgba(255, 255, 255, 0.05);
+        padding: 1px 5px;
+        border-radius: 4px;
+      }
+
+      /* ---------- mini table blocks ---------- */
+
+      .tbl {
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        overflow: hidden;
+        margin-bottom: 10px;
+      }
+      .tbl:last-child {
+        margin-bottom: 0;
+      }
+      .tbl-h {
+        font-family: var(--mono);
+        font-size: 12px;
+        font-weight: 600;
+        padding: 7px 11px;
+        background: var(--panel-2);
+        border-bottom: 1px solid var(--line);
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      .tbl-h .note {
+        margin-left: auto;
+        font-family: system-ui;
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--fg-faint);
+        font-weight: 400;
+      }
+      .tbl-h.new {
+        color: var(--green);
+      }
+      .tbl-h.gone {
+        color: var(--red);
+        text-decoration: line-through;
+      }
+      .tbl-b {
+        padding: 8px 11px;
+        font-family: var(--mono);
+        font-size: 11.5px;
+        line-height: 1.85;
+        color: var(--fg-dim);
+      }
+      .tbl-b .nu {
+        color: var(--green);
+        font-weight: 600;
+      }
+      .tbl-b .js {
+        color: var(--yellow);
+        font-weight: 600;
+      }
+      .tbl-b .rm {
+        color: var(--red);
+        text-decoration: line-through;
+        opacity: 0.7;
+      }
+
+      /* ---------- transaction box ---------- */
+
+      .txn {
+        border: 1px dashed rgba(87, 171, 90, 0.5);
+        border-radius: 6px;
+        padding: 8px 10px;
+        margin: 7px 0;
+        background: rgba(87, 171, 90, 0.06);
+      }
+      .txn-label {
+        font-family: var(--mono);
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--green);
+        margin-bottom: 5px;
+      }
+
+      .hop {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-family: var(--mono);
+        font-size: 11.5px;
+        padding: 4px 0;
+      }
+      .hop .n {
+        flex: none;
+        width: 17px;
+        height: 17px;
+        display: grid;
+        place-items: center;
+        border-radius: 4px;
+        font-size: 10px;
+        font-weight: 700;
+        background: rgba(255, 255, 255, 0.07);
+        color: var(--fg-dim);
+      }
+
+      .verdict {
+        margin-top: 11px;
+        padding: 8px 11px;
+        border-radius: 6px;
+        font-size: 12.5px;
+        border: 1px solid transparent;
+      }
+      .verdict.good {
+        color: #8ddb90;
+        background: rgba(87, 171, 90, 0.1);
+        border-color: rgba(87, 171, 90, 0.3);
+      }
+      .verdict.bad {
+        color: #ff9a93;
+        background: rgba(229, 83, 75, 0.1);
+        border-color: rgba(229, 83, 75, 0.3);
+      }
+      .verdict.mid {
+        color: #e8c56a;
+        background: rgba(218, 170, 63, 0.1);
+        border-color: rgba(218, 170, 63, 0.3);
+      }
+
+      /* ---------- matrix ---------- */
+
+      .matrix-scroll {
+        overflow-x: auto;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--panel);
+      }
+      table.mx {
+        border-collapse: collapse;
+        width: 100%;
+        min-width: 780px;
+        font-size: 13px;
+      }
+      table.mx th,
+      table.mx td {
+        padding: 9px 14px;
+        text-align: left;
+        border-bottom: 1px solid var(--line-soft);
+        vertical-align: top;
+      }
+      table.mx thead th {
+        background: var(--panel-2);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        color: var(--fg-dim);
+        font-weight: 600;
+        border-bottom: 1px solid var(--line);
+      }
+      table.mx thead th.ca {
+        color: var(--accent);
+      }
+      table.mx thead th.cc {
+        color: var(--cyan);
+      }
+      table.mx tbody tr:last-child td {
+        border-bottom: 0;
+      }
+      table.mx td.crit {
+        color: var(--fg);
+        width: 27%;
+      }
+      table.mx td.cell {
+        color: var(--fg-dim);
+        font-size: 12.5px;
+        width: 36.5%;
+      }
+      .mk {
+        font-weight: 700;
+        margin-right: 6px;
+        font-family: var(--mono);
+      }
+      .mk.y {
+        color: var(--green);
+      }
+      .mk.n {
+        color: var(--red);
+      }
+      .mk.p {
+        color: var(--yellow);
+      }
+
+      /* ---------- closing ---------- */
+
+      .choose {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 18px;
+        margin-top: 16px;
+      }
+      .choose .box {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 16px 18px;
+      }
+      .choose .box.a {
+        border-left: 3px solid var(--accent);
+      }
+      .choose .box.c {
+        border-left: 3px solid var(--cyan);
+      }
+      .choose h3 {
+        margin: 0 0 10px;
+        font-size: 13.5px;
+      }
+      .choose ul {
+        margin: 0;
+        padding-left: 18px;
+        font-size: 13px;
+        color: var(--fg-dim);
+      }
+      .choose li {
+        margin-bottom: 6px;
+      }
+      .choose li:last-child {
+        margin-bottom: 0;
+      }
+
+      footer {
+        margin-top: 44px;
+        padding-top: 18px;
+        border-top: 1px solid var(--line);
+        font-size: 12px;
+        color: var(--fg-faint);
+      }
+
+      @media (max-width: 1000px) {
+        .pair,
+        .choose {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <h1>Schema redesign — Approach A vs Approach C</h1>
+        <p class="sub">
+          Both deliver the same four content features: ingredient groups, prep/cook split, notes, tags. They differ in one decision only — whether steps and ingredients stay as rows or become
+          <code>jsonb</code> inside the recipe row. Everything below follows from that.
+        </p>
+      </header>
+
+      <div class="crux">
+        <strong>The trade, in one line:</strong> A keeps the database validating your data and <code>db:types</code> typing it, and pays for that with a SQL function you have to write. C makes the
+        save trivially atomic and groups free, and pays for that by making the database blind to what's inside the blob.
+      </div>
+
+      <!-- ============ 1. SCHEMA SHAPE ============ -->
+
+      <div class="row-label">
+        <h2>1 · The shape</h2>
+        <span class="why">what actually changes from today's four tables</span>
+      </div>
+
+      <div class="pair">
+        <div class="card a">
+          <div class="card-head"><span class="pill a">A</span><span class="name">Extend in place</span><span class="rec">recommended</span></div>
+          <div class="card-body">
+            <div class="tbl">
+              <div class="tbl-h">recipes<span class="note">4 new columns</span></div>
+              <div class="tbl-b">
+                id · slug · title · description<br />
+                difficulty · servings · published<br />
+                <span class="rm">time_minutes</span> <span class="nu">prep_minutes · cook_minutes</span><br />
+                <span class="nu">notes · published_at</span><br />
+                created_at · updated_at
+              </div>
+            </div>
+            <div class="tbl">
+              <div class="tbl-h">recipe_ingredients<span class="note">1 new column</span></div>
+              <div class="tbl-b">id · recipe_id · sort_order<br /><span class="nu">group_label</span> · name · amount · unit</div>
+            </div>
+            <div class="tbl">
+              <div class="tbl-h">recipe_steps<span class="note">1 new column</span></div>
+              <div class="tbl-b">id · recipe_id · step_number<br />instruction · <span class="nu">note</span> · image_path</div>
+            </div>
+            <div class="tbl">
+              <div class="tbl-h">recipe_images<span class="note">unchanged + fix</span></div>
+              <div class="tbl-b">id · recipe_id · storage_path · alt<br />sort_order · is_primary<br /><span class="nu">+ unique (recipe_id, sort_order)</span></div>
+            </div>
+            <div class="tbl">
+              <div class="tbl-h new">tags · recipe_tags<span class="note">detachable</span></div>
+              <div class="tbl-b"><span class="nu">tags</span> (id · slug · label)<br /><span class="nu">recipe_tags</span> (recipe_id · tag_id)</div>
+            </div>
+            <div class="verdict mid">6 tables · every field is a real column with real constraints</div>
+          </div>
+        </div>
+
+        <div class="card c">
+          <div class="card-head"><span class="pill c">C</span><span class="name">jsonb for the child content</span></div>
+          <div class="card-body">
+            <div class="tbl">
+              <div class="tbl-h">recipes<span class="note">6 new columns</span></div>
+              <div class="tbl-b">
+                id · slug · title · description<br />
+                difficulty · servings · published<br />
+                <span class="rm">time_minutes</span> <span class="nu">prep_minutes · cook_minutes</span><br />
+                <span class="nu">notes · published_at</span><br />
+                <span class="js">ingredients jsonb · steps jsonb</span><br />
+                created_at · updated_at
+              </div>
+            </div>
+            <div class="tbl">
+              <div class="tbl-h gone">recipe_ingredients</div>
+              <div class="tbl-b">dropped — lives in the blob, groups<br />and order included, nesting for free</div>
+            </div>
+            <div class="tbl">
+              <div class="tbl-h gone">recipe_steps</div>
+              <div class="tbl-b">dropped — note and image_path<br />become keys in each step object</div>
+            </div>
+            <div class="tbl">
+              <div class="tbl-h">recipe_images<span class="note">stays relational</span></div>
+              <div class="tbl-b">
+                id · recipe_id · storage_path · alt<br />sort_order · is_primary<br /><span class="note" style="color: var(--fg-faint)">files need rows so deletes find paths</span>
+              </div>
+            </div>
+            <div class="tbl">
+              <div class="tbl-h new">tags · recipe_tags<span class="note">detachable</span></div>
+              <div class="tbl-b"><span class="nu">tags</span> (id · slug · label)<br /><span class="nu">recipe_tags</span> (recipe_id · tag_id)</div>
+            </div>
+            <div class="verdict mid">4 tables · but two of them are opaque to the database</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ 2. THE SAVE ============ -->
+
+      <div class="row-label">
+        <h2>2 · What happens when you hit Save</h2>
+        <span class="why">the reason this choice exists at all — each Supabase request is its own transaction</span>
+      </div>
+
+      <div class="pair">
+        <div class="card a">
+          <div class="card-head"><span class="pill a">A</span><span class="name">One RPC, one transaction</span></div>
+          <div class="card-body">
+            <div class="hop"><span class="n">1</span>zod validates the form</div>
+            <div class="hop"><span class="n">2</span>supabase.rpc(<span style="color: var(--cyan)">'save_recipe'</span>, payload)</div>
+            <div class="txn">
+              <div class="txn-label">inside the function — one transaction</div>
+              <pre><span class="k">upsert</span> recipes
+<span class="k">delete</span> ingredients, steps, recipe_tags
+<span class="k">insert</span> ingredients  <span class="c1">idx → sort_order</span>
+<span class="k">insert</span> steps        <span class="c1">idx → step_number</span>
+<span class="k">insert</span> recipe_tags</pre>
+            </div>
+            <div class="hop"><span class="n">3</span>commit — or nothing happened at all</div>
+            <div class="verdict good">✓ 1 round trip · all-or-nothing · a failed insert leaves the old recipe fully intact</div>
+            <p style="margin-top: 10px">
+              <span style="color: var(--yellow)">Cost:</span> you write and maintain a plpgsql function, and with no Docker you can only exercise it against the real project through the app.
+            </p>
+          </div>
+        </div>
+
+        <div class="card c">
+          <div class="card-head"><span class="pill c">C</span><span class="name">One update — plus tags</span></div>
+          <div class="card-body">
+            <div class="hop"><span class="n">1</span>zod validates the form</div>
+            <div class="txn">
+              <div class="txn-label">request 1 — atomic by definition</div>
+              <pre><span class="k">update</span> recipes <span class="k">set</span>
+  ingredients = <span class="str">'[…]'</span>::jsonb,
+  steps       = <span class="str">'[…]'</span>::jsonb,
+  title = …, prep_minutes = …</pre>
+            </div>
+            <div class="txn" style="border-color: rgba(229, 83, 75, 0.5); background: rgba(229, 83, 75, 0.06)">
+              <div class="txn-label" style="color: var(--red)">request 2 — separate transaction</div>
+              <pre><span class="k">delete</span> <span class="k">from</span> recipe_tags <span class="k">where</span> …
+<span class="k">insert</span> <span class="k">into</span> recipe_tags …</pre>
+            </div>
+            <div class="verdict mid">~ The recipe body is bulletproof. Tags are not — they're still two requests, so a failure between them loses the tags.</div>
+            <p style="margin-top: 10px">
+              <span style="color: var(--green)">If tags are deferred,</span> C becomes a genuine single statement with no function to write at all — that's its strongest form.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ 3. TYPES ============ -->
+
+      <div class="row-label">
+        <h2>3 · What your TypeScript gets</h2>
+        <span class="why">this is the axis the project has already committed to — see types/recipes.ts</span>
+      </div>
+
+      <div class="pair">
+        <div class="card a">
+          <div class="card-head"><span class="pill a">A</span><span class="name">Generated, checked</span></div>
+          <div class="card-body">
+            <pre><span class="c1">// db:types generates this — you write none of it</span>
+<span class="k">type</span> <span class="t">RecipeIngredient</span> = {
+  id: <span class="t">number</span>
+  recipe_id: <span class="t">number</span>
+  sort_order: <span class="t">number</span>
+  group_label: <span class="t">string</span> | <span class="t">null</span>
+  name: <span class="t">string</span>
+  amount: <span class="t">number</span> | <span class="t">null</span>
+  unit: <span class="t">string</span> | <span class="t">null</span>
+}
+
+ing.nmae  <span class="del">← compile error</span>
+<span class="c1">drop a column → every reader breaks</span></pre>
+            <div class="verdict good">✓ The payoff CLAUDE.md describes: a schema change surfaces as a type error, not a blank page</div>
+          </div>
+        </div>
+
+        <div class="card c">
+          <div class="card-head"><span class="pill c">C</span><span class="name">Opaque, hand-written</span></div>
+          <div class="card-body">
+            <pre><span class="c1">// db:types can only say this much:</span>
+<span class="k">type</span> <span class="t">Recipe</span> = {
+  <span class="c1">…</span>
+  ingredients: <span class="warn">Json</span>   <span class="c1">← no shape</span>
+  steps:       <span class="warn">Json</span>   <span class="c1">← no shape</span>
+}
+
+<span class="c1">// so you hand-write and cast:</span>
+<span class="k">type</span> <span class="t">Ingredient</span> = { name: <span class="t">string</span>, … }
+<span class="k">const</span> ings = r.ingredients <span class="k">as unknown as</span>
+                              <span class="t">Ingredient</span>[]
+
+ing.nmae  <span class="warn">← compiles fine. undefined at runtime</span></pre>
+            <div class="verdict bad">✕ Reintroduces hand-written row types — the exact thing types/recipes.ts was written to stop</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ 4. VALIDATION ============ -->
+
+      <div class="row-label">
+        <h2>4 · What the database will refuse to store</h2>
+        <span class="why">zod guards your form; this guards everything else — Table Editor, scripts, a future API</span>
+      </div>
+
+      <div class="pair">
+        <div class="card a">
+          <div class="card-head"><span class="pill a">A</span><span class="name">Refused at the database</span></div>
+          <div class="card-body">
+            <pre><span class="add">✓</span> amount <span class="k">check</span> (amount &gt; <span class="t">0</span>)
+<span class="add">✓</span> name   <span class="k">check</span> (length(trim(name)) &gt; <span class="t">0</span>)
+<span class="add">✓</span> <span class="k">unique</span> (recipe_id, sort_order)
+<span class="add">✓</span> step_number <span class="k">check</span> (&gt; <span class="t">0</span>)
+<span class="add">✓</span> recipe_id <span class="k">references</span> recipes</pre>
+            <p style="margin-top: 10px">A blank ingredient name or a negative amount is rejected no matter what wrote it.</p>
+            <div class="verdict good">✓ Constraints hold for every writer, not just the form</div>
+          </div>
+        </div>
+
+        <div class="card c">
+          <div class="card-head"><span class="pill c">C</span><span class="name">Nothing inside the blob</span></div>
+          <div class="card-body">
+            <pre><span class="c1">// all of this is a legal recipes row:</span>
+ingredients = <span class="str">'[{"name": "", "amount": -5},
+                {"nmae": "rijst"},
+                "not even an object"]'</span>
+
+<span class="del">✕</span> no check on any field
+<span class="del">✕</span> no uniqueness on position
+<span class="del">✕</span> zod is the <span class="k">only</span> line of defence</pre>
+            <p style="margin-top: 10px">
+              Recoverable with a <code>check (jsonb_typeof(…))</code> or a validation trigger — but that's hand-written SQL, which erodes the "no function to write" advantage.
+            </p>
+            <div class="verdict bad">✕ One bad script or Table Editor edit and the detail page renders garbage</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ 5. MATRIX ============ -->
+
+      <div class="row-label">
+        <h2>5 · Side by side</h2>
+        <span class="why">✓ wins · ~ partial · ✕ loses</span>
+      </div>
+
+      <div class="matrix-scroll">
+        <table class="mx">
+          <thead>
+            <tr>
+              <th>Criterion</th>
+              <th class="ca">A — relational + RPC</th>
+              <th class="cc">C — jsonb children</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="crit">Atomic save</td>
+              <td class="cell"><span class="mk y">✓</span>One transaction, everything or nothing</td>
+              <td class="cell"><span class="mk y">✓</span>Free for the recipe body; <span class="mk p">~</span>tags still separate</td>
+            </tr>
+            <tr>
+              <td class="crit">Typed rows from <code>db:types</code></td>
+              <td class="cell"><span class="mk y">✓</span>Fully generated, drift impossible</td>
+              <td class="cell"><span class="mk n">✕</span><code>Json</code> + hand-written types + casts</td>
+            </tr>
+            <tr>
+              <td class="crit">Database validates content</td>
+              <td class="cell"><span class="mk y">✓</span>Checks, uniques, foreign keys</td>
+              <td class="cell"><span class="mk n">✕</span>Blind inside the blob</td>
+            </tr>
+            <tr>
+              <td class="crit">Ingredient groups</td>
+              <td class="cell"><span class="mk p">~</span>One denormalized <code>group_label</code>; order implicit</td>
+              <td class="cell"><span class="mk y">✓</span>Real nesting, order explicit, free</td>
+            </tr>
+            <tr>
+              <td class="crit">Reordering</td>
+              <td class="cell"><span class="mk y">✓</span>Array index, rewritten each save</td>
+              <td class="cell"><span class="mk y">✓</span>Literally array order</td>
+            </tr>
+            <tr>
+              <td class="crit">Detail page read</td>
+              <td class="cell"><span class="mk p">~</span>One nested <code>select</code> with embedded children</td>
+              <td class="cell"><span class="mk y">✓</span>Single row, no join</td>
+            </tr>
+            <tr>
+              <td class="crit">"Recipes containing plantain"</td>
+              <td class="cell"><span class="mk y">✓</span>Ordinary <code>where name ilike</code> + index</td>
+              <td class="cell"><span class="mk n">✕</span>jsonb operators, GIN index, awkward</td>
+            </tr>
+            <tr>
+              <td class="crit">Changing the shape later</td>
+              <td class="cell"><span class="mk y">✓</span>A migration + <code>typecheck</code> finds every reader</td>
+              <td class="cell"><span class="mk n">✕</span>Old rows keep the old shape silently, forever</td>
+            </tr>
+            <tr>
+              <td class="crit">New SQL to write</td>
+              <td class="cell"><span class="mk n">✕</span>A plpgsql function, untestable without Docker</td>
+              <td class="cell"><span class="mk y">✓</span>None — if tags are deferred</td>
+            </tr>
+            <tr>
+              <td class="crit">Consistency with images</td>
+              <td class="cell"><span class="mk y">✓</span>All children modelled the same way</td>
+              <td class="cell"><span class="mk n">✕</span>Images relational, the other two not</td>
+            </tr>
+            <tr>
+              <td class="crit">Reversibility</td>
+              <td class="cell"><span class="mk y">✓</span>Rows → jsonb is a simple aggregate query</td>
+              <td class="cell"><span class="mk p">~</span>jsonb → rows needs a parse of every blob, and anything malformed has to be fixed by hand</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- ============ 6. WHAT WILL BITE ============ -->
+
+      <div class="row-label">
+        <h2>6 · The thing that will actually bite you</h2>
+        <span class="why">not the theoretical objection — the one you'll hit in month three</span>
+      </div>
+
+      <div class="pair">
+        <div class="card a">
+          <div class="card-head"><span class="pill a">A</span><span class="name">Debugging SQL blind</span></div>
+          <div class="card-body">
+            <p>
+              You write <code>save_recipe</code>, push it, and it fails on a real submit with a message from inside plpgsql. No Docker means no local shadow database, so the loop is: edit,
+              <code>db:push</code>, retry through the form.
+            </p>
+            <p>
+              <strong style="color: var(--fg)">Why it's survivable:</strong> it's one function, written once, and it stops changing. The pain is front-loaded into the build, not spread across every
+              future recipe.
+            </p>
+          </div>
+        </div>
+
+        <div class="card c">
+          <div class="card-head"><span class="pill c">C</span><span class="name">Silent shape drift</span></div>
+          <div class="card-body">
+            <p>
+              In month three you rename a key — <code>amount</code> → <code>quantity</code>. New recipes save fine. The twelve existing rows keep <code>amount</code> forever. No migration touches
+              them, no type error fires, and the detail page renders blank amounts for old recipes only.
+            </p>
+            <p>
+              <strong style="color: var(--fg)">Why it's worse here specifically:</strong> this project already has <em>no drift detection</em> — <code>db:diff</code> needs Docker. A blob whose shape
+              lives only in your head compounds a weakness you already have.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ 7. CHOOSE ============ -->
+
+      <div class="row-label">
+        <h2>7 · Pick on this basis</h2>
+        <span class="why">both are defensible — they optimise for different things</span>
+      </div>
+
+      <div class="choose">
+        <div class="box a">
+          <h3><span class="pill a">A</span> &nbsp;Choose if…</h3>
+          <ul>
+            <li>You want the database to stay the thing that guarantees your data is sane, not the form.</li>
+            <li>You value <code>npm run typecheck</code> catching a schema change across every reader — the payoff the project was built around.</li>
+            <li>Ingredient search or "what can I cook with X" is plausible later.</li>
+            <li>Writing one plpgsql function is an acceptable one-time cost.</li>
+          </ul>
+        </div>
+        <div class="box c">
+          <h3><span class="pill c">C</span> &nbsp;Choose if…</h3>
+          <ul>
+            <li>You want the smallest possible amount of moving parts, now, and no SQL beyond migrations.</li>
+            <li>A recipe is a document you always read and write whole, and you're happy for zod to be the only validator.</li>
+            <li>Deeply nested groups matter more than queryable ingredients.</li>
+            <li>You'd rather defer tags and keep the save to one literal statement.</li>
+          </ul>
+        </div>
+      </div>
+
+      <footer>
+        Decision aid for the schema redesign brainstorm · 2026-08-01 · both options assume the settled choices: one-form-one-submit, order from array position, and the two-role permission model
+        unchanged.
+      </footer>
+    </div>
+  </body>
+</html>

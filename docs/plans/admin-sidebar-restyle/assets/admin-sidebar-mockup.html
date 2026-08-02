@@ -1,0 +1,886 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Admin sidebar — now vs. proposed</title>
+    <style>
+      /* ------------------------------------------------------------------
+         Page chrome (this document's own UI — not the app being mocked)
+         ------------------------------------------------------------------ */
+      :root {
+        --page-bg: #f4f4f5;
+        --page-fg: #18181b;
+        --page-dim: #71717a;
+        --page-line: #e4e4e7;
+        --page-panel: #ffffff;
+        --page-accent: oklch(0.62 0.183 55.934);
+      }
+      body.dark {
+        --page-bg: #121214;
+        --page-fg: #f4f4f5;
+        --page-dim: #a1a1aa;
+        --page-line: #2a2a2e;
+        --page-panel: #1a1a1d;
+        --page-accent: oklch(0.75 0.183 55.934);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 40px 32px 80px;
+        background: var(--page-bg);
+        color: var(--page-fg);
+        font-family:
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          sans-serif;
+        line-height: 1.5;
+        transition:
+          background 0.2s,
+          color 0.2s;
+      }
+      .wrap {
+        max-width: 1180px;
+        margin: 0 auto;
+      }
+
+      h1 {
+        font-size: 26px;
+        margin: 0 0 6px;
+        letter-spacing: -0.02em;
+      }
+      .sub {
+        color: var(--page-dim);
+        font-size: 14px;
+        margin: 0 0 28px;
+        max-width: 70ch;
+      }
+      h2 {
+        font-size: 15px;
+        text-transform: uppercase;
+        letter-spacing: 0.09em;
+        color: var(--page-dim);
+        margin: 44px 0 14px;
+        font-weight: 600;
+      }
+
+      .toolbar {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        margin-bottom: 26px;
+        flex-wrap: wrap;
+      }
+      .btn {
+        font: inherit;
+        font-size: 13px;
+        font-weight: 500;
+        padding: 7px 14px;
+        border-radius: 8px;
+        border: 1px solid var(--page-line);
+        background: var(--page-panel);
+        color: var(--page-fg);
+        cursor: pointer;
+      }
+      .btn:hover {
+        border-color: var(--page-accent);
+      }
+      .btn[aria-pressed="true"] {
+        background: var(--page-accent);
+        border-color: var(--page-accent);
+        color: #fff;
+      }
+      .tb-sep {
+        width: 1px;
+        height: 22px;
+        background: var(--page-line);
+        margin: 0 4px;
+      }
+      .tb-label {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-weight: 600;
+        color: var(--page-dim);
+      }
+      .dl {
+        opacity: 0.65;
+        font-size: 11px;
+        font-family: ui-monospace, Menlo, Consolas, monospace;
+      }
+
+      /* ------------------------------------------------------------------
+         The two mock panels
+         ------------------------------------------------------------------ */
+      .stage {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 22px;
+      }
+      @media (max-width: 900px) {
+        .stage {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .panel-label {
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+        margin-bottom: 9px;
+      }
+      .panel-label strong {
+        font-size: 14px;
+      }
+      .panel-label span {
+        font-size: 12px;
+        color: var(--page-dim);
+      }
+
+      /* ==================================================================
+         MOCK: the app itself. Real token values from app/globals.css.
+         .mock          -> current values
+         .mock.proposed -> the values under discussion
+         ================================================================== */
+      .mock {
+        --background: oklch(0.98 0.016 73.684);
+        --foreground: oklch(0.147 0.004 49.25);
+        --card: oklch(1 0 0);
+        --primary: oklch(0.75 0.183 55.934);
+        --muted-foreground: oklch(0.5555 0 0);
+        --border: oklch(0.9219 0 0);
+        --sidebar: oklch(0.98 0.016 73.684);
+        --sidebar-foreground: oklch(0.147 0.004 49.25);
+        --sidebar-accent: oklch(0.901 0.076 70.697);
+        --sidebar-accent-foreground: oklch(0.2046 0 0);
+        --sidebar-border: oklch(0.9219 0 0);
+
+        --rail-w: 172px; /* 16rem, scaled to the mock */
+        --row-radius: 14px; /* rounded-md under --radius:1rem */
+
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid var(--page-line);
+        background: var(--background);
+        color: var(--foreground);
+        font-size: 12px;
+      }
+
+      .mock.proposed {
+        --sidebar: oklch(0.965 0.014 73.684);
+        --sidebar-accent: oklch(0.945 0.012 73.684);
+        --rail-w: 150px; /* 14rem */
+        --row-radius: 6px;
+      }
+
+      body.dark .mock {
+        --background: oklch(0.18 0.012 75);
+        --foreground: oklch(0.96 0.01 75);
+        --card: oklch(0.22 0.01 75);
+        --primary: oklch(0.75 0.183 55.934);
+        --muted-foreground: oklch(0.78 0.01 75);
+        --border: oklch(0.3 0.008 75);
+        --sidebar: oklch(0.2046 0 0);
+        --sidebar-foreground: oklch(0.9851 0 0);
+        --sidebar-accent: oklch(0.2686 0 0);
+        --sidebar-accent-foreground: oklch(0.9851 0 0);
+        --sidebar-border: oklch(1 0 0);
+      }
+
+      body.dark .mock.proposed {
+        --sidebar: oklch(0.215 0.012 75);
+        --sidebar-foreground: oklch(0.96 0.01 75);
+        --sidebar-accent: oklch(0.26 0.012 75);
+        --sidebar-accent-foreground: oklch(0.96 0.01 75);
+        --sidebar-border: oklch(0.3 0.008 75);
+      }
+
+      /* ---- hover strength presets (proposed panel only) ----
+         Default "subtle" is the value already declared above.
+         :not(.dark) / .dark prefixes keep these from leaking across themes. */
+      body:not(.dark)[data-hover="medium"] .mock.proposed {
+        --sidebar-accent: oklch(0.935 0.014 73.684);
+      }
+      body:not(.dark)[data-hover="strong"] .mock.proposed {
+        --sidebar-accent: oklch(0.925 0.016 73.684);
+      }
+      body.dark[data-hover="medium"] .mock.proposed {
+        --sidebar-accent: oklch(0.275 0.013 75);
+      }
+      body.dark[data-hover="strong"] .mock.proposed {
+        --sidebar-accent: oklch(0.29 0.014 75);
+      }
+
+      /* --- app navbar --- */
+      .nav {
+        height: 42px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 0 14px;
+        border-bottom: 1px solid var(--border);
+        background: var(--background);
+      }
+      .brandmark {
+        width: 20px;
+        height: 20px;
+        border-radius: 999px;
+        background: var(--foreground);
+        flex: none;
+      }
+      .brand {
+        font-weight: 700;
+        font-size: 12px;
+        white-space: nowrap;
+      }
+      .navlinks {
+        display: flex;
+        gap: 14px;
+        margin-left: 14px;
+        color: var(--foreground);
+        font-weight: 600;
+        font-size: 11px;
+      }
+      .navicons {
+        margin-left: auto;
+        display: flex;
+        gap: 10px;
+        color: var(--muted-foreground);
+      }
+
+      /* --- app body: rail + content --- */
+      .body {
+        display: flex;
+        height: 400px;
+      }
+
+      .rail {
+        width: var(--rail-w);
+        flex: none;
+        background: var(--sidebar);
+        color: var(--sidebar-foreground);
+        border-right: 1px solid var(--sidebar-border);
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        /* nav chrome is not prose — dragging across it should not select text */
+        -webkit-user-select: none;
+        user-select: none;
+      }
+
+      .rail-head {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 12px;
+        border-bottom: 1px solid var(--sidebar-border);
+        font-weight: 700;
+        font-size: 12px;
+      }
+      .grouplabel {
+        padding: 12px 12px 5px;
+        font-size: 9px;
+        font-weight: 600;
+        letter-spacing: 0.11em;
+        text-transform: uppercase;
+        color: var(--muted-foreground);
+      }
+
+      .menu {
+        padding: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 0; /* matches the real SidebarMenu, which is gap-0 */
+      }
+      .proposed .menu {
+        padding: 0 8px;
+      }
+
+      .row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 7px 8px;
+        border-radius: var(--row-radius);
+        font-size: 11.5px;
+        position: relative;
+        white-space: nowrap;
+        cursor: pointer;
+        transition: background 0.12s ease;
+      }
+
+      /* real hover — mouse over the rows */
+      .row:hover {
+        background: var(--sidebar-accent);
+        color: var(--sidebar-accent-foreground);
+      }
+
+      /* ---- full-bleed rows: highlight spans the rail edge-to-edge ----
+         Only the gutter padding and the radius change; the row was already
+         one full-width clickable element. */
+      body[data-rows="bleed"] .mock.proposed .menu {
+        padding: 8px 0;
+      }
+      body[data-rows="bleed"] .mock.proposed .row {
+        border-radius: 0;
+        padding: 8px 12px;
+      }
+      body[data-rows="bleed"] .mock.proposed .row.is-active::before {
+        left: 0;
+      }
+      body[data-rows="bleed"] .mock.proposed .grouplabel {
+        padding-left: 12px;
+      }
+
+      /* ---- ripple ----
+         Lives in its own inset layer so overflow:hidden clips the ripple
+         without also clipping the active bar that hangs into the gutter. */
+      .rl {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+        border-radius: inherit;
+        pointer-events: none;
+      }
+      .ripple {
+        position: absolute;
+        border-radius: 999px;
+        background: currentColor;
+        opacity: 0.22;
+        transform: scale(0);
+        animation: ripple 520ms cubic-bezier(0.2, 0.6, 0.35, 1) forwards;
+      }
+      @keyframes ripple {
+        to {
+          transform: scale(1);
+          opacity: 0;
+        }
+      }
+      body:not(.ripple-on) .ripple {
+        display: none;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .ripple {
+          animation-duration: 1ms;
+        }
+      }
+      .row svg {
+        width: 14px;
+        height: 14px;
+        flex: none;
+      }
+
+      /* current: active and hover resolve to the identical fill */
+      .row.is-active,
+      .row.is-hover {
+        background: var(--sidebar-accent);
+        color: var(--sidebar-accent-foreground);
+      }
+
+      /* proposed: active additionally gets weight + a left bar */
+      .proposed .row.is-active {
+        font-weight: 650;
+      }
+      /* Full-height edge marker: spans the row top to bottom, square ends.
+         Rounded ends only made sense while it floated inside the row. */
+      .proposed .row.is-active::before {
+        content: "";
+        position: absolute;
+        left: -8px;
+        top: 0;
+        bottom: 0;
+        width: 3px;
+        background: var(--primary);
+      }
+
+      /* --- app content region --- */
+      .content {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--background);
+      }
+      .card {
+        background: var(--card);
+        border-radius: 16px;
+        padding: 16px 26px;
+        font-weight: 700;
+        font-size: 12px;
+        box-shadow:
+          0 1px 3px rgb(0 0 0 / 0.1),
+          0 1px 2px -1px rgb(0 0 0 / 0.1);
+      }
+
+      /* --- annotations (toggleable) --- */
+      .anno {
+        position: absolute;
+        font-size: 9px;
+        letter-spacing: 0.04em;
+        color: var(--page-accent);
+        font-weight: 700;
+        pointer-events: none;
+        white-space: nowrap;
+      }
+      .anno.right {
+        left: calc(var(--rail-w) + 10px);
+      }
+      .anno-empty {
+        left: 0;
+        right: 0;
+        top: 58%;
+        text-align: center;
+        color: var(--muted-foreground);
+        font-weight: 500;
+        font-style: italic;
+      }
+      body:not(.anno-on) .anno {
+        display: none;
+      }
+
+      /* ------------------------------------------------------------------
+         Token diff table
+         ------------------------------------------------------------------ */
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        font-size: 12.5px;
+      }
+      th {
+        text-align: left;
+        font-weight: 600;
+        color: var(--page-dim);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        padding: 0 12px 8px 0;
+        border-bottom: 1px solid var(--page-line);
+      }
+      td {
+        padding: 9px 12px 9px 0;
+        border-bottom: 1px solid var(--page-line);
+        vertical-align: middle;
+      }
+      code {
+        font-family: ui-monospace, Menlo, Consolas, monospace;
+        font-size: 11.5px;
+      }
+      .sw {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        white-space: nowrap;
+      }
+      .chip {
+        width: 15px;
+        height: 15px;
+        border-radius: 4px;
+        border: 1px solid var(--page-line);
+        flex: none;
+      }
+      .tag {
+        display: inline-block;
+        font-size: 10px;
+        font-weight: 700;
+        padding: 2px 7px;
+        border-radius: 999px;
+        letter-spacing: 0.04em;
+      }
+      .tag.bug {
+        background: oklch(0.637 0.237 25.331 / 0.16);
+        color: oklch(0.55 0.237 25.331);
+      }
+      body.dark .tag.bug {
+        color: oklch(0.75 0.19 25.331);
+      }
+      .tag.new {
+        background: oklch(0.75 0.183 55.934 / 0.18);
+        color: oklch(0.52 0.183 55.934);
+      }
+      body.dark .tag.new {
+        color: oklch(0.82 0.15 55.934);
+      }
+
+      /* ------------------------------------------------------------------
+         Findings
+         ------------------------------------------------------------------ */
+      .findings {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 14px;
+      }
+      .find {
+        background: var(--page-panel);
+        border: 1px solid var(--page-line);
+        border-left: 3px solid var(--page-accent);
+        border-radius: 9px;
+        padding: 14px 16px;
+      }
+      .find h3 {
+        margin: 0 0 6px;
+        font-size: 13px;
+      }
+      .find p {
+        margin: 0;
+        font-size: 12.5px;
+        color: var(--page-dim);
+      }
+      .find.warn {
+        border-left-color: oklch(0.637 0.237 25.331);
+      }
+      .note {
+        font-size: 12px;
+        color: var(--page-dim);
+        margin-top: 34px;
+        padding-top: 14px;
+        border-top: 1px solid var(--page-line);
+      }
+    </style>
+  </head>
+
+  <body class="anno-on ripple-on" data-rows="bleed">
+    <div class="wrap">
+      <h1>Admin sidebar — now vs. proposed</h1>
+      <p class="sub">
+        Real token values lifted from <code>app/globals.css</code>. Toggle the theme: dark mode is where the current rail has the most problems, and where the proposed values are least verified.
+        Toggle annotations off to judge the result clean.
+      </p>
+
+      <div class="toolbar">
+        <button class="btn" id="theme" aria-pressed="false">Dark mode</button>
+        <button class="btn" id="anno" aria-pressed="true">Annotations</button>
+        <span class="tb-sep"></span>
+        <span class="tb-label">Hover strength</span>
+        <button class="btn hv" data-hv="subtle" aria-pressed="true">Subtle <span class="dl">ΔL .02</span></button>
+        <button class="btn hv" data-hv="medium" aria-pressed="false">Medium <span class="dl">ΔL .03</span></button>
+        <button class="btn hv" data-hv="strong" aria-pressed="false">Strong <span class="dl">ΔL .04</span></button>
+        <span class="tb-sep"></span>
+        <span class="tb-label">Rows</span>
+        <button class="btn rw" data-rw="bleed" aria-pressed="true">Full-bleed</button>
+        <button class="btn rw" data-rw="pill" aria-pressed="false">Pill</button>
+        <span class="tb-sep"></span>
+        <button class="btn" id="ripple" aria-pressed="true">Ripple</button>
+      </div>
+      <p class="sub" style="margin-top: -14px">
+        Hover is <strong>live</strong> now — mouse over the rows. The presets change only the proposed panel's <code>--sidebar-accent</code>; the token table below tracks whichever you pick. Dark
+        values move by a matching amount, so the two themes stay in step.
+      </p>
+
+      <div class="stage">
+        <!-- ============ NOW ============ -->
+        <div>
+          <div class="panel-label"><strong>Now</strong><span>16rem · no header · 14px row radius</span></div>
+          <div class="mock">
+            <div class="nav">
+              <div class="brandmark"></div>
+              <div class="brand">Chique's Swiet Mofo</div>
+              <div class="navlinks"><span>Home</span><span>Recipes</span><span>Admin</span><span>Dev</span></div>
+              <div class="navicons">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                  <circle cx="12" cy="12" r="4" />
+                  <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+                </svg>
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                  <circle cx="12" cy="8" r="4" />
+                  <path d="M4 21c0-4 3.6-6 8-6s8 2 8 6" />
+                </svg>
+              </div>
+            </div>
+
+            <div class="body">
+              <div class="rail">
+                <div class="menu">
+                  <div class="row is-active">Manage Recipes</div>
+                  <div class="row is-hover">Create Recipes</div>
+                </div>
+                <div class="anno right" style="top: 17px">← active</div>
+                <div class="anno right" style="top: 48px">← hover · identical fill</div>
+                <div class="anno anno-empty">nothing anchors this space</div>
+              </div>
+              <div class="content"><div class="card">Manage Recipes</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============ PROPOSED ============ -->
+        <div>
+          <div class="panel-label"><strong>Proposed</strong><span>14rem · header + group label + icons · 6px rows</span></div>
+          <div class="mock proposed">
+            <div class="nav">
+              <div class="brandmark"></div>
+              <div class="brand">Chique's Swiet Mofo</div>
+              <div class="navlinks"><span>Home</span><span>Recipes</span><span>Admin</span><span>Dev</span></div>
+              <div class="navicons">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                  <circle cx="12" cy="12" r="4" />
+                  <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+                </svg>
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                  <circle cx="12" cy="8" r="4" />
+                  <path d="M4 21c0-4 3.6-6 8-6s8 2 8 6" />
+                </svg>
+              </div>
+            </div>
+
+            <div class="body">
+              <div class="rail">
+                <div class="rail-head">
+                  <!-- chef hat -->
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M6 19v-4.5a4 4 0 1 1 1.6-7.7 4.6 4.6 0 0 1 8.8 0A4 4 0 1 1 18 14.5V19z" />
+                    <path d="M6 19h12" />
+                  </svg>
+                  Admin
+                </div>
+
+                <div class="grouplabel">Recipes</div>
+                <div class="menu">
+                  <div class="row is-active">
+                    <!-- layout-list -->
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="3" y="4" width="7" height="7" rx="1.5" />
+                      <rect x="3" y="13" width="7" height="7" rx="1.5" />
+                      <path d="M14 6h7M14 10h7M14 16h7M14 20h7" />
+                    </svg>
+                    Manage Recipes
+                  </div>
+                  <div class="row">
+                    <!-- plus -->
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                      <path d="M12 5v14M5 12h14" />
+                    </svg>
+                    Create Recipes
+                  </div>
+                </div>
+
+                <div class="anno right" style="top: 88px">← active: bar + tint + weight</div>
+                <div class="anno right" style="top: 121px">← mouse over me: tint only</div>
+                <div class="anno anno-empty">empty by design — the tint carries it</div>
+              </div>
+              <div class="content"><div class="card">Manage Recipes</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ TOKENS ============ -->
+      <h2>Token changes</h2>
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 22%">Token</th>
+            <th style="width: 12%">Theme</th>
+            <th style="width: 27%">Now</th>
+            <th style="width: 27%">Proposed</th>
+            <th style="width: 12%"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>--sidebar</code></td>
+            <td>light</td>
+            <td>
+              <span class="sw"><span class="chip" style="background: oklch(0.98 0.016 73.684)"></span><code>0.98 0.016 73.684</code></span>
+            </td>
+            <td>
+              <span class="sw"><span class="chip" style="background: oklch(0.965 0.014 73.684)"></span><code>0.965 0.014 73.684</code></span>
+            </td>
+            <td><span class="tag new">= --background</span></td>
+          </tr>
+          <tr>
+            <td><code>--sidebar-accent</code></td>
+            <td>light</td>
+            <td>
+              <span class="sw"><span class="chip" style="background: oklch(0.901 0.076 70.697)"></span><code>0.901 0.076 70.697</code></span>
+            </td>
+            <td>
+              <span class="sw"><span class="chip" id="hvLightChip" style="background: oklch(0.945 0.012 73.684)"></span><code id="hvLightCode">0.945 0.012 73.684</code></span>
+            </td>
+            <td><span class="tag new">= --accent</span></td>
+          </tr>
+          <tr>
+            <td><code>--sidebar-border</code></td>
+            <td>dark</td>
+            <td>
+              <span class="sw"><span class="chip" style="background: oklch(1 0 0)"></span><code>1 0 0</code> — white</span>
+            </td>
+            <td>
+              <span class="sw"><span class="chip" style="background: oklch(0.3 0.008 75)"></span><code>0.3 0.008 75</code></span>
+            </td>
+            <td><span class="tag bug">bug</span></td>
+          </tr>
+          <tr>
+            <td><code>--sidebar</code></td>
+            <td>dark</td>
+            <td>
+              <span class="sw"><span class="chip" style="background: oklch(0.2046 0 0)"></span><code>0.2046 0 0</code> — neutral</span>
+            </td>
+            <td>
+              <span class="sw"><span class="chip" style="background: oklch(0.215 0.012 75)"></span><code>0.215 0.012 75</code></span>
+            </td>
+            <td><span class="tag bug">cold</span></td>
+          </tr>
+          <tr>
+            <td><code>--sidebar-accent</code></td>
+            <td>dark</td>
+            <td>
+              <span class="sw"><span class="chip" style="background: oklch(0.2686 0 0)"></span><code>0.2686 0 0</code> — neutral</span>
+            </td>
+            <td>
+              <span class="sw"><span class="chip" id="hvDarkChip" style="background: oklch(0.26 0.012 75)"></span><code id="hvDarkCode">0.26 0.012 75</code></span>
+            </td>
+            <td><span class="tag bug">cold</span></td>
+          </tr>
+          <tr>
+            <td><code>--sidebar-foreground</code></td>
+            <td>dark</td>
+            <td>
+              <span class="sw"><span class="chip" style="background: oklch(0.9851 0 0)"></span><code>0.9851 0 0</code> — neutral</span>
+            </td>
+            <td>
+              <span class="sw"><span class="chip" style="background: oklch(0.96 0.01 75)"></span><code>0.96 0.01 75</code></span>
+            </td>
+            <td><span class="tag bug">cold</span></td>
+          </tr>
+          <tr>
+            <td><code>--sidebar-primary</code></td>
+            <td>dark</td>
+            <td>
+              <span class="sw"><span class="chip" style="background: oklch(0.4878 0.2432 264.4045)"></span><code>0.4878 0.2432 264.4</code> — blue</span>
+            </td>
+            <td>
+              <span class="sw"><span class="chip" style="background: oklch(0.75 0.183 55.934)"></span><code>0.75 0.183 55.934</code></span>
+            </td>
+            <td><span class="tag bug">= --chart-4</span></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- ============ FINDINGS ============ -->
+      <h2>What the real values turned up</h2>
+      <div class="findings">
+        <div class="find warn">
+          <h3>The dark sidebar ramp was never themed</h3>
+          <p>
+            Dark <code>--background</code> is a warm <code>oklch(0.18 0.012 75)</code>, but every dark <code>--sidebar-*</code> token is pure neutral grey — stock shadcn defaults sitting untouched
+            inside a warmed theme. The rail reads visibly colder than the page it lives in. Bigger than the white-border bug I flagged earlier.
+          </p>
+        </div>
+        <div class="find warn">
+          <h3>Dark <code>--sidebar-primary</code> is blue</h3>
+          <p>
+            It is <code>oklch(0.4878 0.2432 264.4045)</code> — byte-identical to <code>--chart-4</code>. A chart colour leaked into the sidebar ramp. Nothing currently reads it, and the proposed
+            accent bar uses <code>--primary</code>
+            instead, so this is latent rather than visible. Worth fixing while the file is open.
+          </p>
+        </div>
+        <div class="find">
+          <h3>The accent bar survives dark mode</h3>
+          <p>
+            Dark <code>--primary</code> is <code>oklch(0.75 0.183 55.934)</code> — the same orange as light. So <code>bg-primary</code> on the active marker stays orange in both themes and needs no
+            dark-mode special case.
+          </p>
+        </div>
+        <div class="find">
+          <h3>Row radius does most of the work</h3>
+          <p>
+            <code>--radius: 1rem</code> makes <code>rounded-md</code> compute to 14px. On a 32px row that is nearly a lozenge, and it is what makes the current rail read as floating blobs. Dropping to
+            ~6px is the single change with the biggest effect, before any colour is touched.
+          </p>
+        </div>
+      </div>
+
+      <p class="note">
+        Caveats: the site font is <code>Alan Sans</code>, unavailable offline — this mock uses a system stack, so weights and metrics differ slightly. Panels are scaled to roughly 65% of real size;
+        the real rail runs about three times the height shown, so the empty region is proportionally larger than it looks here.
+      </p>
+    </div>
+
+    <script>
+      const body = document.body;
+      const themeBtn = document.getElementById("theme");
+      const annoBtn = document.getElementById("anno");
+
+      themeBtn.addEventListener("click", () => {
+        const on = body.classList.toggle("dark");
+        themeBtn.setAttribute("aria-pressed", String(on));
+        themeBtn.textContent = on ? "Light mode" : "Dark mode";
+      });
+
+      annoBtn.addEventListener("click", () => {
+        const on = body.classList.toggle("anno-on");
+        annoBtn.setAttribute("aria-pressed", String(on));
+      });
+
+      // ---- hover strength ----
+      // Kept in sync with the CSS presets above; the table mirrors whichever is active.
+      const HOVER = {
+        subtle: { light: "0.945 0.012 73.684", dark: "0.26 0.012 75" },
+        medium: { light: "0.935 0.014 73.684", dark: "0.275 0.013 75" },
+        strong: { light: "0.925 0.016 73.684", dark: "0.29 0.014 75" },
+      };
+
+      const hvLightChip = document.getElementById("hvLightChip");
+      const hvLightCode = document.getElementById("hvLightCode");
+      const hvDarkChip = document.getElementById("hvDarkChip");
+      const hvDarkCode = document.getElementById("hvDarkCode");
+
+      function setHover(key) {
+        body.dataset.hover = key;
+        document.querySelectorAll(".hv").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.hv === key)));
+
+        const v = HOVER[key];
+        hvLightCode.textContent = v.light;
+        hvLightChip.style.background = `oklch(${v.light})`;
+        hvDarkCode.textContent = v.dark;
+        hvDarkChip.style.background = `oklch(${v.dark})`;
+      }
+
+      document.querySelectorAll(".hv").forEach((b) => b.addEventListener("click", () => setHover(b.dataset.hv)));
+      setHover("subtle");
+
+      // ---- row style ----
+      function setRows(key) {
+        body.dataset.rows = key;
+        document.querySelectorAll(".rw").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.rw === key)));
+      }
+      document.querySelectorAll(".rw").forEach((b) => b.addEventListener("click", () => setRows(b.dataset.rw)));
+      setRows("bleed");
+
+      // ---- ripple ----
+      const rippleBtn = document.getElementById("ripple");
+      rippleBtn.addEventListener("click", () => {
+        const on = body.classList.toggle("ripple-on");
+        rippleBtn.setAttribute("aria-pressed", String(on));
+      });
+
+      // This is the whole implementation — the same ~25 lines the real component needs.
+      document.querySelectorAll(".row").forEach((row) => {
+        const layer = document.createElement("span");
+        layer.className = "rl";
+        row.prepend(layer);
+
+        row.addEventListener("pointerdown", (e) => {
+          const r = row.getBoundingClientRect();
+          const x = e.clientX - r.left;
+          const y = e.clientY - r.top;
+          // radius = distance to the farthest corner, so the ripple always covers the row
+          const radius = Math.hypot(Math.max(x, r.width - x), Math.max(y, r.height - y));
+
+          const dot = document.createElement("span");
+          dot.className = "ripple";
+          dot.style.width = dot.style.height = radius * 2 + "px";
+          dot.style.left = x - radius + "px";
+          dot.style.top = y - radius + "px";
+          dot.addEventListener("animationend", () => dot.remove());
+          layer.appendChild(dot);
+        });
+      });
+    </script>
+  </body>
+</html>

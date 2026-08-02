@@ -1,5 +1,5 @@
 // import lib
-import { getRecipes } from "@/lib/data/recipes";
+import { getRecipes } from "@/lib/recipes/queries";
 
 // import components
 import RecipeCard from "@/components/shared/RecipeCard";
@@ -10,8 +10,8 @@ export default async function Recipes() {
   return (
     <section className="w-full text-foreground">
       <div className="bg-foreground/5 w-full">
-        <div className="w-full max-w-7xl mx-auto px-6 py-12">
-          <h1 className="text-4xl font-bold mb-4 text-center">Recipes</h1>
+        <div className="w-full max-w-7xl mx-auto px-6 py-8">
+          <h1 className="text-4xl font-bold text-center">Recipes</h1>
           {/* Search/filter/sort can become a separate client component later */}
         </div>
       </div>

@@ -4,10 +4,10 @@
 import { useActionState } from "react";
 
 // import actions
-import { login } from "@/Actions/auth/login";
+import { login } from "@/lib/auth/actions";
 
-// import lib
-import { LoginState } from "@/Actions/auth/login";
+// import types
+import type { LoginState } from "@/lib/auth/schema";
 
 const initialState: LoginState = {};
 

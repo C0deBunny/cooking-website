@@ -4,7 +4,7 @@
 import { User } from "lucide-react";
 
 //import actions
-import signOut from "@/Actions/auth/signOut";
+import { signOut } from "@/lib/auth/actions";
 
 // import components
 import { Button } from "@/components/ui/button";

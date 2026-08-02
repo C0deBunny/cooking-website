@@ -1,0 +1,1166 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>/admin/manage — layout mockup</title>
+    <style>
+      /* Tokens lifted from app/globals.css so the mockup reads like the real site. */
+      :root {
+        --background: oklch(0.98 0.016 73.684);
+        --foreground: oklch(0.147 0.004 49.25);
+        --card: oklch(1 0 0);
+        --primary: oklch(0.75 0.183 55.934);
+        --primary-foreground: oklch(0.9851 0 0);
+        --secondary: oklch(0.897 0.196 126.665);
+        --muted-foreground: oklch(0.5555 0 0);
+        --accent: oklch(0.901 0.076 70.697);
+        --destructive: oklch(0.637 0.237 25.331);
+        --destructive-foreground: oklch(1 0 0);
+        --border: oklch(0.9219 0 0);
+        --sidebar: oklch(0.965 0.014 73.684);
+        --sidebar-accent: oklch(0.945 0.012 73.684);
+        --radius: 1rem;
+        --shadow-sm: 0 1px 3px 0 hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
+        --shadow-xl: 0 1px 3px 0 hsl(0 0% 0% / 0.1), 0 8px 10px -1px hsl(0 0% 0% / 0.1);
+        --note: oklch(0.55 0.13 250);
+        --note-bg: oklch(0.96 0.03 250);
+      }
+      html.dark {
+        --background: oklch(0.18 0.012 75);
+        --foreground: oklch(0.96 0.01 75);
+        --card: oklch(0.22 0.01 75);
+        --primary: oklch(0.75 0.183 55.934);
+        --primary-foreground: oklch(0.2046 0 0);
+        --secondary: oklch(0.72 0.16 126.665);
+        --muted-foreground: oklch(0.78 0.01 75);
+        --accent: oklch(0.78 0.095 70.697);
+        --destructive: oklch(0.62 0.22 25.331);
+        --border: oklch(0.3 0.008 75);
+        --sidebar: oklch(0.215 0.012 75);
+        --sidebar-accent: oklch(0.26 0.012 75);
+        --note: oklch(0.8 0.11 250);
+        --note-bg: oklch(0.26 0.03 250);
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        background: var(--background);
+        color: var(--foreground);
+        font-family: ui-sans-serif, system-ui, sans-serif;
+        font-size: 14px;
+        line-height: 1.5;
+        padding: 32px 24px 96px;
+      }
+
+      /* ---------- page scaffolding for the mockup itself ---------- */
+      .wrap {
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+      .doc-h1 {
+        font-size: 26px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+      }
+      .doc-sub {
+        color: var(--muted-foreground);
+        margin-top: 6px;
+        max-width: 78ch;
+      }
+      .doc-h2 {
+        font-size: 13px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.09em;
+        color: var(--muted-foreground);
+        margin: 44px 0 14px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+      }
+      .doc-h2 span {
+        text-transform: none;
+        letter-spacing: 0;
+        font-weight: 500;
+        font-size: 12px;
+        opacity: 0.85;
+      }
+      .toolbar {
+        position: fixed;
+        top: 14px;
+        right: 18px;
+        display: flex;
+        gap: 8px;
+        z-index: 60;
+      }
+      .toolbar button {
+        font: inherit;
+        font-size: 12px;
+        font-weight: 600;
+        border: 1px solid var(--border);
+        background: var(--card);
+        color: var(--foreground);
+        border-radius: 999px;
+        padding: 6px 14px;
+        cursor: pointer;
+        box-shadow: var(--shadow-sm);
+      }
+
+      /* the "browser frame" each variant sits in */
+      .frame {
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        overflow: hidden;
+        background: var(--background);
+        box-shadow: var(--shadow-sm);
+        position: relative;
+      }
+      .frame-bar {
+        background: var(--sidebar);
+        border-bottom: 1px solid var(--border);
+        padding: 7px 12px;
+        font-size: 11px;
+        color: var(--muted-foreground);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 999px;
+        background: var(--border);
+      }
+
+      /* fake admin shell: rail + content */
+      .shell {
+        display: grid;
+        grid-template-columns: 168px 1fr;
+        min-height: 420px;
+      }
+      .rail {
+        background: var(--sidebar);
+        border-right: 1px solid var(--border);
+        padding: 10px 0;
+        font-size: 12px;
+      }
+      .rail-h {
+        padding: 4px 12px 10px;
+        font-weight: 800;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 8px;
+      }
+      .rail-lbl {
+        padding: 6px 12px 2px;
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted-foreground);
+      }
+      .rail-item {
+        padding: 7px 12px;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        color: var(--muted-foreground);
+      }
+      .rail-item.on {
+        font-weight: 700;
+        color: var(--foreground);
+        background: var(--sidebar-accent);
+        position: relative;
+      }
+      .rail-item.on::before {
+        content: "";
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: 4px;
+        background: var(--primary);
+      }
+
+      /* ---------- the actual design: header band + table ---------- */
+      .band {
+        background: color-mix(in oklab, var(--foreground) 5%, transparent);
+        border-bottom: 1px solid var(--border);
+      }
+      .band-inner {
+        padding: 22px 24px;
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 20px;
+        flex-wrap: wrap;
+      }
+      .band h1 {
+        font-size: 26px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+      }
+      .band p {
+        color: var(--muted-foreground);
+        font-size: 12.5px;
+        margin-top: 3px;
+      }
+      .band-actions {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      .search {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 7px 11px;
+        color: var(--muted-foreground);
+        font-size: 12.5px;
+        min-width: 190px;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        font-size: 12.5px;
+        font-weight: 600;
+        border-radius: 10px;
+        padding: 8px 14px;
+        border: 1px solid var(--border);
+        background: var(--card);
+        color: var(--foreground);
+        cursor: pointer;
+        font-family: inherit;
+      }
+      .btn.primary {
+        background: var(--primary);
+        color: var(--primary-foreground);
+        border-color: transparent;
+      }
+      .btn.danger {
+        background: var(--destructive);
+        color: var(--destructive-foreground);
+        border-color: transparent;
+      }
+
+      .body {
+        padding: 20px 24px 28px;
+      }
+      .filters {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 14px;
+        align-items: center;
+      }
+      .chip {
+        font-size: 12px;
+        border: 1px solid var(--border);
+        background: var(--card);
+        border-radius: 999px;
+        padding: 4px 12px;
+        color: var(--muted-foreground);
+        cursor: pointer;
+      }
+      .chip.on {
+        background: color-mix(in oklab, var(--primary) 18%, transparent);
+        border-color: color-mix(in oklab, var(--primary) 40%, transparent);
+        color: var(--foreground);
+        font-weight: 700;
+      }
+      .count {
+        margin-left: auto;
+        font-size: 12px;
+        color: var(--muted-foreground);
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+      }
+      thead th {
+        text-align: left;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        color: var(--muted-foreground);
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--border);
+        white-space: nowrap;
+        user-select: none;
+      }
+      thead th.sortable {
+        cursor: pointer;
+      }
+      /* Badge columns are centred head and body together, so the pill sits under its label. */
+      thead th.ctr,
+      tbody td.ctr {
+        text-align: center;
+      }
+      tbody td {
+        padding: 11px 12px;
+        border-bottom: 1px solid var(--border);
+        vertical-align: middle;
+      }
+      tbody tr:last-child td {
+        border-bottom: none;
+      }
+      tr.row {
+        cursor: pointer;
+      }
+      tr.row:hover td {
+        background: color-mix(in oklab, var(--foreground) 3.5%, transparent);
+      }
+      tr.row.open td {
+        background: color-mix(in oklab, var(--primary) 8%, transparent);
+      }
+      .chev {
+        transition: transform 0.16s ease;
+        color: var(--muted-foreground);
+        display: block;
+      }
+      tr.row.open .chev {
+        transform: rotate(90deg);
+        color: var(--primary);
+      }
+      .title {
+        font-weight: 650;
+      }
+      .slug {
+        font-family: ui-monospace, Consolas, monospace;
+        font-size: 11px;
+        color: var(--muted-foreground);
+        margin-top: 1px;
+      }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 11px;
+        font-weight: 700;
+        border-radius: 999px;
+        padding: 2px 9px;
+        border: 1px solid transparent;
+        white-space: nowrap;
+      }
+      .badge.pub {
+        background: color-mix(in oklab, var(--secondary) 45%, transparent);
+        color: color-mix(in oklab, var(--foreground) 88%, transparent);
+        border-color: color-mix(in oklab, var(--secondary) 70%, transparent);
+      }
+      .badge.draft {
+        background: transparent;
+        color: var(--muted-foreground);
+        border-color: var(--border);
+      }
+      .badge.diff {
+        background: color-mix(in oklab, var(--accent) 40%, transparent);
+        color: color-mix(in oklab, var(--foreground) 90%, transparent);
+        font-weight: 600;
+      }
+      .muted {
+        color: var(--muted-foreground);
+      }
+      .num {
+        font-variant-numeric: tabular-nums;
+      }
+
+      .acts {
+        display: flex;
+        gap: 2px;
+        justify-content: flex-end;
+      }
+      .icon-btn {
+        width: 30px;
+        height: 30px;
+        display: grid;
+        place-items: center;
+        border-radius: 8px;
+        border: 1px solid transparent;
+        background: transparent;
+        color: var(--muted-foreground);
+        cursor: pointer;
+        position: relative;
+      }
+      .icon-btn:hover {
+        background: color-mix(in oklab, var(--foreground) 8%, transparent);
+        color: var(--foreground);
+      }
+      .icon-btn.del:hover {
+        background: color-mix(in oklab, var(--destructive) 14%, transparent);
+        color: var(--destructive);
+      }
+      .icon-btn[disabled] {
+        opacity: 0.32;
+        cursor: not-allowed;
+      }
+      .icon-btn[disabled]:hover {
+        background: transparent;
+        color: var(--muted-foreground);
+      }
+      .icon-btn[data-tip]:hover::after {
+        content: attr(data-tip);
+        position: absolute;
+        bottom: calc(100% + 6px);
+        left: 50%;
+        transform: translateX(-50%);
+        background: var(--foreground);
+        color: var(--background);
+        font-size: 11px;
+        font-weight: 600;
+        white-space: nowrap;
+        padding: 3px 8px;
+        border-radius: 6px;
+        z-index: 20;
+      }
+
+      /* expanded detail panel — mounted only while its row is open. No transition in v1. */
+      tr.detail > td {
+        padding: 0;
+        border-bottom: 0;
+        background: color-mix(in oklab, var(--primary) 5%, transparent);
+      }
+      .panel {
+        border-bottom: 1px solid var(--border);
+        padding: 4px 14px 18px 40px;
+        display: grid;
+        grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+        gap: 10px 34px;
+      }
+      .kv {
+        display: grid;
+        grid-template-columns: 92px 1fr;
+        gap: 4px 12px;
+        align-content: start;
+      }
+      .k {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--muted-foreground);
+        font-weight: 700;
+        padding-top: 1px;
+      }
+      .v {
+        font-size: 13px;
+      }
+      .v.mono {
+        font-family: ui-monospace, Consolas, monospace;
+        font-size: 12px;
+      }
+      .prose {
+        font-size: 13px;
+      }
+      .prose .k {
+        margin-bottom: 3px;
+      }
+      .prose p {
+        margin-bottom: 12px;
+      }
+      .warn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11.5px;
+        font-weight: 650;
+        color: color-mix(in oklab, var(--destructive) 82%, var(--foreground));
+        background: color-mix(in oklab, var(--destructive) 11%, transparent);
+        border-radius: 8px;
+        padding: 4px 9px;
+        margin-top: 2px;
+      }
+      .empty-hint {
+        color: var(--muted-foreground);
+        font-style: italic;
+      }
+
+      /* annotation callouts */
+      .anno {
+        position: absolute;
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--note);
+        background: var(--note-bg);
+        border: 1px solid color-mix(in oklab, var(--note) 40%, transparent);
+        border-radius: 7px;
+        padding: 3px 8px;
+        white-space: nowrap;
+        z-index: 30;
+        pointer-events: none;
+      }
+      .anno::before {
+        content: "";
+        position: absolute;
+        background: color-mix(in oklab, var(--note) 55%, transparent);
+      }
+
+      /* sheet variant */
+      .sheet-scrim {
+        position: absolute;
+        inset: 0;
+        background: hsl(0 0% 0% / 0.35);
+      }
+      .sheet {
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: 330px;
+        background: var(--card);
+        border-left: 1px solid var(--border);
+        box-shadow: var(--shadow-xl);
+        padding: 18px;
+        overflow: auto;
+      }
+      .sheet h3 {
+        font-size: 17px;
+        font-weight: 750;
+        margin-bottom: 2px;
+      }
+      .sheet .kv {
+        margin-top: 14px;
+      }
+
+      /* dialog */
+      .dlg-scrim {
+        position: absolute;
+        inset: 0;
+        background: hsl(0 0% 0% / 0.4);
+        display: grid;
+        place-items: center;
+      }
+      .dlg {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        box-shadow: var(--shadow-xl);
+        padding: 20px;
+        width: 400px;
+        max-width: 92%;
+      }
+      .dlg h3 {
+        font-size: 16px;
+        font-weight: 750;
+        margin-bottom: 7px;
+      }
+      .dlg p {
+        font-size: 13px;
+        color: var(--muted-foreground);
+        margin-bottom: 16px;
+      }
+      .dlg-acts {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+      }
+
+      /* empty state */
+      .empty {
+        border: 1px dashed var(--border);
+        border-radius: 12px;
+        padding: 44px 20px;
+        text-align: center;
+        background: var(--card);
+      }
+      .empty h3 {
+        font-size: 15px;
+        font-weight: 700;
+        margin: 10px 0 4px;
+      }
+      .empty p {
+        color: var(--muted-foreground);
+        font-size: 13px;
+        margin-bottom: 16px;
+      }
+
+      /* notes */
+      .notes {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 12px;
+      }
+      .note {
+        border: 1px solid var(--border);
+        background: var(--card);
+        border-radius: 12px;
+        padding: 14px 16px;
+      }
+      .note h4 {
+        font-size: 12.5px;
+        font-weight: 800;
+        margin-bottom: 6px;
+        display: flex;
+        gap: 7px;
+        align-items: center;
+      }
+      .note h4 .tag {
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        border-radius: 999px;
+        padding: 1px 7px;
+      }
+      .tag.trap {
+        background: color-mix(in oklab, var(--destructive) 16%, transparent);
+        color: color-mix(in oklab, var(--destructive) 85%, var(--foreground));
+      }
+      .tag.open {
+        background: var(--note-bg);
+        color: var(--note);
+      }
+      .note p {
+        font-size: 12.5px;
+        color: var(--muted-foreground);
+      }
+      .note code {
+        font-family: ui-monospace, Consolas, monospace;
+        font-size: 11.5px;
+        background: color-mix(in oklab, var(--foreground) 7%, transparent);
+        padding: 1px 4px;
+        border-radius: 4px;
+        color: var(--foreground);
+      }
+
+      .side-by-side {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
+      @media (max-width: 1000px) {
+        .side-by-side {
+          grid-template-columns: 1fr;
+        }
+      }
+      .variant-h {
+        font-size: 12.5px;
+        font-weight: 800;
+        margin-bottom: 7px;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      .pill {
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        border-radius: 999px;
+        padding: 2px 8px;
+        background: color-mix(in oklab, var(--primary) 22%, transparent);
+      }
+      .pill.alt {
+        background: color-mix(in oklab, var(--foreground) 9%, transparent);
+        color: var(--muted-foreground);
+      }
+      .variant-note {
+        font-size: 12px;
+        color: var(--muted-foreground);
+        margin-top: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="toolbar">
+      <button id="theme">◐ theme</button>
+    </div>
+
+    <div class="wrap">
+      <h1 class="doc-h1">/admin/manage — layout mockup</h1>
+      <p class="doc-sub">
+        Header band + table, metadata-only expand. Rows are live: click one to expand it, hover the action icons for their labels, click the trash to see the confirm dialog. Everything below is drawn
+        with the real tokens from <code>app/globals.css</code>.
+      </p>
+
+      <!-- ===================== MAIN ===================== -->
+      <h2 class="doc-h2">1 · The page <span>— annotated, one row expanded</span></h2>
+
+      <div class="frame" id="main-frame">
+        <div class="frame-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span>&nbsp;localhost:3000/admin/manage</div>
+        <div class="shell">
+          <div class="rail">
+            <div class="rail-h">🍳 Admin</div>
+            <div class="rail-lbl">Recipes</div>
+            <div class="rail-item on">Manage Recipes</div>
+            <div class="rail-item">Create Recipes</div>
+            <div class="rail-lbl">Tags</div>
+            <div class="rail-item">Manage Tags</div>
+          </div>
+
+          <div style="min-width: 0">
+            <!-- header band -->
+            <div class="band">
+              <div class="band-inner">
+                <div>
+                  <h1>Manage Recipes</h1>
+                  <p>12 recipes · 9 published · 3 drafts</p>
+                </div>
+                <div class="band-actions">
+                  <div class="search">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                      <circle cx="11" cy="11" r="8" />
+                      <path d="m21 21-4.3-4.3" />
+                    </svg>
+                    Search recipes…
+                  </div>
+                  <button class="btn primary">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12h14M12 5v14" /></svg>
+                    New recipe
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="body">
+              <div class="filters">
+                <span class="chip on">All</span>
+                <span class="chip">Published</span>
+                <span class="chip">Drafts</span>
+                <span class="count">Showing 5 of 12</span>
+              </div>
+
+              <table>
+                <thead>
+                  <tr>
+                    <th style="width: 34px"></th>
+                    <th class="sortable">Title ↓</th>
+                    <th class="ctr" style="width: 116px">Status</th>
+                    <th style="width: 110px" class="sortable">Updated</th>
+                    <th style="width: 148px"></th>
+                  </tr>
+                </thead>
+                <tbody id="tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- annotations -->
+        <div class="anno" style="top: 62px; right: 18px">tinted band · title + counts + primary action</div>
+        <div class="anno" style="top: 214px; left: 186px">chevron mirrors row state</div>
+        <div class="anno" style="top: 300px; right: 18px">metadata-only panel — no extra query</div>
+      </div>
+
+      <div class="notes" style="margin-top: 14px">
+        <div class="note">
+          <h4>Row anatomy — four columns, deliberately</h4>
+          <p>
+            Chevron · <strong>Title</strong> · Status badge (centred under its header) · Updated (relative, from the <code>updated_at</code> trigger) · four right-aligned icon actions. Slug,
+            difficulty and time were pulled out of the row and live in the panel — the collapsed row answers "which recipe, is it live, how stale is it" and nothing else.
+          </p>
+        </div>
+        <div class="note">
+          <h4>Draft rows carry their warning</h4>
+          <p>A draft has no public URL, so <em>view on site</em> is disabled on those rows rather than 404-ing. Expand a draft to see the "not visible to visitors" note.</p>
+        </div>
+      </div>
+
+      <!-- ===================== EXPANSION VARIANTS ===================== -->
+      <h2 class="doc-h2">2 · How the row opens <span>— the one real fork in this design</span></h2>
+
+      <div class="side-by-side">
+        <div>
+          <div class="variant-h"><span class="pill">A</span> Inline collapsible row</div>
+          <div class="frame">
+            <div style="padding: 14px">
+              <table>
+                <thead>
+                  <tr>
+                    <th style="width: 30px"></th>
+                    <th>Title</th>
+                    <th class="ctr" style="width: 92px">Status</th>
+                    <th style="width: 70px"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="row">
+                    <td>
+                      <svg class="chev" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="m9 18 6-6-6-6" /></svg>
+                    </td>
+                    <td class="title">Appelmoes</td>
+                    <td class="ctr"><span class="badge pub">Published</span></td>
+                    <td class="muted" style="text-align: right; font-size: 12px">···</td>
+                  </tr>
+                  <tr class="row open">
+                    <td>
+                      <svg class="chev" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="m9 18 6-6-6-6" /></svg>
+                    </td>
+                    <td class="title">Grandma's Stamppot</td>
+                    <td class="ctr"><span class="badge draft">Draft</span></td>
+                    <td class="muted" style="text-align: right; font-size: 12px">···</td>
+                  </tr>
+                  <tr class="detail">
+                    <td colspan="4">
+                      <div class="panel" style="grid-template-columns: 1fr; padding-left: 34px">
+                        <div class="kv">
+                          <div class="k">Difficulty</div>
+                          <div class="v"><span class="badge diff">easy</span></div>
+                          <div class="k">Serves</div>
+                          <div class="v">4</div>
+                          <div class="k">Time</div>
+                          <div class="v">15 min prep · 30 min cook</div>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr class="row">
+                    <td>
+                      <svg class="chev" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="m9 18 6-6-6-6" /></svg>
+                    </td>
+                    <td class="title">Hutspot</td>
+                    <td class="ctr"><span class="badge pub">Published</span></td>
+                    <td class="muted" style="text-align: right; font-size: 12px">···</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <p class="variant-note">
+            Detail stays in place, several rows can be open at once, and nothing overlays the list. Costs a second <code>&lt;tr&gt;</code> with <code>colSpan</code> per row and pushes the rows below
+            it down.
+          </p>
+        </div>
+
+        <div>
+          <div class="variant-h"><span class="pill alt">B</span> Side sheet</div>
+          <div class="frame">
+            <div style="padding: 14px; position: relative">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Title</th>
+                    <th class="ctr" style="width: 92px">Status</th>
+                    <th style="width: 70px"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="row">
+                    <td class="title">Appelmoes</td>
+                    <td class="ctr"><span class="badge pub">Published</span></td>
+                    <td class="muted" style="text-align: right; font-size: 12px">···</td>
+                  </tr>
+                  <tr class="row open">
+                    <td class="title">Grandma's Stamppot</td>
+                    <td class="ctr"><span class="badge draft">Draft</span></td>
+                    <td class="muted" style="text-align: right; font-size: 12px">···</td>
+                  </tr>
+                  <tr class="row">
+                    <td class="title">Hutspot</td>
+                    <td class="ctr"><span class="badge pub">Published</span></td>
+                    <td class="muted" style="text-align: right; font-size: 12px">···</td>
+                  </tr>
+                </tbody>
+              </table>
+              <div class="sheet-scrim"></div>
+              <div class="sheet">
+                <h3>Grandma's Stamppot</h3>
+                <span class="badge draft">Draft</span>
+                <div class="kv">
+                  <div class="k">Difficulty</div>
+                  <div class="v"><span class="badge diff">easy</span></div>
+                  <div class="k">Serves</div>
+                  <div class="v">4</div>
+                  <div class="k">Time</div>
+                  <div class="v">15 + 30 min</div>
+                  <div class="k">Updated</div>
+                  <div class="v">30 Jul 2026</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <p class="variant-note">
+            Room for much more, and the table never reflows. But it dims the list, shows exactly one recipe at a time, and for six fields of metadata it is a lot of ceremony — the shape you would want
+            if the panel were an <em>editor</em>.
+          </p>
+        </div>
+      </div>
+
+      <!-- ===================== DIALOG + EMPTY ===================== -->
+      <h2 class="doc-h2">3 · Destructive action &amp; empty state</h2>
+
+      <div class="side-by-side">
+        <div>
+          <div class="variant-h">Delete confirm</div>
+          <div class="frame" style="min-height: 210px">
+            <div style="padding: 14px; position: relative; min-height: 210px">
+              <table style="opacity: 0.5">
+                <tbody>
+                  <tr class="row">
+                    <td class="title">Appelmoes</td>
+                    <td class="ctr"><span class="badge pub">Published</span></td>
+                  </tr>
+                  <tr class="row">
+                    <td class="title">Grandma's Stamppot</td>
+                    <td class="ctr"><span class="badge draft">Draft</span></td>
+                  </tr>
+                </tbody>
+              </table>
+              <div class="dlg-scrim">
+                <div class="dlg">
+                  <h3>Delete "Grandma's Stamppot"?</h3>
+                  <p>Its ingredients, steps and images are deleted with it. This cannot be undone.</p>
+                  <div class="dlg-acts">
+                    <button class="btn">Cancel</button>
+                    <button class="btn danger">Delete recipe</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <p class="variant-note">The cascade is worth naming out loud — <code>on delete cascade</code> means the children go too, silently, from the database's side.</p>
+        </div>
+
+        <div>
+          <div class="variant-h">Empty state</div>
+          <div class="frame" style="min-height: 210px">
+            <div style="padding: 20px">
+              <div class="empty">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="color: var(--muted-foreground)">
+                  <path d="M15 11h.01M11 15h.01M16 16h.01M10 6a4 4 0 1 1 8 0 4 4 0 0 1-8 0Z" />
+                  <path d="M2 21a8 8 0 0 1 8-8 8 8 0 0 1 8 8" />
+                </svg>
+                <h3>No recipes yet</h3>
+                <p>Recipes you create will show up here — drafts included.</p>
+                <button class="btn primary">Create your first recipe</button>
+              </div>
+            </div>
+          </div>
+          <p class="variant-note">Distinguish "no recipes at all" from "no matches for this filter" — the second needs a <em>clear filters</em> affordance, not a create button.</p>
+        </div>
+      </div>
+
+      <!-- ===================== NOTES ===================== -->
+      <h2 class="doc-h2">4 · What this mockup is quietly asserting</h2>
+      <div class="notes">
+        <div class="note">
+          <h4><span class="tag trap">trap</span> The read cannot be <code>getRecipes()</code></h4>
+          <p>
+            That one is <code>anon</code> + <code>"use cache"</code>, so RLS hides every draft. Manage needs <code>getAllRecipesForAdmin()</code> on the server client, uncached. If you forget, the
+            page looks fine and just never shows drafts.
+          </p>
+        </div>
+        <div class="note">
+          <h4><span class="tag trap">trap</span> Row click vs. action buttons</h4>
+          <p>An action button inside a clickable row bubbles up and expands it too. The buttons need <code>stopPropagation</code>, or the click target must be the chevron cell alone.</p>
+        </div>
+        <div class="note">
+          <h4><span class="tag trap">trap</span> Publish still has to bust the public cache</h4>
+          <p>Manage is uncached so <em>it</em> refreshes for free — but <code>/recipes</code> is cached under <code>cacheTag("recipes")</code>. Publish and delete must call <code>updateTag</code>.</p>
+        </div>
+        <div class="note">
+          <h4><span class="tag open">deferred</span> No open/close animation in v1</h4>
+          <p>
+            Prototyped and dropped. It works — a <code>grid-template-rows: 0fr → 1fr</code> wrapper inside a zero-padding <code>&lt;td&gt;</code>, since table layout will not tween a
+            <code>&lt;tr&gt;</code> itself — but it forces every panel to stay mounted, and it is pure polish. Cheap to add back later.
+          </p>
+        </div>
+        <div class="note">
+          <h4>Detail row unmounts when closed</h4>
+          <p>Only the open row's panel exists in the DOM. That is a consequence of dropping the animation, not an independent choice — a transition needs something to animate <em>from</em>.</p>
+        </div>
+        <div class="note">
+          <h4>Accordion, one <code>openId</code></h4>
+          <p>
+            One row open at a time, so the state is <code>number | null</code> rather than a <code>Set</code>. Opening B while A is open runs both transitions at once, which reads as a handoff rather
+            than two separate moves.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const ICONS = {
+        chev: '<path d="m9 18 6-6-6-6"/>',
+        pencil: '<path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.4 2.6a1 1 0 0 1 3 3l-9 9a2 2 0 0 1-.9.5l-2.9.9a.5.5 0 0 1-.6-.6l.8-2.9a2 2 0 0 1 .5-.9z"/>',
+        eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>',
+        eyeOff:
+          '<path d="M10.7 5.1A10.7 10.7 0 0 1 22 12s-1 1.9-2.8 3.5"/><path d="M14.1 14.2a3 3 0 0 1-4.2-4.2"/><path d="M17.5 17.5A10.8 10.8 0 0 1 2 12a12.5 12.5 0 0 1 4.4-5.1"/><path d="m2 2 20 20"/>',
+        ext: '<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
+        trash: '<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+        alert: '<path d="m21.7 18-8-14a2 2 0 0 0-3.4 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+      };
+      const svg = (d, s = 15, w = 2) =>
+        `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+
+      const RECIPES = [
+        {
+          id: 1,
+          title: "Grandma's Stamppot",
+          slug: "grandmas-stamppot",
+          published: false,
+          difficulty: "easy",
+          prep: 15,
+          cook: 30,
+          servings: 4,
+          updated: "2 days ago",
+          created: "12 Jul 2026",
+          description: "Mashed potatoes with kale and smoked sausage — the version my grandmother made, which uses far more butter than any recipe will admit to.",
+          notes: "Use waxy potatoes. Floury ones turn to glue.",
+        },
+        {
+          id: 2,
+          title: "Appelmoes",
+          slug: "appelmoes",
+          published: true,
+          difficulty: "easy",
+          prep: 10,
+          cook: 25,
+          servings: 6,
+          updated: "1 week ago",
+          created: "3 Jul 2026",
+          description: "Slow-cooked apple sauce with cinnamon and a strip of lemon peel.",
+          notes: null,
+        },
+        {
+          id: 3,
+          title: "Hutspot met Klapstuk",
+          slug: "hutspot-met-klapstuk",
+          published: true,
+          difficulty: "medium",
+          prep: 20,
+          cook: 150,
+          servings: 4,
+          updated: "2 weeks ago",
+          created: "18 Jun 2026",
+          description: "Carrot, onion and potato mash with slow-braised beef.",
+          notes: "Start the klapstuk three hours ahead.",
+        },
+        {
+          id: 4,
+          title: "Boterkoek",
+          slug: "boterkoek",
+          published: false,
+          difficulty: "medium",
+          prep: 25,
+          cook: 35,
+          servings: 8,
+          updated: "3 weeks ago",
+          created: "9 Jun 2026",
+          description: null,
+          notes: null,
+        },
+        {
+          id: 5,
+          title: "Erwtensoep",
+          slug: "erwtensoep",
+          published: true,
+          difficulty: "hard",
+          prep: 30,
+          cook: 180,
+          servings: 8,
+          updated: "1 month ago",
+          created: "27 May 2026",
+          description: "Split pea soup thick enough to stand a spoon in. Better on the second day.",
+          notes: "Make it the day before. It is not optional.",
+        },
+      ];
+
+      let openId = 1; // accordion: a single id, not a Set — one row open at a time
+      const fmtTime = (r) => `${r.prep + r.cook} min`;
+      const badgeFor = (r) => (r.published ? '<span class="badge pub">Published</span>' : '<span class="badge draft">Draft</span>');
+
+      function rowHtml(r) {
+        const isOpen = openId === r.id;
+        const statusBadge = badgeFor(r);
+        return `
+          <tr class="row ${isOpen ? "open" : ""}" data-id="${r.id}">
+            <td>${svg(ICONS.chev, 15, 2.2).replace("<svg", '<svg class="chev"')}</td>
+            <td><div class="title">${r.title}</div></td>
+            <td class="ctr">${statusBadge}</td>
+            <td class="muted num">${r.updated}</td>
+            <td>
+              <div class="acts">
+                <button class="icon-btn" data-tip="Edit"      data-act="edit">${svg(ICONS.pencil)}</button>
+                <button class="icon-btn" data-tip="${r.published ? "Unpublish" : "Publish"}" data-act="pub">${svg(r.published ? ICONS.eyeOff : ICONS.eye)}</button>
+                <button class="icon-btn" data-tip="${r.published ? "View on site" : "No public URL — draft"}" data-act="view" ${r.published ? "" : "disabled"}>${svg(ICONS.ext)}</button>
+                <button class="icon-btn del" data-tip="Delete" data-act="del">${svg(ICONS.trash)}</button>
+              </div>
+            </td>
+          </tr>
+          ${
+            isOpen
+              ? `<tr class="detail">
+            <td colspan="5">
+              <div class="panel">
+                <div class="prose">
+                  <div class="k">Description</div>
+                  <p>${r.description ?? '<span class="empty-hint">No description yet.</span>'}</p>
+                  <div class="k">Notes</div>
+                  <p>${r.notes ?? '<span class="empty-hint">None.</span>'}</p>
+                  ${r.published ? "" : `<div class="warn">${svg(ICONS.alert, 13)} Draft — not visible to visitors</div>`}
+                </div>
+                <div class="kv">
+                  <div class="k">Difficulty</div><div class="v"><span class="badge diff">${r.difficulty}</span></div>
+                  <div class="k">Time</div><div class="v">${r.prep} min prep · ${r.cook} min cook <span class="muted">(${fmtTime(r)} total)</span></div>
+                  <div class="k">Serves</div><div class="v">${r.servings}</div>
+                  <div class="k">Created</div><div class="v">${r.created}</div>
+                  <div class="k">Updated</div><div class="v">${r.updated}</div>
+                </div>
+              </div>
+            </td>
+          </tr>`
+              : ""
+          }`;
+      }
+
+      const tbody = document.getElementById("tbody");
+      function render() {
+        tbody.innerHTML = RECIPES.map(rowHtml).join("");
+      }
+      render();
+
+      function setOpen(id) {
+        openId = openId === id ? null : id; // accordion — the previous row closes on its own
+        render();
+      }
+
+      tbody.addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-act]");
+        const row = e.target.closest("tr.row");
+        if (!row) return;
+        const id = Number(row.dataset.id);
+        const r = RECIPES.find((x) => x.id === id);
+
+        if (btn) {
+          e.stopPropagation(); // <- exactly the trap called out in the notes
+          if (btn.dataset.act === "del") return showDialog(r);
+          if (btn.dataset.act === "pub") {
+            r.published = !r.published;
+            return render();
+          }
+          return;
+        }
+        setOpen(id);
+      });
+
+      function showDialog(r) {
+        const frame = document.getElementById("main-frame");
+        const el = document.createElement("div");
+        el.className = "dlg-scrim";
+        el.style.zIndex = "50";
+        el.innerHTML = `<div class="dlg">
+            <h3>Delete "${r.title}"?</h3>
+            <p>Its ingredients, steps and images are deleted with it. This cannot be undone.</p>
+            <div class="dlg-acts"><button class="btn" data-x>Cancel</button><button class="btn danger" data-x>Delete recipe</button></div>
+          </div>`;
+        el.addEventListener("click", (ev) => {
+          if (ev.target.closest("[data-x]") || ev.target === el) el.remove();
+        });
+        frame.appendChild(el);
+      }
+
+      document.getElementById("theme").addEventListener("click", () => document.documentElement.classList.toggle("dark"));
+    </script>
+  </body>
+</html>

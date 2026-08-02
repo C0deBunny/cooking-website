@@ -1,5 +1,5 @@
-// import actions
-import { getCurrentUser } from "@/Actions/auth/Auth";
+// import lib
+import { getCurrentUser } from "@/lib/auth/queries";
 
 // import components
 import { Separator } from "@/components/ui/separator";
@@ -35,6 +35,19 @@ export default async function Navigators() {
 
           <Link href="/admin" className="text-sm hover:underline">
             Admin
+          </Link>
+        </>
+      )}
+
+      {/* The component gallery. Not behind isLoggedIn — /dev isn't auth-gated, it simply stops
+          existing in production, and NODE_ENV is inlined at build time so this whole branch is
+          dropped from the production bundle. */}
+      {process.env.NODE_ENV !== "production" && (
+        <>
+          <Separator orientation="vertical" className="mx-2 h-6 border-l border-border" />
+
+          <Link href="/dev" className="text-sm hover:underline">
+            Dev
           </Link>
         </>
       )}
