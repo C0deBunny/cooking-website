@@ -1,5 +1,6 @@
 // import lib
 import { Check, CircleAlert, Save } from "lucide-react";
+import { slugTakenMessage } from "@/lib/recipes/schema";
 import { slugify } from "@/lib/utils";
 
 // import components
@@ -21,6 +22,7 @@ type Props = {
   payload: RecipeInput;
   preview: RecipeView;
   state: RecipeFormState;
+  slugTaken: boolean;
   formAction: (formData: FormData) => void;
   isPending: boolean;
   onPatch: (patch: Partial<Draft>) => void;
@@ -46,7 +48,7 @@ type Props = {
  * a draft", and a save-and-stay would have to thread the returned id back into the draft or the
  * second click would insert a second recipe (decision 13).
  */
-export default function ReviewPanel({ draft, payload, preview, state, formAction, isPending, onPatch, onBack, onBackToDetails }: Props) {
+export default function ReviewPanel({ draft, payload, preview, state, slugTaken, formAction, isPending, onPatch, onBack, onBackToDetails }: Props) {
   const slug = slugify(draft.title);
   const ingredientCount = preview.ingredients.length;
   const stepCount = preview.steps.length;
@@ -59,17 +61,21 @@ export default function ReviewPanel({ draft, payload, preview, state, formAction
     { label: "Steps", value: `${stepCount} step${stepCount === 1 ? "" : "s"}` },
   ];
 
+  // A collision the live check caught has no `state.error` behind it — nothing has been submitted
+  // yet. Both paths report it through the same helper so the wording cannot drift.
+  const error = state.error ?? (slugTaken ? slugTakenMessage(slug) : null);
+
   return (
     <>
-      {state.error ? (
+      {error ? (
         <div role="alert" className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-destructive/35 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           <CircleAlert className="size-4 shrink-0" />
-          <span className="flex-1">{state.error}</span>
+          <span className="flex-1">{error}</span>
 
           {/* A collision has no fix on this panel — the address follows the title and there is no
               field for it, on purpose (decision 11). So the only useful control is a way back to
               the thing that has to change. */}
-          {state.takenSlug === slug ? (
+          {slugTaken ? (
             <Button type="button" variant="outline" size="sm" onClick={onBackToDetails}>
               Back to Details
             </Button>
@@ -111,8 +117,12 @@ export default function ReviewPanel({ draft, payload, preview, state, formAction
               </div>
             </div>
 
+            {/* Disabled on a known collision, because the save is certain to be refused — pressing
+                it buys a round trip and the same message in red. Only a *known* one: the check
+                answers "free" whenever it could not find out, so an unreachable server or a slow
+                answer leaves this enabled and the 23505 branch catches what gets through. */}
             <PanelNav onBack={onBack}>
-              <Button type="submit" disabled={isPending}>
+              <Button type="submit" disabled={isPending || slugTaken}>
                 {isPending ? <Spinner /> : <Save />}
                 {isPending ? "Saving…" : "Save recipe"}
               </Button>

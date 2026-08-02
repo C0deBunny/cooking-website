@@ -4,11 +4,47 @@
 import { redirect } from "next/navigation";
 import { revalidatePath, updateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server-client";
-import { requireUser } from "@/lib/auth/queries";
-import { publishToggleSchema, recipeIdSchema, recipeSchema, type RecipeFormState, type RecipeMutationState } from "@/lib/recipes/schema";
+import { getCurrentUser, requireUser } from "@/lib/auth/queries";
+import { isSlugTaken } from "@/lib/recipes/queries";
+import { detailsSchema, publishToggleSchema, recipeIdSchema, recipeSchema, slugTakenMessage, type RecipeFormState, type RecipeMutationState } from "@/lib/recipes/schema";
 
 // Only async functions may be exported from a "use server" file — the schemas and the
 // RecipeFormState type live in ./schema.ts for that reason.
+
+/**
+ * The wizard's live "is this address free?" check, called from the title field as it is typed.
+ *
+ * A read behind `"use server"`, which the reads in `queries.ts` deliberately are not. The rule
+ * they follow is about server-component reads, where `"use server"` would expose an endpoint for
+ * nothing and defeat `cache()`; this one has to be callable from a client component, and an action
+ * is the mechanism for that. The query itself still lives in `queries.ts` with the other reads —
+ * this is only the boundary.
+ *
+ * **Every failure answers `false`.** Signed out, a slug that isn't one, the query throwing — all of
+ * that means "don't know", and "don't know" must never disable the Save button: it would lock the
+ * user out of saving on a condition they can neither see nor clear. The unique index and the 23505
+ * branch below are what actually enforce uniqueness. This only saves a wasted trip through Review.
+ */
+export async function checkSlugTaken(slug: string): Promise<boolean> {
+  // getCurrentUser, not requireUser: this runs on a keystroke, and requireUser redirects — an
+  // expired session would throw the user out of a half-filled wizard from a background poll.
+  // Answering "free" to a signed-out caller is also what keeps draft addresses unprobeable.
+  const user = await getCurrentUser();
+
+  if (!user) return false;
+
+  // A server action is a public endpoint, so the argument is validated like any other. Reusing
+  // the schema's own slug rule rather than restating it keeps the two from drifting apart.
+  const parsed = detailsSchema.shape.slug.safeParse(slug);
+
+  if (!parsed.success) return false;
+
+  try {
+    return await isSlugTaken(parsed.data);
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Saves a recipe and its children in one transaction.
@@ -57,8 +93,12 @@ export async function saveRecipe(_prevState: RecipeFormState, formData: FormData
     // 23505 is unique_violation, which here means the slug is taken. Returned with the slug
     // itself so the form can point at the title that produced it — there is no slug field to
     // correct, by design.
+    //
+    // Still reachable with checkSlugTaken in front of it, and not only through the obvious race:
+    // the check answers "free" whenever it could not find out. This branch is the enforcement,
+    // that one is the courtesy — don't delete it on the grounds that the form now checks first.
     if (error.code === "23505") {
-      return { error: `The address "${parsed.data.slug}" is already used by another recipe. Choose a different title.`, takenSlug: parsed.data.slug };
+      return { error: slugTakenMessage(parsed.data.slug), takenSlug: parsed.data.slug };
     }
 
     return { error: "Failed to save the recipe: " + error.message };

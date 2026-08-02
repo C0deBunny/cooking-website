@@ -1,13 +1,14 @@
 "use client";
 
 // import lib
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useState } from "react";
 import { Check, Lock } from "lucide-react";
 import { detailsSchema, ingredientsSchema, stepsSchema } from "@/lib/recipes/schema";
+import { slugify } from "@/lib/utils";
 import { EMPTY_DRAFT, toPayload, toPreview } from "./draft";
 
 // import actions
-import { saveRecipe } from "@/lib/recipes/actions";
+import { checkSlugTaken, saveRecipe } from "@/lib/recipes/actions";
 
 // import components
 import DetailsPanel from "./DetailsPanel";
@@ -39,6 +40,14 @@ import type { RecipeFormState } from "@/lib/recipes/schema";
  * `beforeunload`, no localStorage — an explicit scope cut, logged in docs/known-issues.md
  * (decisions 13 and 14).
  */
+
+/**
+ * Long enough that typing a title is one check rather than thirty, short enough that the answer is
+ * there before anyone reaches Review. The delay is why nothing may *depend* on the check having
+ * run — for most of the time the title is being typed, it hasn't.
+ */
+const SLUG_CHECK_DELAY_MS = 400;
+
 export default function RecipeWizard() {
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
   const [step, setStep] = useState(0);
@@ -59,6 +68,62 @@ export default function RecipeWizard() {
   const complete = useMemo(() => [detailsSchema.safeParse(payload).success, ingredientsSchema.safeParse(payload).success, stepsSchema.safeParse(payload).success], [payload]);
 
   const allComplete = complete.every(Boolean);
+
+  /* ---------------------------------------------------------------------------------------- *
+   * The live address check
+   *
+   * A taken address is deliberately *not* part of `complete` above. Each ✓ is that step's own
+   * `safeParse` and nothing else, and a taken slug parses perfectly — it is a valid slug that
+   * happens to be spoken for. Availability is a fact about the database, not about the shape of
+   * the data, and it arrives asynchronously; folding it into the tick would make Details flicker
+   * on a network round trip, which is the exact drift that rule exists to prevent.
+   *
+   * So it blocks the submit instead, and Review stays reachable. The lock banner says Review
+   * unlocks "once Details is complete" — and Details *is* complete, so refusing entry there would
+   * send the user back to hunt for an empty field that doesn't exist.
+   * ---------------------------------------------------------------------------------------- */
+
+  const slug = useMemo(() => slugify(draft.title), [draft.title]);
+
+  // Holds the slug found taken rather than a boolean, mirroring `state.takenSlug`, so the warning
+  // clears itself: one keystroke in the title derives a different slug and the two stop matching.
+  const [liveTakenSlug, setLiveTakenSlug] = useState<string | null>(null);
+
+  useEffect(() => {
+    // No slug at all is decision 10's case, which the address line already explains. Nothing to ask
+    // the database, and asking would fail the schema's `min(1)` anyway.
+    //
+    // Left over from a previous title rather than cleared, because clearing it here would be a
+    // synchronous setState in an effect and it buys nothing: both readers below compare against
+    // the slug the title derives *now*, and no leftover value can equal "".
+    if (!slug) return;
+
+    let current = true;
+
+    const timer = setTimeout(() => {
+      checkSlugTaken(slug)
+        .then((taken) => {
+          if (current) setLiveTakenSlug(taken ? slug : null);
+        })
+        // A failed round trip is "don't know", and "don't know" is never allowed to block. The
+        // action swallows its own errors for this reason; this catches the network on top of it.
+        .catch(() => {
+          if (current) setLiveTakenSlug(null);
+        });
+    }, SLUG_CHECK_DELAY_MS);
+
+    // Covers both jobs at once: cancels the pending debounce, and drops the answer to a title that
+    // is no longer on screen, so a slow response for an old slug cannot land on a new one.
+    return () => {
+      current = false;
+      clearTimeout(timer);
+    };
+  }, [slug]);
+
+  // Either source counts, and the live one never overrides the other: a 23505 that has already
+  // come back is a fact, while the check is the thing that can be stale or have never run.
+  const takenSlug = liveTakenSlug ?? state.takenSlug;
+  const slugTaken = !!slug && takenSlug === slug;
   const missing = STEPS.slice(0, 3)
     .map((entry, index) => (complete[index] ? null : entry.title))
     .filter((title): title is string => title !== null);
@@ -100,7 +165,7 @@ export default function RecipeWizard() {
           article is rendered full width underneath the checklist instead. */}
       <div className={step === 3 ? "grid grid-cols-1 gap-5" : "grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1.85fr)_minmax(19rem,0.95fr)]"}>
         <div className="min-w-0">
-          {step === 0 ? <DetailsPanel draft={draft} takenSlug={state.takenSlug} onPatch={patch} onNext={() => go(1)} /> : null}
+          {step === 0 ? <DetailsPanel draft={draft} takenSlug={takenSlug} onPatch={patch} onNext={() => go(1)} /> : null}
           {step === 1 ? <IngredientsPanel draft={draft} onPatch={patch} onBack={() => go(0)} onNext={() => go(2)} /> : null}
           {step === 2 ? <StepsPanel draft={draft} onPatch={patch} onBack={() => go(1)} onNext={() => go(3)} nextDisabled={!allComplete} /> : null}
           {step === 3 ? (
@@ -109,6 +174,7 @@ export default function RecipeWizard() {
               payload={payload}
               preview={preview}
               state={state}
+              slugTaken={slugTaken}
               formAction={formAction}
               isPending={isPending}
               onPatch={patch}

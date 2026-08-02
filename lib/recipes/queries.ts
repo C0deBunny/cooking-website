@@ -88,6 +88,32 @@ export async function getRecipeBySlug(slug: string): Promise<RecipeWithChildren 
 }
 
 /**
+ * Whether a slug already belongs to a recipe — the wizard's live check on the title field.
+ *
+ * **Not cached, and it must not become cached.** The entire value of this read is that it reflects
+ * the table right now; a `"recipes"`-tagged entry would keep answering "free" for the rest of the
+ * revalidate window after the address was taken, which is worse than not checking at all.
+ *
+ * Server client rather than the public one, for the same reason `getRecipesForAdmin` uses it: anon
+ * sees only published rows under RLS, so a *draft* sitting on the slug would come back as free and
+ * the save would then fail on a collision this function had just cleared.
+ *
+ * Not an availability check for editing. On edit, a recipe's own slug is "taken" — by itself — so
+ * the edit path will need to exclude its own id rather than reuse this as-is.
+ */
+export async function isSlugTaken(slug: string): Promise<boolean> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase.from("recipes").select("id").eq("slug", slug).maybeSingle();
+
+  if (error) {
+    throw new Error("Failed to check the recipe address: " + error.message);
+  }
+
+  return data !== null;
+}
+
+/**
  * The same read for the admin preview, and deliberately a separate function rather than a flag
  * on the one above.
  *

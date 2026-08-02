@@ -27,6 +27,14 @@ const DESCRIPTION_MAX = 160;
  * diacritics, so "Café" becomes `cafe` but "№1", an emoji or non-Latin script becomes `""` — and
  * `detailsSchema` requires `slug.min(1)`. Without a message here that is a filled-in title, a
  * step that will not tick, a Review step that stays locked, and nothing anywhere saying why.
+ *
+ * `takenSlug` reaches this from either of two places, and the line does not distinguish them: the
+ * debounced check in `RecipeWizard` while the title is being typed, or a 23505 returned by a save
+ * that raced it. It is the slug rather than a flag so the warning clears itself — see there.
+ *
+ * There is no "checking…" state on purpose. The check is advisory to the *user* as well: it is
+ * either sure the address is taken or it says nothing, and a spinner on the address line would
+ * invite waiting for an answer that may never come.
  */
 function AddressLine({ title, takenSlug }: { title: string; takenSlug?: string }) {
   const slug = slugify(title);

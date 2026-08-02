@@ -137,6 +137,17 @@ export type RecipeFormState = {
 };
 
 /**
+ * The one message two code paths have to agree on.
+ *
+ * A collision is now reported from two places — the live check as the title is typed, and the
+ * 23505 branch in `saveRecipe` after a submit that raced it — and they must not word it
+ * differently, or the same problem reads as two problems depending on when it was noticed.
+ */
+export function slugTakenMessage(slug: string) {
+  return `The address "${slug}" is already used by another recipe. Choose a different title.`;
+}
+
+/**
  * The manage page's two mutations.
  *
  * These validate a bare id rather than a form payload, and they do it for the same reason the
