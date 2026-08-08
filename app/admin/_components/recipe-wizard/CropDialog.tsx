@@ -91,25 +91,43 @@ export default function CropDialog({ bitmap, onConfirm, onCancel }: Props) {
    * exists to avoid. Drawn at natural size and positioned by transform, so the browser scales it.
    */
   useEffect(() => {
-    const stage = stageRef.current;
-    const canvas = imageRef.current;
-    if (!stage || !canvas || !bitmap) return;
+    if (!bitmap) return;
 
-    canvas.width = bitmap.width;
-    canvas.height = bitmap.height;
-    canvas.getContext("2d")?.drawImage(bitmap, 0, 0);
-
-    // The dialog animates in, so the first frame after mount can measure zero. Retrying on the
-    // next frame is cheaper than a ResizeObserver for a box that is square by construction.
     let frame = 0;
 
-    function fit() {
-      const viewport = stage!.clientWidth;
+    /**
+     * ⚠ Retried on the next frame until **both** the nodes and a non-zero width exist, and the
+     * ref check has to be inside this loop rather than an early return above it.
+     *
+     * `Dialog` renders its content into a portal, so on the commit where `open` flips true these
+     * refs can still be null — and this effect's only dependency is the bitmap, which does not
+     * change again. An early `if (!stage || !canvas) return` therefore does not defer the setup,
+     * it *cancels* it: the canvas keeps its default 300×150 and is never painted, `view` keeps its
+     * initial `{scale: 1, min: 1, x: 0, y: 0}`, and the dialog opens showing an empty square.
+     *
+     * That fails quietly rather than loudly, which is why it is worth this comment. `sourceRect()`
+     * still returns a valid rectangle from those initial numbers — `sx: 0, sy: 0, size: viewport`
+     * — so Confirm uploads a real photo: the top-left corner of the source at whatever the
+     * viewport happens to be, roughly a third of the intended resolution, with no framing the user
+     * chose. Everything downstream looks like it worked.
+     *
+     * The zero-width half of the condition is the same class of problem one step later: the dialog
+     * animates in, so the first frame after mount can measure zero and `min` would come out 0.
+     */
+    function setup() {
+      const stage = stageRef.current;
+      const canvas = imageRef.current;
+      const viewport = stage?.clientWidth ?? 0;
 
-      if (!viewport) {
-        frame = requestAnimationFrame(fit);
+      if (!canvas || !viewport) {
+        frame = requestAnimationFrame(setup);
         return;
       }
+
+      // Setting `width` also clears the canvas, so this has to precede the draw.
+      canvas.width = bitmap!.width;
+      canvas.height = bitmap!.height;
+      canvas.getContext("2d")?.drawImage(bitmap!, 0, 0);
 
       // "Cover, not contain" — the larger of the two ratios is the scale at which neither axis
       // leaves a gap. Then centre.
@@ -120,7 +138,7 @@ export default function CropDialog({ bitmap, onConfirm, onCancel }: Props) {
       apply();
     }
 
-    fit();
+    setup();
 
     return () => cancelAnimationFrame(frame);
   }, [bitmap, apply]);

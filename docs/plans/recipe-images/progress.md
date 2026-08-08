@@ -7,9 +7,35 @@
      - Next: <what remains> / Blocked: <on what>
 -->
 
+## 2026-08-08 — browser pass
+
+- **Did:** drove the real pipeline over CDP against a signed-in session, and fixed the one bug it
+  found.
+- **The bug: `CropDialog` opened showing an empty square, and failed quietly.** Its setup effect
+  early-returned when `stageRef`/`imageRef` were still null — which they are on the commit where
+  `open` flips true, because `Dialog` renders into a portal — and its only dependency is the
+  bitmap, which never changes again. So the setup was cancelled rather than deferred: the canvas
+  kept its default 300×150 and was never painted, and `view` kept `{scale: 1, min: 1, x: 0, y: 0}`.
+  **Confirm still produced a real photo**, because `sourceRect()` reads valid numbers off those
+  defaults — the top-left corner of the source at the viewport's pixel size. The upload was
+  416×416 instead of 1024×1024, with no framing the user chose, and everything downstream looked
+  like it had worked. Fixed by moving the ref check inside the existing rAF retry loop.
+- **Verified after the fix:** decode → dialog paints → drag and wheel-zoom → `POST /storage/v1/…`
+  200 → the thumbnail loads from the bucket at 1024×1024 → the live preview's hero renders through
+  `/_next/image` off the Supabase host, so `remotePatterns` is right.
+- **Decision 33's `select` grant proved end to end**, which was the plan's smoke test: clicking ✕
+  sent `DELETE` → 200, the object's public URL went 200 → 400, and the field cleared. On write
+  policies alone that delete would have removed nothing and still reported success.
+- **Left behind:** one orphaned object from the pre-fix run,
+  `recipes/ea7fcce3-6c10-4f8c-bd44-53852c1594cc.webp`. `supabase storage rm` on CLI 2.109 returns
+  `{"deleted":[]}` without error for a single object, so it is a dashboard delete. A live instance
+  of known issue 4, which is at least on-theme.
+- **Still unrun:** the EXIF-portrait pass, HEIC, a non-webp blob against the allowlist, reorder and
+  delete mid-upload, and `deleteRecipe`'s file cleanup through a real recipe.
+
 ## 2026-08-08
 
-- **Did:** all three milestones, uncommitted on `feat/recipe-images`.
+- **Did:** all three milestones, committed to `feat/recipe-images`.
   - **M1** — `20260808140816_recipe_images_storage.sql` (bucket + four policies),
     `20260808140817_recipe_images_drop_alt.sql` (gated drop),
     `20260808140818_save_recipe_images.sql` (images block). Plus `lib/supabase/storage.ts`,
