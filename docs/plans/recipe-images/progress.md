@@ -7,6 +7,38 @@
      - Next: <what remains> / Blocked: <on what>
 -->
 
+## 2026-08-08 — end-to-end pass
+
+- **Did:** built a real recipe through the wizard over CDP — cover from a photo, four ingredients
+  including `1/2` and `0,5`, three steps with photos on 1 and 3 (a 900×1400 portrait and a 1600×900
+  landscape, so two aspect ratios went through the same square cropper) — published it, checked all
+  three surfaces, then deleted it.
+- **Verified, and all of it held:**
+  - three uploads, three 200s, three uuid paths under `recipes/`;
+  - Review's checklist read `4 ingredients, serves 4` / `3 steps`, save enabled;
+  - redirect to `/admin/preview/<slug>`, and the article renders the square hero overlaid at column
+    width with badge, title, description and the meta row, plus 300px step photos indented to the
+    text column and step 2 correctly bare;
+  - `next/image` served 768px for the hero, 300px for the step photos and 474px for the card —
+    decision 38's whole argument, working;
+  - `1/2 tl` and `0,5 kop` both rendered `½`, so `parseAmount` and the fraction glyphs survived the
+    round trip;
+  - `/recipes` showed the mixed grid decision 23 predicted: one real cover beside five generated
+    tiles;
+  - `/recipes/<slug>` renders identically to the preview.
+- **`deleteRecipe`'s file cleanup verified end to end:** the three objects went 200 → 400 and the row
+  left `/admin/manage`. That is the read-paths-then-delete-row-then-remove-files order working
+  through both `recipe_images` and `recipe_steps`.
+- **Fixed along the way: the generated tile's colours were systematically clustered.** `hash * 31 + c`
+  over an alphabet of lowercase ASCII and hyphens left the last few characters dominating, and four
+  of the six recipes landed within 40° of each other — a grid of near-identical purple squares, under
+  a comment claiming the hues were spread. Now FNV-1a, with lightness and chroma varied over ranges
+  wide enough to see, because hue alone at a fixed lightness is the same square twice at 7° apart.
+  It still cannot guarantee distinct tiles and the comment now says so.
+- **Still unrun:** EXIF-portrait orientation, HEIC, and a non-webp blob against the bucket allowlist
+  — all three need files the pass could not synthesise. Reorder and delete mid-upload are also
+  untested.
+
 ## 2026-08-08 — browser pass
 
 - **Did:** drove the real pipeline over CDP against a signed-in session, and fixed the one bug it
