@@ -4,7 +4,11 @@
 > by `c2c231d` (2026-08-01), which removed the feature entirely — grouping is gone from both the UI
 > and the schema. The decisions are kept as written because the reasoning still explains the shape of
 > what shipped. Current rules: [CLAUDE.md](../../../CLAUDE.md).
-> _Banner added 2026-08-02 during the docs audit; prose left untouched on purpose._
+>
+> **Docker has since been installed (2026-08-08)**, so "Docker is unavailable, so `db diff` and
+> `db dump` do not run" below no longer holds — `npm run db:diff` works. The decision it supports
+> stands on its other reasoning. See [toolchain.md](../../toolchain.md).
+> _Banner added 2026-08-02 during the docs audit, extended 2026-08-08; prose left untouched on purpose._
 
 ## 1. Four steps, held in client state on one route
 

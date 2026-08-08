@@ -460,6 +460,13 @@
         </p>
       </header>
 
+      <div style="margin: 0 0 18px; padding: 12px 16px; border-left: 3px solid var(--yellow); background: rgba(255, 255, 255, 0.045); border-radius: 6px; line-height: 1.55">
+        <strong>Note added 2026-08-08 — historical record.</strong> Docker was unavailable when this comparison was written, and several passages below lean on that: the plpgsql function being
+        "untestable without Docker", and <code>db:diff</code> needing Docker so this project has "no drift detection". Docker Desktop has since been installed, so <code>npm run db:diff</code> does
+        detect drift. <code>save_recipe</code> is still only exercised against the linked project, because this project runs no local stack. The comparison and the conclusion it reached are otherwise
+        unaffected.
+      </div>
+
       <div class="crux">
         <strong>The trade, in one line:</strong> A keeps the database validating your data and <code>db:types</code> typing it, and pays for that with a SQL function you have to write. C makes the
         save trivially atomic and groups free, and pays for that by making the database blind to what's inside the blob.

@@ -3,12 +3,20 @@
 Environment and dependency traps that cost real time here. Each one reads like a bug in your code
 and isn't.
 
-## Docker is not installed
+## Docker must be _running_, not just installed
 
-`supabase db pull`, `db diff` and `db dump` each provision a local shadow Postgres, so all three
-fail. **Don't retry them expecting a different result.**
+`supabase db pull`, `db diff` and `db dump` each provision a local shadow Postgres. Docker Desktop
+was installed on 2026-08-08, so all three work — **but only while the engine is up.** With it down
+they fail at `Creating shadow database…`, which reads like a broken command and isn't; start Docker
+Desktop and re-run. Closing the window doesn't stop it (it lives in the tray); _Quit_ does.
 
-What still works, and why:
+The first run pulls ~4.8 GB of Supabase images. Afterwards they're cached and a diff takes seconds.
+
+**`supabase db diff` must be told `--linked`.** It defaults to `--local` and dies with
+`ECONNREFUSED 127.0.0.1:54322`, hunting for a `supabase start` stack this project never runs.
+`npm run db:diff` carries the flag; a bare `npx supabase db diff` does not.
+
+What still works with the engine down, and why:
 
 - `npm run db:push` — connects to Postgres directly. It prints a non-fatal Docker warning about
   caching a catalog _after_ it has already applied the migration, so the warning is not a failure.

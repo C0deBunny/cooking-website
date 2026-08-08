@@ -7,14 +7,19 @@ Rules and traps live here. The reasoning behind them lives in `docs/`, linked pe
 
 ## Commands
 
-`npm run` scripts: `dev` · `build` · `lint` · `typecheck` · `format` · `format:check` · `db:push` ·
-`db:types` · `db:doc`.
+`npm run` scripts: `dev` · `build` · `lint` · `typecheck` · `format` · `format:check` · `db:pull` ·
+`db:push` · `db:diff` · `db:types` · `db:doc`.
 
 - **Run `lint` + `typecheck` before declaring work done.** All four checks pass on a clean tree; keep
   it that way.
 - **There is no test suite.** Verify with `npx tsc --noEmit` plus a manual pass in `npm run dev`.
-- **`db:pull` and `db:diff` need Docker, which is not installed.** Don't retry them. Use
-  `npx supabase db query --linked "select …"` to inspect data — see
+- **`db:pull` and `db:diff` need Docker Desktop actually running**, not merely installed — they build
+  a throwaway shadow Postgres and replay every migration into it. If the engine is down they fail at
+  `Creating shadow database…`. The first run pulls ~4.8 GB of images; later runs take seconds.
+- **`db:diff` carries `--linked` on purpose — don't drop it.** Bare `supabase db diff` defaults to
+  `--local` and dies with `ECONNREFUSED 127.0.0.1:54322` looking for a local stack this project never
+  runs.
+- `npx supabase db query --linked "select …"` remains the way to inspect _rows_ — see
   [docs/database-workflow.md](docs/database-workflow.md).
 
 ## Environment

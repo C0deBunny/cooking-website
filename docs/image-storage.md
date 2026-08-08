@@ -29,10 +29,10 @@ on `RecipeWithChildren` saying images are omitted on purpose), and a comment on 
 **In `supabase/config.toml`** — `[storage] enabled = true`, and a commented-out
 `[storage.buckets.images]` example.
 
-> **Don't be misled by that commented block.** `config.toml` configures the **local** dev stack,
-> which needs Docker — unavailable in this project. Uncommenting it does nothing to the linked hosted
-> project. Buckets there are created in the dashboard or via SQL, and Storage policies are rows in
-> `storage.objects` policies, applied like any other migration.
+> **Don't be misled by that commented block.** `config.toml` configures the **local** dev stack —
+> which this project never starts, Docker being installed or not. Uncommenting it does nothing to the
+> linked hosted project. Buckets there are created in the dashboard or via SQL, and Storage policies
+> are rows in `storage.objects` policies, applied like any other migration.
 
 ## Why it needs deciding rather than just doing
 

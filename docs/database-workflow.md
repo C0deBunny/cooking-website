@@ -4,7 +4,8 @@ How to change and inspect the schema, and the reasoning behind the one write pat
 [schema-current.html](schema-current.html) (the live schema, generated),
 [known-issues.md](known-issues.md) and [permission-model.md](permission-model.md).
 
-Docker is unavailable here, which shapes everything below — see [toolchain.md](toolchain.md).
+Docker Desktop was installed on 2026-08-08, so `db:diff` and `db:pull` work — while the engine is
+running. See [toolchain.md](toolchain.md) for that trap and for what still works without it.
 
 ## The loop for a schema change
 
@@ -26,26 +27,31 @@ partial indexes or RLS. That sidecar supplies the rest, and
 `scripts/gen-schema-doc.mjs` (`npm run db:doc` to run it alone).
 
 The generator warns, on the console and in the page itself, when a table exists in one and not the
-other — which is the only drift signal this project has. It writes no timestamp, so regenerating an
+other — a second drift signal alongside `db:diff`. It writes no timestamp, so regenerating an
 unchanged schema is a no-op in `git diff`.
 
-## There is no drift detection
+## Drift detection — `npm run db:diff`
 
-That is the consequence of having no `db:diff`. **Never change structure in the Supabase Table
-Editor** — a clicked column is invisible to the migration history and nothing will warn you. The
-Table Editor is for reading and editing _rows_ only.
+Builds a throwaway shadow Postgres, replays every migration into it in order, and compares the
+result against the linked project. `No schema changes found` means the migration history and the
+live database agree.
 
-## Inspecting without Docker
+**Still never change structure in the Supabase Table Editor.** Drift is detectable now, but only
+when someone runs the check — a clicked column still enters no migration file, and still nothing
+warns you at the moment you click it. The Table Editor is for reading and editing _rows_ only.
+
+## Inspecting without starting Docker
 
 ```bash
 npx supabase db query --linked "select …"
 ```
 
 runs arbitrary SQL against the live database, because it goes through the Management API rather than
-a shadow Postgres. The CLI is already linked and authenticated.
+a shadow Postgres. The CLI is already linked and authenticated. Still the quickest way in — no engine
+to wait for, no container to build.
 
-- That is the Docker-free way to inspect **data**.
-- `npm run db:types` is the Docker-free way to inspect **schema**.
+- That is the fastest way to inspect **data**.
+- `npm run db:types` is the fastest way to inspect **schema**.
 
 Reach for it before writing a migration that assumes a table is empty, and before asking someone to
 go and click around the dashboard.

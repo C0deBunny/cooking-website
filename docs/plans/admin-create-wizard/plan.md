@@ -6,7 +6,12 @@
 > else shipped as written (`ee36175`). CLAUDE.md links here for wizard reasoning, so read it with
 > that caveat; the four load-bearing invariants are restated current in
 > [CLAUDE.md](../../../CLAUDE.md).
-> _Banner added 2026-08-02 during the docs audit; prose left untouched on purpose._
+>
+> **Docker has since been installed (2026-08-08).** "There is no drift detection… `db pull`, `db diff`
+> and `db dump` all fail" below was true when written and no longer is — `npm run db:diff` works. The
+> `select count(*)` gate it justifies is still worth having, for the reason given.
+> See [toolchain.md](../../toolchain.md).
+> _Banner added 2026-08-02 during the docs audit, extended 2026-08-08; prose left untouched on purpose._
 
 ## Goal
 

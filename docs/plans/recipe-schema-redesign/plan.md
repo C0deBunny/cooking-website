@@ -5,7 +5,13 @@
 > mention of `group_label` or ingredient grouping below describes a feature that **no longer exists**
 > — do not build against it. The rest of the plan shipped as written. Current schema rules live in
 > [CLAUDE.md](../../../CLAUDE.md) and [database-workflow.md](../../database-workflow.md).
-> _Banner added 2026-08-02 during the docs audit; prose left untouched on purpose._
+>
+> **Docker has since been installed (2026-08-08).** Two constraints below expired with it: "Docker is
+> unavailable, so `db:diff` and `db:pull` don't work and there is no local Postgres", and "the
+> function cannot be tested locally. No Docker means no shadow database". `npm run db:diff` now
+> detects drift; `save_recipe` is still only exercised against the linked project, because this
+> project runs no local stack. See [toolchain.md](../../toolchain.md).
+> _Banner added 2026-08-02 during the docs audit, extended 2026-08-08; prose left untouched on purpose._
 
 ## Goal
 

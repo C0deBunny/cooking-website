@@ -6,7 +6,12 @@
 > undone; they are kept because the reasoning explains why the reversal was cheap. Everything else
 > still holds. Current rules: [CLAUDE.md](../../../CLAUDE.md) and
 > [database-workflow.md](../../database-workflow.md).
-> _Banner added 2026-08-02 during the docs audit; prose left untouched on purpose._
+>
+> **Docker has since been installed (2026-08-08)**, so the trade-off recorded below — "one plpgsql
+> function that cannot be tested without Docker" — has softened. The function is still not exercised
+> locally, because this project runs no local stack, but drift is now detectable via
+> `npm run db:diff`. See [toolchain.md](../../toolchain.md).
+> _Banner added 2026-08-02 during the docs audit, extended 2026-08-08; prose left untouched on purpose._
 
 ## 1. Make `recipe_images.sort_order` unique per recipe
 
