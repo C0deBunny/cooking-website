@@ -1,0 +1,1495 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Recipe images — the last eight UI calls</title>
+    <style>
+      :root {
+        --background: oklch(0.98 0.016 73.684);
+        --foreground: oklch(0.147 0.004 49.25);
+        --card: oklch(1 0 0);
+        --primary: oklch(0.75 0.183 55.934);
+        --muted: oklch(0.9702 0 0);
+        --muted-foreground: oklch(0.5555 0 0);
+        --destructive: oklch(0.637 0.237 25.331);
+        --border: oklch(0.9219 0 0);
+        --ring: oklch(0.709 0 0);
+        --sidebar: oklch(0.965 0.014 73.684);
+        --difficulty-easy: oklch(0.45 0.13 150);
+        --difficulty-easy-bg: oklch(0.93 0.06 150);
+        --difficulty-medium: oklch(0.52 0.14 55);
+        --difficulty-medium-bg: oklch(0.94 0.06 65);
+        --difficulty-hard: oklch(0.51 0.19 25);
+        --difficulty-hard-bg: oklch(0.94 0.05 25);
+        --font-sans: "Alan Sans", ui-sans-serif, system-ui, sans-serif;
+        --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        --tint: color-mix(in oklab, var(--foreground) 5%, transparent);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+        scroll-padding-top: 5rem;
+      }
+      body {
+        margin: 0;
+        background: var(--background);
+        color: var(--foreground);
+        font-family: var(--font-sans);
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+      }
+      code {
+        font-family: var(--font-mono);
+        font-size: 0.87em;
+        background: var(--tint);
+        padding: 0.05em 0.3em;
+        border-radius: 0.3rem;
+      }
+
+      header.top {
+        position: sticky;
+        top: 0;
+        z-index: 60;
+        background: color-mix(in oklab, var(--background) 90%, transparent);
+        backdrop-filter: blur(10px);
+        border-bottom: 1px solid var(--border);
+      }
+      .top-inner {
+        max-width: 88rem;
+        margin: 0 auto;
+        padding: 0.75rem 1.4rem;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem 1.1rem;
+      }
+      .top h1 {
+        font-size: 0.93rem;
+        font-weight: 700;
+        margin: 0;
+      }
+      .top .sub {
+        font-size: 0.73rem;
+        color: var(--muted-foreground);
+      }
+      nav.jump {
+        margin-left: auto;
+        display: flex;
+        gap: 0.3rem;
+        flex-wrap: wrap;
+      }
+      nav.jump a {
+        font-size: 0.68rem;
+        font-weight: 700;
+        text-decoration: none;
+        color: var(--muted-foreground);
+        border: 1px solid var(--border);
+        background: var(--card);
+        padding: 0.24rem 0.5rem;
+        border-radius: 999px;
+      }
+      nav.jump a:hover {
+        color: var(--foreground);
+        border-color: var(--ring);
+      }
+      main {
+        max-width: 88rem;
+        margin: 0 auto;
+        padding: 1.6rem 1.4rem 6rem;
+      }
+
+      section.q {
+        margin-bottom: 3.4rem;
+      }
+      .q-head {
+        display: flex;
+        align-items: baseline;
+        gap: 0.65rem;
+        margin-bottom: 0.3rem;
+      }
+      .q-num {
+        font-family: var(--font-mono);
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: oklch(0.99 0 0);
+        background: var(--foreground);
+        width: 1.5rem;
+        height: 1.5rem;
+        display: grid;
+        place-items: center;
+        border-radius: 0.4rem;
+        flex-shrink: 0;
+      }
+      .q-num.big {
+        background: var(--destructive);
+      }
+      .q-num.small {
+        background: var(--muted-foreground);
+      }
+      .q-head h2 {
+        font-size: 1.18rem;
+        font-weight: 700;
+        margin: 0;
+        letter-spacing: -0.02em;
+      }
+      .q-note {
+        font-size: 0.83rem;
+        color: var(--muted-foreground);
+        max-width: 76ch;
+        margin: 0 0 1.1rem;
+        padding-left: 2.15rem;
+      }
+      .q-note b {
+        color: var(--foreground);
+      }
+
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 0.9rem;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+      .card.rec {
+        border-color: var(--primary);
+      }
+      .card-head {
+        padding: 0.6rem 0.85rem;
+        border-bottom: 1px solid var(--border);
+        background: var(--sidebar);
+      }
+      .card-head h3 {
+        font-size: 0.83rem;
+        font-weight: 700;
+        margin: 0;
+      }
+      .card-head p {
+        font-size: 0.69rem;
+        color: var(--muted-foreground);
+        margin: 0.08rem 0 0;
+      }
+      .card-body {
+        padding: 0.85rem;
+        flex: 1;
+      }
+      .opts {
+        display: grid;
+        gap: 0.9rem;
+      }
+      @media (min-width: 1100px) {
+        .opts.three {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+        .opts.two {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+      .cost {
+        border-top: 1px dashed var(--border);
+        padding: 0.6rem 0.85rem 0.7rem;
+        font-size: 0.72rem;
+        color: var(--muted-foreground);
+      }
+      .cost p {
+        margin: 0 0 0.25rem;
+      }
+      .cost p:last-child {
+        margin: 0;
+      }
+      .cost .plus::before {
+        content: "+ ";
+        color: var(--difficulty-easy);
+        font-weight: 700;
+      }
+      .cost .minus::before {
+        content: "− ";
+        color: var(--destructive);
+        font-weight: 700;
+      }
+      .cost b {
+        color: var(--foreground);
+      }
+      .badge-rec {
+        display: inline-block;
+        font-size: 0.57rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        background: var(--primary);
+        color: var(--foreground);
+        padding: 0.09rem 0.36rem;
+        border-radius: 0.28rem;
+        vertical-align: 0.12em;
+      }
+
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.45rem 0.9rem;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 0.7rem;
+        padding: 0.6rem 0.8rem;
+        margin: 0 0 1rem 2.15rem;
+      }
+      .ctrl-label {
+        font-size: 0.67rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--muted-foreground);
+      }
+      .seg {
+        display: inline-flex;
+        border: 1px solid var(--border);
+        border-radius: 0.55rem;
+        overflow: hidden;
+        flex-wrap: wrap;
+      }
+      .seg button {
+        font: inherit;
+        font-size: 0.73rem;
+        font-weight: 600;
+        border: 0;
+        background: var(--card);
+        color: var(--muted-foreground);
+        padding: 0.3rem 0.55rem;
+        cursor: pointer;
+      }
+      .seg button + button {
+        border-left: 1px solid var(--border);
+      }
+      .seg button[aria-pressed="true"] {
+        background: var(--foreground);
+        color: oklch(0.99 0 0);
+      }
+      label.check {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-size: 0.74rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .metric {
+        font-family: var(--font-mono);
+        font-size: 0.72rem;
+        font-weight: 700;
+      }
+      .metric.bad {
+        color: var(--destructive);
+      }
+      .metric.ok {
+        color: var(--difficulty-easy);
+      }
+      .metric.mid {
+        color: var(--difficulty-medium);
+      }
+
+      /* ---- generic mock pieces ---- */
+      .frame {
+        border: 1px solid var(--border);
+        border-radius: 0.5rem;
+        background: var(--card);
+        overflow: hidden;
+      }
+      .scaled {
+        transform-origin: top left;
+      }
+      .col768 {
+        width: 768px;
+      }
+      .art-h2 {
+        font-size: 1.1rem;
+        font-weight: 700;
+        margin: 0 0 0.7rem;
+      }
+      ol.mlist {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+      ol.mlist > li {
+        display: flex;
+        gap: 0.9rem;
+        margin-bottom: 1.5rem;
+      }
+      .mnum {
+        width: 2rem;
+        height: 2rem;
+        flex-shrink: 0;
+        display: grid;
+        place-items: center;
+        border-radius: 999px;
+        background: var(--tint);
+        font-size: 0.8rem;
+        font-weight: 700;
+      }
+      .mtext {
+        font-size: 0.95rem;
+        margin: 0.25rem 0 0;
+      }
+      .mnote {
+        font-size: 0.82rem;
+        color: var(--muted-foreground);
+        font-style: italic;
+        margin: 0.3rem 0 0;
+      }
+      .mphoto {
+        aspect-ratio: 1;
+        object-fit: cover;
+        border-radius: 0.6rem;
+        display: block;
+      }
+      .ruler {
+        position: absolute;
+        right: -0.1rem;
+        top: 0;
+        bottom: 0;
+        width: 3px;
+        background: linear-gradient(var(--destructive), color-mix(in oklab, var(--destructive) 30%, transparent));
+        border-radius: 2px;
+      }
+      .screenmark {
+        position: absolute;
+        left: 0;
+        right: 0;
+        border-top: 1px dashed color-mix(in oklab, var(--destructive) 55%, transparent);
+        pointer-events: none;
+      }
+      .screenmark span {
+        position: absolute;
+        right: 0.2rem;
+        top: 0.1rem;
+        font-family: var(--font-mono);
+        font-size: 0.6rem;
+        font-weight: 700;
+        color: var(--destructive);
+        background: color-mix(in oklab, var(--card) 85%, transparent);
+        padding: 0 0.25rem;
+      }
+      .viewport-box {
+        position: relative;
+        max-height: 26rem;
+        overflow: hidden;
+      }
+      .viewport-box::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 3rem;
+        background: linear-gradient(transparent, var(--card));
+        pointer-events: none;
+      }
+
+      /* ---- recipe cards ---- */
+      .grid-cards {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.7rem;
+      }
+      .rcard {
+        border: 1px solid var(--border);
+        border-radius: 0.8rem;
+        overflow: hidden;
+        background: var(--card);
+        display: flex;
+        flex-direction: column;
+      }
+      .rcard .media {
+        aspect-ratio: 1;
+        width: 100%;
+        object-fit: cover;
+        display: block;
+        background: var(--muted);
+      }
+      .rcard .media.ph {
+        display: grid;
+        place-items: center;
+        color: var(--muted-foreground);
+        font-size: 1.4rem;
+        border-bottom: 1px dashed var(--border);
+      }
+      .rcard .media.mono {
+        display: grid;
+        place-items: center;
+        font-weight: 700;
+        font-size: 1.6rem;
+        color: oklch(1 0 0 / 0.85);
+      }
+      .rcard .rbody {
+        padding: 0.55rem 0.65rem 0.7rem;
+        flex: 1;
+      }
+      .rcard .rbody b {
+        display: block;
+        font-size: 0.78rem;
+        font-weight: 700;
+      }
+      .rcard .rbody span {
+        display: block;
+        font-size: 0.66rem;
+        color: var(--muted-foreground);
+        margin-top: 0.1rem;
+      }
+
+      /* ---- panel mocks ---- */
+      .panel {
+        border: 1px solid var(--border);
+        border-radius: 0.8rem;
+        background: var(--card);
+        padding: 0.8rem;
+      }
+      .plabel {
+        font-size: 0.68rem;
+        font-weight: 700;
+        margin: 0 0 0.25rem;
+      }
+      .plabel .req {
+        color: var(--destructive);
+      }
+      .inp {
+        border: 1px solid var(--border);
+        border-radius: 0.5rem;
+        padding: 0.35rem 0.5rem;
+        font-size: 0.73rem;
+        margin-bottom: 0.55rem;
+      }
+      .inp.ph {
+        color: var(--muted-foreground);
+      }
+      .inp.ta {
+        min-height: 2.4rem;
+      }
+      .addr {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        background: var(--tint);
+        border-radius: 0.45rem;
+        padding: 0.28rem 0.5rem;
+        font-size: 0.65rem;
+        color: var(--muted-foreground);
+        margin: -0.25rem 0 0.55rem;
+      }
+      .addr code {
+        background: none;
+        padding: 0;
+      }
+      .grid3 {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.55rem;
+      }
+
+      /* attachment row */
+      .attrow {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        padding: 0.38rem;
+        max-width: 19rem;
+      }
+      .attrow.idle {
+        border-style: dashed;
+        color: var(--muted-foreground);
+      }
+      .attrow.err {
+        border-color: color-mix(in oklab, var(--destructive) 35%, transparent);
+        background: color-mix(in oklab, var(--destructive) 7%, transparent);
+      }
+      .attrow img,
+      .attrow .tph {
+        width: 3.1rem;
+        height: 3.1rem;
+        border-radius: 0.42rem;
+        object-fit: cover;
+        flex-shrink: 0;
+        display: grid;
+        place-items: center;
+        background: var(--muted);
+      }
+      .attrow.err .tph {
+        background: color-mix(in oklab, var(--destructive) 12%, transparent);
+        color: var(--destructive);
+      }
+      .attrow .meta {
+        flex: 1;
+        min-width: 0;
+      }
+      .attrow .meta b {
+        display: block;
+        font-size: 0.72rem;
+        font-weight: 600;
+      }
+      .attrow .meta span {
+        display: block;
+        font-size: 0.63rem;
+        color: var(--muted-foreground);
+      }
+      .attrow.err .meta span {
+        color: color-mix(in oklab, var(--destructive) 85%, transparent);
+      }
+      .iconbtn {
+        width: 1.45rem;
+        height: 1.45rem;
+        display: grid;
+        place-items: center;
+        border-radius: 0.38rem;
+        border: 1px solid var(--border);
+        background: var(--card);
+        font-size: 0.66rem;
+        cursor: pointer;
+        flex-shrink: 0;
+      }
+      .addphoto {
+        font: inherit;
+        font-size: 0.69rem;
+        font-weight: 600;
+        color: var(--muted-foreground);
+        background: none;
+        border: 0;
+        padding: 0.15rem 0;
+        cursor: pointer;
+        text-decoration: underline dotted;
+      }
+      .prow {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.5rem;
+        margin-bottom: 0.6rem;
+      }
+      .pnum {
+        width: 1.5rem;
+        height: 1.5rem;
+        flex-shrink: 0;
+        display: grid;
+        place-items: center;
+        border-radius: 999px;
+        background: var(--tint);
+        font-size: 0.67rem;
+        font-weight: 700;
+        margin-top: 0.15rem;
+      }
+
+      /* phone */
+      .phone {
+        width: 390px;
+        max-width: 100%;
+        border: 8px solid oklch(0.28 0.01 75);
+        border-radius: 1.6rem;
+        overflow: hidden;
+        background: var(--background);
+        margin: 0 auto;
+        position: relative;
+      }
+      .phone .notch {
+        height: 1.1rem;
+        background: oklch(0.28 0.01 75);
+      }
+      .phone-inner {
+        max-height: 24rem;
+        overflow: hidden;
+        position: relative;
+      }
+      .blocker {
+        padding: 2.5rem 1.2rem;
+        text-align: center;
+      }
+      .blocker .ico {
+        font-size: 2rem;
+      }
+      .blocker h4 {
+        font-size: 0.95rem;
+        font-weight: 700;
+        margin: 0.6rem 0 0.3rem;
+      }
+      .blocker p {
+        font-size: 0.78rem;
+        color: var(--muted-foreground);
+        margin: 0;
+      }
+      .cramped {
+        padding: 0.6rem;
+      }
+      .cramped .overflowing {
+        width: 700px;
+      }
+
+      /* toast */
+      .toast {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.5rem;
+        border: 1px solid var(--border);
+        background: var(--card);
+        border-radius: 0.7rem;
+        padding: 0.55rem 0.7rem;
+        box-shadow: 0 8px 20px -6px oklch(0 0 0 / 0.22);
+        max-width: 22rem;
+      }
+      .toast .ic {
+        color: var(--destructive);
+        font-size: 0.9rem;
+        line-height: 1.2;
+      }
+      .toast b {
+        display: block;
+        font-size: 0.76rem;
+        font-weight: 700;
+      }
+      .toast span {
+        display: block;
+        font-size: 0.68rem;
+        color: var(--muted-foreground);
+        margin-top: 0.1rem;
+      }
+
+      /* dialog / sheet */
+      .modal-stage {
+        position: relative;
+        border-radius: 0.7rem;
+        overflow: hidden;
+        background: color-mix(in oklab, var(--foreground) 22%, transparent);
+        height: 15rem;
+        display: grid;
+        place-items: center;
+      }
+      .modal-stage.sheet {
+        place-items: end stretch;
+      }
+      .mini-dialog {
+        background: var(--card);
+        border-radius: 0.8rem;
+        padding: 0.7rem;
+        width: 74%;
+        box-shadow: 0 14px 34px -10px oklch(0 0 0 / 0.4);
+      }
+      .mini-dialog.sheetish {
+        width: 100%;
+        border-radius: 0.9rem 0.9rem 0 0;
+      }
+      .mini-dialog .stage-sq {
+        aspect-ratio: 1;
+        border-radius: 0.55rem;
+        overflow: hidden;
+        background: oklch(0.22 0.01 75);
+        margin-bottom: 0.5rem;
+        max-height: 8rem;
+        display: grid;
+        place-items: center;
+      }
+      .mini-dialog .stage-sq img {
+        height: 100%;
+        width: auto;
+        aspect-ratio: 1;
+        object-fit: cover;
+      }
+      .mini-dialog .row {
+        display: flex;
+        gap: 0.35rem;
+        justify-content: flex-end;
+      }
+      .btn {
+        font: inherit;
+        font-size: 0.7rem;
+        font-weight: 600;
+        border: 1px solid var(--border);
+        background: var(--card);
+        color: var(--foreground);
+        padding: 0.25rem 0.55rem;
+        border-radius: 0.45rem;
+        cursor: pointer;
+      }
+      .btn.primary {
+        background: var(--foreground);
+        border-color: var(--foreground);
+        color: oklch(0.99 0 0);
+      }
+
+      /* state machine */
+      .fsm {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.3rem;
+        font-size: 0.7rem;
+      }
+      .fsm .st {
+        font-family: var(--font-mono);
+        font-weight: 700;
+        border: 1px solid var(--border);
+        background: var(--card);
+        padding: 0.22rem 0.45rem;
+        border-radius: 0.4rem;
+      }
+      .fsm .st.hot {
+        border-color: var(--primary);
+        background: color-mix(in oklab, var(--primary) 16%, transparent);
+      }
+      .fsm .ar {
+        color: var(--muted-foreground);
+      }
+      .fsm .lbl {
+        font-size: 0.62rem;
+        color: var(--muted-foreground);
+        font-style: italic;
+      }
+
+      .callout {
+        border-radius: 0.7rem;
+        padding: 0.7rem 0.85rem;
+        font-size: 0.77rem;
+        margin: 1rem 0 0 2.15rem;
+      }
+      .callout.warn {
+        border: 1px solid color-mix(in oklab, var(--difficulty-medium) 30%, transparent);
+        background: var(--difficulty-medium-bg);
+        color: var(--difficulty-medium);
+      }
+      .callout.bad {
+        border: 1px solid color-mix(in oklab, var(--difficulty-hard) 30%, transparent);
+        background: var(--difficulty-hard-bg);
+        color: var(--difficulty-hard);
+      }
+      .callout p {
+        margin: 0 0 0.35rem;
+      }
+      .callout p:last-child {
+        margin: 0;
+      }
+      .hint {
+        font-size: 0.7rem;
+        color: var(--muted-foreground);
+        margin: 0.4rem 0 0;
+      }
+      .default-tag {
+        font-size: 0.62rem;
+        font-weight: 700;
+        font-family: var(--font-mono);
+        background: var(--tint);
+        color: var(--muted-foreground);
+        padding: 0.1rem 0.35rem;
+        border-radius: 0.28rem;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="top">
+      <div class="top-inner">
+        <div>
+          <h1>Recipe images — the last eight UI calls</h1>
+          <p class="sub">docs/plans/recipe-images · A–H settled · this is what remains</p>
+        </div>
+        <nav class="jump">
+          <a href="#s1">1 step size</a>
+          <a href="#s2">2 card</a>
+          <a href="#s3">3 cover slot</a>
+          <a href="#s4">4 field noise</a>
+          <a href="#s5">5 phone</a>
+          <a href="#s6">6 alt</a>
+          <a href="#s7">7 HEIC</a>
+          <a href="#s8">8 dialog</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <!-- ============================== 1 ============================== -->
+      <section class="q" id="s1">
+        <div class="q-head">
+          <span class="q-num big">1</span>
+          <h2>How big is a step photo in the article?</h2>
+        </div>
+        <p class="q-note">
+          The reading column is <code>max-w-3xl</code> = 768px, and the photo is 1:1. Drag the step count and watch the page height — <b>this is the number that decides it</b>, not how any single step looks. Everything is drawn at
+          true 768px scale, then scaled down to fit.
+        </p>
+
+        <div class="controls">
+          <span class="ctrl-label">Steps</span>
+          <input type="range" id="s1-count" min="1" max="12" step="1" value="6" style="width: 9rem; accent-color: var(--primary)" />
+          <span class="metric" id="s1-count-val"></span>
+          <label class="check"><input type="checkbox" id="s1-every" checked /> every step has a photo</label>
+        </div>
+
+        <div class="opts three">
+          <div class="card">
+            <div class="card-head">
+              <h3>Full column — 768px square</h3>
+              <p>What "plain <code>next/image</code>, no layout design" gives you today.</p>
+            </div>
+            <div class="card-body">
+              <div class="frame viewport-box" id="s1-full"></div>
+              <p class="hint">Page height <span class="metric bad" id="s1-full-h"></span> · <span class="metric bad" id="s1-full-s"></span></p>
+            </div>
+            <div class="cost">
+              <p class="plus">The photo is the point, and at this size it genuinely is.</p>
+              <p class="minus">A step is one screen. Following a recipe means scrolling past a poster per instruction, and the method stops being readable as a sequence.</p>
+            </div>
+          </div>
+
+          <div class="card rec">
+            <div class="card-head">
+              <h3>~40% of the column — 300px square <span class="badge-rec">recommended</span></h3>
+              <p>Photo under the instruction, indented to the text column.</p>
+            </div>
+            <div class="card-body">
+              <div class="frame viewport-box" id="s1-mid"></div>
+              <p class="hint">Page height <span class="metric mid" id="s1-mid-h"></span> · <span class="metric mid" id="s1-mid-s"></span></p>
+            </div>
+            <div class="cost">
+              <p class="plus">Big enough to read as a photo, small enough that two or three steps share a screen.</p>
+              <p class="plus">One value, no responsive rule, and it degrades sanely if a recipe has twelve steps.</p>
+              <p class="minus">A deliberately good photo is shown smaller than it deserves.</p>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h3>Inline thumbnail — 120px, beside the text</h3>
+              <p>Row becomes [number][photo][instruction].</p>
+            </div>
+            <div class="card-body">
+              <div class="frame viewport-box" id="s1-thumb"></div>
+              <p class="hint">Page height <span class="metric ok" id="s1-thumb-h"></span> · <span class="metric ok" id="s1-thumb-s"></span></p>
+            </div>
+            <div class="cost">
+              <p class="plus">Shortest page by far; the method still reads as a numbered list you can scan.</p>
+              <p class="plus">Mirrors the Method <i>panel</i> layout, so the preview and the form look like each other.</p>
+              <p class="minus">120px is a reference image, not a photograph. If the photos are any good this wastes them.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================== 2 ============================== -->
+      <section class="q" id="s2">
+        <div class="q-head">
+          <span class="q-num big">2</span>
+          <h2>What does a coverless recipe look like in the grid?</h2>
+        </div>
+        <p class="q-note">
+          <code>RecipeCard</code> takes <code>{ title, description }</code> today and has <b>no media area at all</b>, so you are adding one. Every existing recipe has no cover, so a mixed grid is not an edge case — it is the state
+          of the site the day this ships. Toggle how many have covers.
+        </p>
+
+        <div class="controls">
+          <span class="ctrl-label">With covers</span>
+          <div class="seg" id="s2-mix">
+            <button data-v="0" aria-pressed="false">none yet</button>
+            <button data-v="2" aria-pressed="true">2 of 6</button>
+            <button data-v="6" aria-pressed="false">all 6</button>
+          </div>
+        </div>
+
+        <div class="opts three">
+          <div class="card">
+            <div class="card-head">
+              <h3>Neutral placeholder tile</h3>
+              <p>Same square, dashed, with an icon.</p>
+            </div>
+            <div class="card-body"><div class="grid-cards" id="s2-a"></div></div>
+            <div class="cost">
+              <p class="plus">Grid stays a grid — every card is the same height at every breakpoint.</p>
+              <p class="minus">Announces a gap to a visitor who cannot fill it, six times over, on day one.</p>
+            </div>
+          </div>
+          <div class="card rec">
+            <div class="card-head">
+              <h3>No media — the card is just shorter <span class="badge-rec">recommended</span></h3>
+              <p>Exactly today's card when there is no cover.</p>
+            </div>
+            <div class="card-body"><div class="grid-cards" id="s2-b"></div></div>
+            <div class="cost">
+              <p class="plus">Nothing looks broken or missing, and the day-one site is unchanged from today.</p>
+              <p class="plus">Zero new markup for the empty case — the media element simply is not rendered.</p>
+              <p class="minus">A ragged grid while the library is mixed. <code>items-start</code> or a masonry feel, not a tidy matrix.</p>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <h3>Generated tile from the title</h3>
+              <p>Tinted square with the initial, derived from the slug.</p>
+            </div>
+            <div class="card-body"><div class="grid-cards" id="s2-c"></div></div>
+            <div class="cost">
+              <p class="plus">Tidy grid <i>and</i> nothing reads as missing — the tile looks intentional.</p>
+              <p class="minus">A whole visual idiom invented for a state that should disappear as covers get added. Also needs a colour derivation nobody asked for.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================== 3 ============================== -->
+      <section class="q" id="s3">
+        <div class="q-head">
+          <span class="q-num">3</span>
+          <h2>Where does the cover field sit on the Details panel?</h2>
+        </div>
+        <p class="q-note">
+          Current order is title + address line → description → a 3-column grid of difficulty / prep / cook. A square field is the largest thing on that panel, so "alongside title and description" is not specific enough.
+        </p>
+
+        <div class="opts three">
+          <div class="card">
+            <div class="card-head">
+              <h3>Above the title</h3>
+              <p>Photo first, then the words.</p>
+            </div>
+            <div class="card-body" id="s3-a"></div>
+            <div class="cost">
+              <p class="plus">Matches the article, where the cover is the first thing.</p>
+              <p class="minus">Puts an optional field above the only required one. The first thing you meet on a blank recipe is a photo picker, not the title.</p>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <h3>After the description</h3>
+              <p>Third in the stack, before the 3-col grid.</p>
+            </div>
+            <div class="card-body" id="s3-b"></div>
+            <div class="cost">
+              <p class="plus">Required fields first, and the reading order stays top-to-bottom.</p>
+              <p class="minus">Pushes difficulty and the times below the fold on a laptop, so the panel needs a scroll to finish a step that used to fit.</p>
+            </div>
+          </div>
+          <div class="card rec">
+            <div class="card-head">
+              <h3>Right of the text fields <span class="badge-rec">recommended</span></h3>
+              <p>Two columns: text left, cover right, spanning both rows.</p>
+            </div>
+            <div class="card-body" id="s3-c"></div>
+            <div class="cost">
+              <p class="plus">Costs no vertical space at all — it fills room the title and description already occupy.</p>
+              <p class="plus">Reads as recipe-level metadata sitting beside the recipe-level text, which is what it is.</p>
+              <p class="minus">Needs a stacking rule below ~640px, which this panel does not have today.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================== 4 ============================== -->
+      <section class="q" id="s4">
+        <div class="q-head">
+          <span class="q-num">4</span>
+          <h2>Is the step photo field always visible, or collapsed until used?</h2>
+        </div>
+        <p class="q-note">
+          Push the step count up. The question is whether eight dashed "Add a photo" bars are an invitation or clutter on a panel whose job is text.
+        </p>
+
+        <div class="controls">
+          <span class="ctrl-label">Steps</span>
+          <input type="range" id="s4-count" min="2" max="10" step="1" value="6" style="width: 9rem; accent-color: var(--primary)" />
+          <span class="metric" id="s4-count-val"></span>
+          <label class="check"><input type="checkbox" id="s4-some" checked /> steps 1 and 3 have photos</label>
+        </div>
+
+        <div class="opts two">
+          <div class="card">
+            <div class="card-head">
+              <h3>Always visible</h3>
+              <p>Every row carries a dashed attachment.</p>
+            </div>
+            <div class="card-body"><div class="panel" id="s4-a"></div></div>
+            <div class="cost">
+              <p class="plus">Discoverable — nobody has to learn that step photos exist.</p>
+              <p class="plus">One state, no expand animation, no per-row toggle to hold.</p>
+              <p class="minus">On a 10-step recipe the panel is mostly empty photo slots, and the instructions stop being the obvious thing to fill in.</p>
+            </div>
+          </div>
+          <div class="card rec">
+            <div class="card-head">
+              <h3>Collapsed to a text button <span class="badge-rec">recommended</span></h3>
+              <p><code>＋ photo</code> becomes the attachment once there is a file.</p>
+            </div>
+            <div class="card-body"><div class="panel" id="s4-b"></div></div>
+            <div class="cost">
+              <p class="plus">The panel stays about instructions, and rows with photos stand out because they are the only ones with a thumbnail.</p>
+              <p class="plus">Same component underneath — the idle state is just rendered as a button instead of a bar.</p>
+              <p class="minus">Less discoverable, and it is a second idle presentation for <code>ImageField</code> to carry, which is the drift decision 9 warns about.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================== 5 ============================== -->
+      <section class="q" id="s5">
+        <div class="q-head">
+          <span class="q-num big">5</span>
+          <h2>Does the wizard need to work on a phone?</h2>
+        </div>
+        <p class="q-note">
+          This is the one worth arguing about. <code>/admin</code> is deliberately desktop-first — <code>AdminSidebar</code> is <code>collapsible="none"</code> with a fixed 16rem rail, and <code>PreviewRail</code> is hidden below
+          1024px. But <b>this feature's entire input is a phone photo</b>, so as specified, adding a recipe photo means getting the photo onto a desktop first.
+        </p>
+
+        <div class="opts three">
+          <div class="card">
+            <div class="card-head">
+              <h3>Nothing — today's behaviour</h3>
+              <p>It renders however it renders below 1024px.</p>
+            </div>
+            <div class="card-body">
+              <div class="phone">
+                <div class="notch"></div>
+                <div class="phone-inner cramped" id="s5-a"></div>
+              </div>
+            </div>
+            <div class="cost">
+              <p class="plus">No work.</p>
+              <p class="minus">A fixed 16rem rail plus a form on a 390px screen means horizontal scrolling. It does not fail, it just becomes unpleasant with no explanation.</p>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <h3>Say so, below 1024px</h3>
+              <p>An explicit "open this on a computer" panel.</p>
+            </div>
+            <div class="card-body">
+              <div class="phone">
+                <div class="notch"></div>
+                <div class="phone-inner">
+                  <div class="blocker">
+                    <div class="ico">🖥</div>
+                    <h4>Open the creator on a computer</h4>
+                    <p>The recipe creator needs a wider screen. Photos can be added from here once a recipe exists.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="cost">
+              <p class="plus">Honest, cheap, and it makes the desktop-first choice deliberate instead of accidental.</p>
+              <p class="minus">The second sentence is a promise about editing, which does not exist yet. Without it, the message just says no.</p>
+            </div>
+          </div>
+          <div class="card rec">
+            <div class="card-head">
+              <h3>Make the wizard responsive <span class="badge-rec">worth a look</span></h3>
+              <p>Panels stack, rail stays hidden, cropper full-screen.</p>
+            </div>
+            <div class="card-body">
+              <div class="phone">
+                <div class="notch"></div>
+                <div class="phone-inner" id="s5-c"></div>
+              </div>
+            </div>
+            <div class="cost">
+              <p class="plus">You can photograph a dish and write it up on the spot, which is the workflow the feature implies.</p>
+              <p class="plus">The pieces mostly cooperate already — the rail is hidden below 1024px, and the panels are single-column stacks.</p>
+              <p class="minus">The sidebar rail is the real blocker, and it belongs to <code>/admin</code> as a whole rather than to this plan. Scope creep with a real edge.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="callout bad">
+          <p>
+            <b>The tension in one line:</b> decision 3 chose browser-side compression specifically because "a phone photo is 4–12MB", and the crop picker was built with pointer events specifically so touch works. Both assume a phone.
+            The route they run on does not.
+          </p>
+        </div>
+      </section>
+
+      <!-- ============================== 6 ============================== -->
+      <section class="q" id="s6">
+        <div class="q-head">
+          <span class="q-num small">6</span>
+          <h2>Alt text <span class="default-tag">default: stays absent</span></h2>
+        </div>
+        <p class="q-note">The column, the schema field and the payload all carry <code>alt</code>; the form sends <code>null</code>. The plan's own open question #1.</p>
+
+        <div class="opts three">
+          <div class="card rec">
+            <div class="card-head">
+              <h3>No entry point <span class="badge-rec">default</span></h3>
+              <p>Send <code>null</code>, record the gap.</p>
+            </div>
+            <div class="card-body">
+              <div class="panel">
+                <p class="plabel">Cover photo</p>
+                <div class="attrow"><img id="s6-thumb-a" alt="" /><div class="meta"><b>cover.webp</b><span>1200 × 1200 · 186 KB</span></div><button class="iconbtn">⟳</button><button class="iconbtn">✕</button></div>
+              </div>
+            </div>
+            <div class="cost">
+              <p class="plus">Nothing to build; the field already exists end to end for when it matters.</p>
+              <p class="minus">A public site ships images with no alternative text. Fine for a personal recipe site, not defensible forever.</p>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <h3>An input under the cover field</h3>
+              <p>One optional line, on Details.</p>
+            </div>
+            <div class="card-body">
+              <div class="panel">
+                <p class="plabel">Cover photo</p>
+                <div class="attrow" style="margin-bottom: 0.5rem">
+                  <img id="s6-thumb-b" alt="" /><div class="meta"><b>cover.webp</b><span>1200 × 1200 · 186 KB</span></div><button class="iconbtn">⟳</button><button class="iconbtn">✕</button>
+                </div>
+                <div class="inp ph">Describe the photo (optional)</div>
+              </div>
+            </div>
+            <div class="cost">
+              <p class="plus">Right beside the thing it describes, which is the only place it can be written honestly.</p>
+              <p class="minus">A text input with a validation rule and no sanitiser needed — fine — but it is one more optional field on the busiest panel, and step photos would each want one too.</p>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <h3>A Review-step prompt</h3>
+              <p>Asked once, at the end, for everything at once.</p>
+            </div>
+            <div class="card-body">
+              <div class="panel">
+                <p class="plabel" style="margin-bottom: 0.4rem">Describe your photos <span style="font-weight: 400; color: var(--muted-foreground)">— optional, helps screen readers</span></p>
+                <div style="display: flex; gap: 0.4rem; align-items: center; margin-bottom: 0.4rem"><img id="s6-thumb-c" alt="" style="width: 2.2rem; height: 2.2rem; border-radius: 0.35rem; object-fit: cover" /><div class="inp ph" style="flex: 1; margin: 0">Cover</div></div>
+                <div style="display: flex; gap: 0.4rem; align-items: center"><div class="tph" style="width: 2.2rem; height: 2.2rem; border-radius: 0.35rem; background: var(--muted); display: grid; place-items: center; font-size: 0.7rem">2</div><div class="inp ph" style="flex: 1; margin: 0">Step 2</div></div>
+              </div>
+            </div>
+            <div class="cost">
+              <p class="plus">One place, all photos, and it does not clutter the panels you use while thinking about the recipe.</p>
+              <p class="minus">Review is the panel that must stay a summary plus a save. Adding an input there makes it a fifth form step in everything but name.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================== 7 ============================== -->
+      <section class="q" id="s7">
+        <div class="q-head">
+          <span class="q-num small">7</span>
+          <h2>HEIC / decode failure <span class="default-tag">default: toast</span></h2>
+        </div>
+        <p class="q-note">
+          <code>createImageBitmap</code> throws before any upload exists, so there is no attachment to put an error in yet — and if the field is empty, forcing it into <code>error</code> means inventing a state for a photo that was
+          never accepted.
+        </p>
+
+        <div class="opts two">
+          <div class="card rec">
+            <div class="card-head">
+              <h3>Toast <span class="badge-rec">default</span></h3>
+              <p><code>Toaster</code> is already mounted in <code>app/admin/layout.tsx</code>.</p>
+            </div>
+            <div class="card-body" style="background: var(--tint)">
+              <div class="panel" style="margin-bottom: 0.7rem">
+                <p class="plabel">Cover photo</p>
+                <div class="attrow idle"><div class="tph">🖼</div><div class="meta"><b>Add a cover photo</b><span>optional</span></div></div>
+              </div>
+              <div class="toast">
+                <span class="ic">⚠</span>
+                <div><b>That image can't be read</b><span>iPhone HEIC photos aren't supported by browsers. Save it as JPEG first, or share it from Photos rather than Files.</span></div>
+              </div>
+            </div>
+            <div class="cost">
+              <p class="plus">Matches the established admin failure pattern — <code>RecipeRow</code> already toasts its mutation errors.</p>
+              <p class="plus">The field stays honestly idle, because nothing was ever attached.</p>
+              <p class="minus">Transient. Dismiss it or look away and the reason is gone with no way back to it.</p>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <h3>Force the field into <code>error</code></h3>
+              <p>Persistent, with a retry.</p>
+            </div>
+            <div class="card-body" style="background: var(--tint)">
+              <div class="panel">
+                <p class="plabel">Cover photo</p>
+                <div class="attrow err">
+                  <div class="tph">⚠</div>
+                  <div class="meta"><b>Can't read that image</b><span>HEIC isn't supported — save as JPEG</span></div>
+                  <button class="iconbtn">⟳</button><button class="iconbtn">✕</button>
+                </div>
+              </div>
+            </div>
+            <div class="cost">
+              <p class="plus">Stays on screen until dealt with, and the retry is right where the problem is.</p>
+              <p class="minus">Invents an <code>error</code> state for a field holding nothing — and it would have to be cleared by a ✕ that has no file to delete.</p>
+              <p class="minus">The message has to fit one truncating line (<code>AttachmentDescription</code> is <code>truncate</code>), so the useful half of the explanation is cut.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================== 8 ============================== -->
+      <section class="q" id="s8">
+        <div class="q-head">
+          <span class="q-num small">8</span>
+          <h2>Crop dialog chrome <span class="default-tag">default: Dialog, Cancel → idle</span></h2>
+        </div>
+        <p class="q-note">Both <code>dialog.tsx</code> and <code>sheet.tsx</code> are installed. The second half — what Cancel means — matters more than the first.</p>
+
+        <div class="opts two">
+          <div class="card rec">
+            <div class="card-head">
+              <h3><code>Dialog</code> <span class="badge-rec">default</span></h3>
+              <p>Centred modal, Escape and backdrop close it.</p>
+            </div>
+            <div class="card-body">
+              <div class="modal-stage">
+                <div class="mini-dialog">
+                  <div class="stage-sq"><img id="s8-a" alt="" /></div>
+                  <div class="row"><button class="btn">Cancel</button><button class="btn primary">Use this crop</button></div>
+                </div>
+              </div>
+            </div>
+            <div class="cost">
+              <p class="plus">A square viewport wants a square-ish container, and a centred box gives it the most room on a desktop.</p>
+              <p class="minus">On a phone a centred modal with a drag surface fights the browser chrome for space.</p>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <h3><code>Sheet</code></h3>
+              <p>Slides from the bottom, full width.</p>
+            </div>
+            <div class="card-body">
+              <div class="modal-stage sheet">
+                <div class="mini-dialog sheetish">
+                  <div class="stage-sq"><img id="s8-b" alt="" /></div>
+                  <div class="row"><button class="btn">Cancel</button><button class="btn primary">Use this crop</button></div>
+                </div>
+              </div>
+            </div>
+            <div class="cost">
+              <p class="plus">Better on a phone, and the drag surface gets the full width. Pairs with question 5 if the answer there is "responsive".</p>
+              <p class="minus">On a desktop a bottom sheet for a square is mostly wasted width, and it reads as a mobile idiom on a desktop-first route.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin: 0.9rem 0 0 2.15rem">
+          <div class="card-head">
+            <h3>What Cancel means — the part that actually matters</h3>
+            <p>No upload has happened when the dialog is open, so there is genuinely nothing to preserve except the picked <code>File</code>.</p>
+          </div>
+          <div class="card-body">
+            <div style="display: grid; gap: 0.7rem">
+              <div>
+                <p class="hint" style="margin: 0 0 0.3rem; font-weight: 700; color: var(--foreground)">Cancel → idle <span class="badge-rec">default</span></p>
+                <div class="fsm">
+                  <span class="st">idle</span><span class="ar">→</span><span class="lbl">pick</span><span class="ar">→</span><span class="st hot">cropping</span><span class="ar">→</span><span class="lbl">cancel</span><span class="ar">→</span
+                  ><span class="st">idle</span>
+                </div>
+                <p class="hint">Nothing retained. Re-cropping means re-picking the file — one extra click, and no <code>File</code> is held in state, which is what decision 4 was careful about.</p>
+              </div>
+              <div>
+                <p class="hint" style="margin: 0 0 0.3rem; font-weight: 700; color: var(--foreground)">Cancel → keep the file for a retry</p>
+                <div class="fsm">
+                  <span class="st">idle</span><span class="ar">→</span><span class="lbl">pick</span><span class="ar">→</span><span class="st hot">cropping</span><span class="ar">→</span><span class="lbl">cancel</span><span class="ar">→</span
+                  ><span class="st">picked, not cropped</span><span class="ar">→</span><span class="lbl">reopen</span><span class="ar">→</span><span class="st hot">cropping</span>
+                </div>
+                <p class="hint">
+                  Saves a click, but invents a fourth field state holding a <code>File</code> that <code>toPayload</code> cannot resolve — the exact shape decision 4 rejected. And under B4's union it has no status to live in.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      function foodSvg(w, h, hue) {
+        const cx = w / 2,
+          cy = h * 0.5,
+          r = Math.min(w, h) * 0.34;
+        return (
+          "data:image/svg+xml;charset=utf-8," +
+          encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+<defs><linearGradient id="t" x1="0" y1="0" x2="0.3" y2="1"><stop offset="0" stop-color="hsl(${hue},45%,38%)"/><stop offset="1" stop-color="hsl(${hue},50%,17%)"/></linearGradient>
+<radialGradient id="g" cx="50%" cy="45%" r="62%"><stop offset="0" stop-color="#fff3d6" stop-opacity="0.45"/><stop offset="1" stop-color="#fff3d6" stop-opacity="0"/></radialGradient>
+<linearGradient id="p" x1="0" y1="0" x2="0.4" y2="1"><stop offset="0" stop-color="#fdfaf4"/><stop offset="1" stop-color="#ddd3c4"/></linearGradient>
+<linearGradient id="b" x1="0" y1="0" x2="0.3" y2="1"><stop offset="0" stop-color="#f2c14e"/><stop offset="1" stop-color="#c07a1e"/></linearGradient></defs>
+<rect width="${w}" height="${h}" fill="url(#t)"/><rect width="${w}" height="${h}" fill="url(#g)"/>
+<ellipse cx="${cx}" cy="${cy + r * 0.08}" rx="${r * 1.12}" ry="${r * 1.06}" fill="#000" fill-opacity="0.22"/>
+<circle cx="${cx}" cy="${cy}" r="${r}" fill="url(#p)"/><circle cx="${cx}" cy="${cy}" r="${r * 0.82}" fill="#f6efe2"/>
+<ellipse cx="${cx - r * 0.3}" cy="${cy - r * 0.16}" rx="${r * 0.46}" ry="${r * 0.2}" fill="url(#b)" transform="rotate(-18 ${cx - r * 0.3} ${cy - r * 0.16})"/>
+<ellipse cx="${cx + r * 0.22}" cy="${cy - r * 0.3}" rx="${r * 0.44}" ry="${r * 0.19}" fill="url(#b)" transform="rotate(14 ${cx + r * 0.22} ${cy - r * 0.3})"/>
+<ellipse cx="${cx + r * 0.05}" cy="${cy + r * 0.24}" rx="${r * 0.5}" ry="${r * 0.21}" fill="url(#b)" transform="rotate(-6 ${cx + r * 0.05} ${cy + r * 0.24})"/>
+<circle cx="${cx + r * 0.42}" cy="${cy + r * 0.46}" r="${r * 0.11}" fill="#7d3b2e"/>
+<ellipse cx="${cx + r * 0.5}" cy="${cy - r * 0.02}" rx="${r * 0.13}" ry="${r * 0.07}" fill="#5f8f45"/></svg>`)
+        );
+      }
+      const HUES = [28, 95, 45, 12, 140, 200];
+      const PHOTOS = HUES.map((h) => foodSvg(1200, 1200, h));
+      const COVER = PHOTOS[0];
+      ["s6-thumb-a", "s6-thumb-b", "s6-thumb-c", "s8-a", "s8-b"].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.src = COVER;
+      });
+
+      function segment(id, onPick) {
+        const root = document.getElementById(id);
+        root.addEventListener("click", (e) => {
+          const b = e.target.closest("button");
+          if (!b) return;
+          [...root.querySelectorAll("button")].forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+          onPick(b.dataset.v);
+        });
+      }
+
+      const TEXTS = [
+        "Peel the plantains and slice them lengthways down the middle.",
+        "Brown them in butter over a low heat, turning once, until the edges catch.",
+        "Add the stock and the scotch bonnet, then simmer uncovered for twenty minutes.",
+        "Stir through the coconut milk and let it thicken without boiling.",
+        "Taste for salt. It will want more than you think.",
+        "Finish with lime and a pinch of flaky salt just before serving.",
+        "Rest it off the heat for five minutes so it stops moving.",
+        "Spoon over rice, with the sauce.",
+        "Scatter the coriander and the last of the lime zest.",
+        "Serve straight from the pan.",
+        "Keep the leftovers for tomorrow — it improves.",
+        "Reheat gently with a splash of water.",
+      ];
+
+      /* ============================== 1 ============================== */
+      const COL = 768;
+
+      /* Heights are computed at true 768px scale, then the whole block is
+         scaled to fit its card, so the ratios on screen are honest. */
+      function stepsBlock(mode, count, everyPhoto) {
+        const photoSize = mode === "full" ? COL - 44 : mode === "mid" ? 300 : 120;
+
+        const rows = Array.from({ length: count }, (_, i) => {
+          const text = TEXTS[i % TEXTS.length];
+          const hasPhoto = everyPhoto || i % 2 === 0;
+          const img = hasPhoto ? `<img class="mphoto" src="${PHOTOS[i % PHOTOS.length]}" style="width:${photoSize}px">` : "";
+
+          if (mode === "thumb") {
+            return `<li><span class="mnum">${i + 1}</span>${hasPhoto ? `<img class="mphoto" src="${PHOTOS[i % PHOTOS.length]}" style="width:${photoSize}px;flex-shrink:0">` : ""}<div style="flex:1"><p class="mtext">${text}</p></div></li>`;
+          }
+          return `<li><span class="mnum">${i + 1}</span><div style="flex:1;min-width:0"><p class="mtext">${text}</p>${img ? `<div style="margin-top:.6rem">${img}</div>` : ""}</div></li>`;
+        }).join("");
+
+        return `<div class="col768" style="padding:24px"><h2 class="art-h2">Method</h2><ol class="mlist">${rows}</ol></div>`;
+      }
+
+      /* rough page height: the 768 hero square + a header block + ingredients + the method */
+      function pageHeight(mode, count, everyPhoto) {
+        const photo = mode === "full" ? COL - 44 : mode === "mid" ? 300 : 120;
+        const perStep = mode === "thumb" ? Math.max(56, photo) + 24 : 56 + (everyPhoto || true ? photo + 10 : 0) + 24;
+        const withPhoto = everyPhoto ? count : Math.ceil(count / 2);
+        const without = count - withPhoto;
+        const stepsH = mode === "thumb" ? withPhoto * (photo + 24) + without * 80 : withPhoto * (56 + photo + 34) + without * 80;
+        return Math.round(768 + 150 + 260 + 90 + stepsH);
+      }
+
+      function render1() {
+        const count = Number(document.getElementById("s1-count").value);
+        const every = document.getElementById("s1-every").checked;
+        document.getElementById("s1-count-val").textContent = count + (count === 1 ? " step" : " steps");
+
+        [
+          ["s1-full", "full"],
+          ["s1-mid", "mid"],
+          ["s1-thumb", "thumb"],
+        ].forEach(([id, mode]) => {
+          const host = document.getElementById(id);
+          const avail = host.clientWidth || 320;
+          const scale = avail / COL;
+          host.innerHTML = `<div class="scaled" style="transform:scale(${scale});width:${COL}px">${stepsBlock(mode, count, every)}</div>`;
+          /* keep the scaled block from leaving a gap under itself */
+          host.style.height = Math.min(26 * 16, host.firstChild.getBoundingClientRect().height) + "px";
+
+          const h = pageHeight(mode, count, every);
+          const screens = (h / 900).toFixed(1);
+          document.getElementById(id + "-h").textContent = h.toLocaleString() + "px";
+          document.getElementById(id + "-s").textContent = screens + " screens";
+        });
+      }
+
+      document.getElementById("s1-count").addEventListener("input", render1);
+      document.getElementById("s1-every").addEventListener("change", render1);
+
+      /* ============================== 2 ============================== */
+      const RECIPES = [
+        { t: "Gestoofde bakbanaan", d: "Sweet, slow-stewed, eaten with rice." },
+        { t: "Pom", d: "The Sunday one. Takes all afternoon." },
+        { t: "Roti met kip", d: "Thin, soft, folded around the curry." },
+        { t: "Bruine bonen", d: "Brown beans, coconut milk, salt beef." },
+        { t: "Bakabana", d: "Fried plantain with peanut sauce." },
+        { t: "Moksi meti", d: "Rice, whatever is left, all in one pan." },
+      ];
+      let s2Mix = 2;
+
+      function render2() {
+        const mk = (style) =>
+          RECIPES.map((r, i) => {
+            const hasCover = i < s2Mix;
+            let media;
+            if (hasCover) media = `<img class="media" src="${PHOTOS[i % PHOTOS.length]}" alt="">`;
+            else if (style === "a") media = `<div class="media ph">🖼</div>`;
+            else if (style === "c") media = `<div class="media mono" style="background:hsl(${HUES[i % HUES.length]},38%,42%)">${r.t[0]}</div>`;
+            else media = "";
+            return `<div class="rcard">${media}<div class="rbody"><b>${r.t}</b><span>${r.d}</span></div></div>`;
+          }).join("");
+
+        document.getElementById("s2-a").innerHTML = mk("a");
+        document.getElementById("s2-b").innerHTML = mk("b");
+        document.getElementById("s2-b").style.alignItems = "start";
+        document.getElementById("s2-c").innerHTML = mk("c");
+      }
+      segment("s2-mix", (v) => {
+        s2Mix = Number(v);
+        render2();
+      });
+
+      /* ============================== 3 ============================== */
+      const TITLE_FIELD = `<p class="plabel">Title <span class="req">*</span></p><div class="inp">Gestoofde bakbanaan</div><div class="addr">🔗 <code>/recipes/gestoofde-bakbanaan</code> — the address, taken from the title</div>`;
+      const DESC_FIELD = `<p class="plabel">Short description</p><div class="inp ta ph">One or two lines that show under the title.</div>`;
+      const GRID_FIELDS = `<div class="grid3"><div><p class="plabel">Difficulty</p><div class="inp">Easy</div></div><div><p class="plabel">Prep time</p><div class="inp ph">15</div></div><div><p class="plabel">Cook time</p><div class="inp ph">30</div></div></div>`;
+      const COVER_FIELD = `<p class="plabel">Cover photo</p><div class="attrow"><img src="${COVER}" alt=""><div class="meta"><b>cover.webp</b><span>1200 × 1200 · 186 KB</span></div><button class="iconbtn">⟳</button><button class="iconbtn">✕</button></div>`;
+
+      document.getElementById("s3-a").innerHTML = `<div class="panel"><div style="margin-bottom:.7rem">${COVER_FIELD}</div>${TITLE_FIELD}${DESC_FIELD}${GRID_FIELDS}</div>`;
+      document.getElementById("s3-b").innerHTML = `<div class="panel">${TITLE_FIELD}${DESC_FIELD}<div style="margin-bottom:.7rem">${COVER_FIELD}</div>${GRID_FIELDS}</div>`;
+      document.getElementById("s3-c").innerHTML = `<div class="panel"><div style="display:grid;grid-template-columns:minmax(0,1fr) 8.5rem;gap:.7rem;align-items:start"><div>${TITLE_FIELD}${DESC_FIELD}</div><div><p class="plabel">Cover photo</p><img src="${COVER}" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:.5rem;display:block"><div style="display:flex;gap:.25rem;margin-top:.3rem"><button class="iconbtn">⟳</button><button class="iconbtn">✕</button></div></div></div>${GRID_FIELDS}</div>`;
+
+      /* ============================== 4 ============================== */
+      function render4() {
+        const count = Number(document.getElementById("s4-count").value);
+        const some = document.getElementById("s4-some").checked;
+        document.getElementById("s4-count-val").textContent = count + " steps";
+
+        const rows = (collapsed) =>
+          Array.from({ length: count }, (_, i) => {
+            const hasPhoto = some && (i === 0 || i === 2);
+            const att = hasPhoto
+              ? `<div class="attrow"><img src="${PHOTOS[i % PHOTOS.length]}" alt=""><div class="meta"><b>photo.webp</b><span>1200 × 1200</span></div><button class="iconbtn">⟳</button><button class="iconbtn">✕</button></div>`
+              : collapsed
+                ? `<button class="addphoto">＋ photo</button>`
+                : `<div class="attrow idle"><div class="tph">🖼</div><div class="meta"><b>Add a photo for this step</b><span>optional</span></div></div>`;
+            return `<div class="prow"><span class="pnum">${i + 1}</span><div style="flex:1;min-width:0"><div class="inp ta" style="margin-bottom:.35rem">${TEXTS[i % TEXTS.length]}</div>${att}</div><span style="font-size:.72rem;color:var(--muted-foreground);margin-top:.2rem">↑↓✕</span></div>`;
+          }).join("");
+
+        document.getElementById("s4-a").innerHTML = `<p class="plabel" style="margin-bottom:.5rem">Method</p>${rows(false)}`;
+        document.getElementById("s4-b").innerHTML = `<p class="plabel" style="margin-bottom:.5rem">Method</p>${rows(true)}`;
+      }
+      document.getElementById("s4-count").addEventListener("input", render4);
+      document.getElementById("s4-some").addEventListener("change", render4);
+
+      /* ============================== 5 ============================== */
+      /* (a) today: a fixed 16rem rail plus a 700px form on a 390px screen */
+      document.getElementById("s5-a").innerHTML = `<div style="display:flex;gap:.5rem"><div style="width:16rem;flex-shrink:0;background:var(--sidebar);border-radius:.5rem;padding:.5rem"><p class="plabel">Chique's</p><div style="font-size:.7rem;color:var(--muted-foreground)">Dashboard<br>Create<br>Manage</div></div><div class="overflowing"><div class="panel">${TITLE_FIELD}${DESC_FIELD}</div></div></div><p class="hint" style="padding:0 .3rem">↔ horizontal scroll</p>`;
+
+      /* (c) responsive: rail collapsed to a bar, panel full width, cropper full screen */
+      document.getElementById("s5-c").innerHTML = `<div style="display:flex;align-items:center;gap:.5rem;padding:.45rem .6rem;border-bottom:1px solid var(--border);background:var(--sidebar)"><span style="font-size:.9rem">☰</span><b style="font-size:.75rem">Recipe Creator</b></div><div style="padding:.6rem"><div style="display:flex;gap:.25rem;margin-bottom:.5rem">${["Details", "Ingr.", "Steps", "Review"].map((s, i) => `<span style="flex:1;text-align:center;font-size:.6rem;font-weight:700;padding:.2rem;border-radius:.3rem;background:${i === 0 ? "var(--foreground)" : "var(--tint)"};color:${i === 0 ? "oklch(.99 0 0)" : "var(--muted-foreground)"}">${s}</span>`).join("")}</div><div class="panel">${TITLE_FIELD}<p class="plabel">Cover photo</p><div class="attrow idle" style="max-width:100%"><div class="tph">🖼</div><div class="meta"><b>Add a cover photo</b><span>tap to take one</span></div></div></div></div>`;
+
+      render1();
+      render2();
+      render4();
+      new ResizeObserver(() => render1()).observe(document.body);
+    </script>
+  </body>
+</html>

@@ -1,0 +1,1092 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Recipe images — UI decisions</title>
+    <style>
+      :root {
+        --background: oklch(0.98 0.016 73.684);
+        --foreground: oklch(0.147 0.004 49.25);
+        --card: oklch(1 0 0);
+        --primary: oklch(0.75 0.183 55.934);
+        --muted: oklch(0.9702 0 0);
+        --muted-foreground: oklch(0.5555 0 0);
+        --destructive: oklch(0.637 0.237 25.331);
+        --border: oklch(0.9219 0 0);
+        --ring: oklch(0.709 0 0);
+        --sidebar: oklch(0.965 0.014 73.684);
+        --difficulty-easy: oklch(0.45 0.13 150);
+        --difficulty-easy-bg: oklch(0.93 0.06 150);
+        --difficulty-medium: oklch(0.52 0.14 55);
+        --difficulty-medium-bg: oklch(0.94 0.06 65);
+        --difficulty-hard: oklch(0.51 0.19 25);
+        --difficulty-hard-bg: oklch(0.94 0.05 25);
+        --font-sans: "Alan Sans", ui-sans-serif, system-ui, sans-serif;
+        --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        --tint: color-mix(in oklab, var(--foreground) 5%, transparent);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+        scroll-padding-top: 5rem;
+      }
+      body {
+        margin: 0;
+        background: var(--background);
+        color: var(--foreground);
+        font-family: var(--font-sans);
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+      }
+      code {
+        font-family: var(--font-mono);
+        font-size: 0.87em;
+        background: var(--tint);
+        padding: 0.05em 0.3em;
+        border-radius: 0.3rem;
+      }
+
+      header.top {
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        background: color-mix(in oklab, var(--background) 90%, transparent);
+        backdrop-filter: blur(10px);
+        border-bottom: 1px solid var(--border);
+      }
+      .top-inner {
+        max-width: 86rem;
+        margin: 0 auto;
+        padding: 0.8rem 1.5rem;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.6rem 1.2rem;
+      }
+      .top h1 {
+        font-size: 0.95rem;
+        font-weight: 700;
+        margin: 0;
+      }
+      .top .sub {
+        font-size: 0.74rem;
+        color: var(--muted-foreground);
+      }
+      nav.jump {
+        margin-left: auto;
+        display: flex;
+        gap: 0.35rem;
+        flex-wrap: wrap;
+      }
+      nav.jump a {
+        font-size: 0.72rem;
+        font-weight: 600;
+        text-decoration: none;
+        color: var(--muted-foreground);
+        border: 1px solid var(--border);
+        background: var(--card);
+        padding: 0.3rem 0.6rem;
+        border-radius: 999px;
+      }
+      nav.jump a:hover {
+        color: var(--foreground);
+        border-color: var(--ring);
+      }
+
+      main {
+        max-width: 86rem;
+        margin: 0 auto;
+        padding: 1.75rem 1.5rem 6rem;
+      }
+
+      h2.band {
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted-foreground);
+        margin: 0 0 0.7rem;
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+      }
+      h2.band::after {
+        content: "";
+        flex: 1;
+        height: 1px;
+        background: var(--border);
+      }
+      .settled {
+        display: grid;
+        gap: 0.55rem;
+        grid-template-columns: repeat(auto-fit, minmax(14.5rem, 1fr));
+        margin-bottom: 2.5rem;
+      }
+      .chip {
+        border: 1px solid color-mix(in oklab, var(--difficulty-easy) 25%, transparent);
+        background: var(--difficulty-easy-bg);
+        border-radius: 0.7rem;
+        padding: 0.55rem 0.75rem;
+      }
+      .chip .k {
+        font-family: var(--font-mono);
+        font-size: 0.62rem;
+        font-weight: 700;
+        color: var(--difficulty-easy);
+        letter-spacing: 0.06em;
+      }
+      .chip .v {
+        font-size: 0.79rem;
+        font-weight: 700;
+        margin-top: 0.08rem;
+      }
+      .chip .w {
+        font-size: 0.67rem;
+        color: color-mix(in oklab, var(--difficulty-easy) 88%, var(--foreground));
+        margin-top: 0.12rem;
+      }
+
+      section.decision {
+        margin-bottom: 3.5rem;
+      }
+      .d-head {
+        display: flex;
+        align-items: baseline;
+        gap: 0.7rem;
+        margin-bottom: 0.35rem;
+      }
+      .d-key {
+        font-family: var(--font-mono);
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        color: oklch(0.99 0 0);
+        background: var(--foreground);
+        padding: 0.2rem 0.5rem;
+        border-radius: 0.4rem;
+        flex-shrink: 0;
+      }
+      .d-key.q {
+        background: var(--destructive);
+      }
+      .d-head h2 {
+        font-size: 1.26rem;
+        font-weight: 700;
+        margin: 0;
+        letter-spacing: -0.02em;
+      }
+      .d-note {
+        font-size: 0.85rem;
+        color: var(--muted-foreground);
+        max-width: 74ch;
+        margin: 0 0 1.3rem;
+      }
+      .d-note b {
+        color: var(--foreground);
+      }
+
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 1rem;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+      .card.sel {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 2px color-mix(in oklab, var(--primary) 35%, transparent);
+      }
+      .card-head {
+        padding: 0.7rem 0.9rem;
+        border-bottom: 1px solid var(--border);
+        background: var(--sidebar);
+      }
+      .card-head h3 {
+        font-size: 0.86rem;
+        font-weight: 700;
+        margin: 0;
+      }
+      .card-head p {
+        font-size: 0.71rem;
+        color: var(--muted-foreground);
+        margin: 0.1rem 0 0;
+      }
+      .card-body {
+        padding: 0.9rem;
+        flex: 1;
+      }
+      .opts {
+        display: grid;
+        gap: 1rem;
+      }
+      @media (min-width: 1150px) {
+        .opts.three {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+        .opts.two {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+      .cost {
+        border-top: 1px dashed var(--border);
+        padding: 0.7rem 0.9rem 0.8rem;
+        font-size: 0.74rem;
+        color: var(--muted-foreground);
+      }
+      .cost p {
+        margin: 0 0 0.28rem;
+      }
+      .cost p:last-child {
+        margin: 0;
+      }
+      .cost .plus::before {
+        content: "+ ";
+        color: var(--difficulty-easy);
+        font-weight: 700;
+      }
+      .cost .minus::before {
+        content: "− ";
+        color: var(--destructive);
+        font-weight: 700;
+      }
+      .cost b {
+        color: var(--foreground);
+      }
+
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem 1rem;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 0.75rem;
+        padding: 0.7rem 0.9rem;
+        margin-bottom: 1.1rem;
+      }
+      .ctrl-label {
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--muted-foreground);
+      }
+      .seg {
+        display: inline-flex;
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        overflow: hidden;
+        flex-wrap: wrap;
+      }
+      .seg button {
+        font: inherit;
+        font-size: 0.75rem;
+        font-weight: 600;
+        border: 0;
+        background: var(--card);
+        color: var(--muted-foreground);
+        padding: 0.33rem 0.6rem;
+        cursor: pointer;
+      }
+      .seg button + button {
+        border-left: 1px solid var(--border);
+      }
+      .seg button[aria-pressed="true"] {
+        background: var(--foreground);
+        color: oklch(0.99 0 0);
+      }
+      .btn {
+        font: inherit;
+        font-size: 0.77rem;
+        font-weight: 600;
+        border: 1px solid var(--border);
+        background: var(--card);
+        color: var(--foreground);
+        padding: 0.35rem 0.7rem;
+        border-radius: 0.6rem;
+        cursor: pointer;
+      }
+      .btn:hover {
+        border-color: var(--ring);
+      }
+      .btn.primary {
+        background: var(--foreground);
+        border-color: var(--foreground);
+        color: oklch(0.99 0 0);
+      }
+
+      /* ---------------- article pieces ---------------- */
+      .vp-shell {
+        background: repeating-linear-gradient(45deg, var(--tint) 0 6px, transparent 6px 12px);
+        padding: 0.7rem 0.4rem;
+        border-radius: 0.7rem;
+      }
+      .vp {
+        margin: 0 auto;
+        border: 1px solid var(--border);
+        border-radius: 0.5rem;
+        overflow: hidden;
+        background: var(--card);
+      }
+      .art-header {
+        background: var(--tint);
+      }
+      .art-col {
+        padding: 0.65rem 0.75rem;
+      }
+      .badge {
+        display: inline-block;
+        font-size: 0.56rem;
+        font-weight: 700;
+        padding: 0.06rem 0.38rem;
+        border-radius: 999px;
+        background: var(--difficulty-easy-bg);
+        color: var(--difficulty-easy);
+      }
+      .badge.grey {
+        background: var(--muted);
+        color: var(--muted-foreground);
+      }
+      .badge.onphoto {
+        background: oklch(1 0 0 / 0.9);
+        color: oklch(0.25 0.05 150);
+      }
+      .art-title {
+        font-size: 0.92rem;
+        font-weight: 700;
+        margin: 0.25rem 0 0.15rem;
+        letter-spacing: -0.02em;
+      }
+      .ph-text {
+        font-size: 0.7rem;
+        color: var(--muted-foreground);
+        font-style: italic;
+        margin: 0.12rem 0 0;
+      }
+      .art-meta {
+        display: flex;
+        gap: 0.9rem;
+        margin: 0.5rem 0 0;
+      }
+      .art-meta dt {
+        font-size: 0.53rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--muted-foreground);
+        margin: 0;
+      }
+      .art-meta dd {
+        font-size: 0.7rem;
+        font-weight: 600;
+        margin: 0;
+      }
+      .art-body {
+        padding: 0.75rem;
+      }
+      .art-h2 {
+        font-size: 0.81rem;
+        font-weight: 700;
+        margin: 0 0 0.35rem;
+      }
+      .sep {
+        height: 1px;
+        background: var(--border);
+        margin: 0.85rem 0;
+      }
+
+      /* D3 overlaid hero */
+      .hero {
+        position: relative;
+        overflow: hidden;
+      }
+      .hero img {
+        display: block;
+        width: 100%;
+        aspect-ratio: 1;
+        object-fit: cover;
+      }
+      .hero .scrim {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(to top, oklch(0.15 0.01 60 / 0.9) 0%, oklch(0.15 0.01 60 / 0.3) 48%, transparent 78%);
+      }
+      .hero .over {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        padding: 0.7rem 0.8rem;
+        color: white;
+      }
+      .hero .over .art-title,
+      .hero .over dd {
+        color: white;
+      }
+      .hero .over dt {
+        color: oklch(0.92 0 0 / 0.72);
+      }
+      /* the empty reserved square: no photo, so no scrim and dark text */
+      .hero.empty {
+        aspect-ratio: 1;
+        border: 1px dashed var(--border);
+        background: color-mix(in oklab, var(--muted) 45%, transparent);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+      .hero.empty .slot {
+        flex: 1;
+        display: grid;
+        place-items: center;
+        color: var(--muted-foreground);
+        font-size: 1.5rem;
+      }
+      .hero.empty .over {
+        position: static;
+        color: var(--foreground);
+      }
+      .hero.empty .over .art-title {
+        color: var(--foreground);
+      }
+      .hero.empty .over dd {
+        color: var(--foreground);
+      }
+      .hero.empty .over dt {
+        color: var(--muted-foreground);
+      }
+      .blurbed {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+      }
+      .blurbed .bg {
+        position: absolute;
+        inset: -8%;
+        width: 116%;
+        height: 116%;
+        aspect-ratio: auto;
+        object-fit: cover;
+        filter: blur(26px) saturate(1.15) brightness(0.78);
+      }
+      .blurbed .fg {
+        position: relative;
+        height: 100%;
+        width: auto;
+        aspect-ratio: 1;
+        object-fit: cover;
+      }
+
+      /* rail */
+      .rail {
+        border: 1px solid var(--border);
+        border-radius: 0.7rem;
+        background: var(--card);
+        overflow: hidden;
+        width: 19rem;
+        max-width: 100%;
+        position: relative;
+      }
+      .rail-head {
+        padding: 0.4rem 0.6rem;
+        border-bottom: 1px solid var(--border);
+      }
+      .rail-head p {
+        margin: 0;
+        font-size: 0.7rem;
+        font-weight: 700;
+      }
+      .rail-head span {
+        font-size: 0.61rem;
+        color: var(--muted-foreground);
+      }
+      .rail-scroll {
+        max-height: 21rem;
+        overflow-y: auto;
+        position: relative;
+        scroll-behavior: smooth;
+      }
+      .heading-flag {
+        position: absolute;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: var(--destructive);
+        z-index: 4;
+      }
+      .heading-flag span {
+        position: absolute;
+        left: 0.25rem;
+        top: -1rem;
+        font-family: var(--font-mono);
+        font-size: 0.58rem;
+        font-weight: 700;
+        color: white;
+        background: var(--destructive);
+        padding: 0.08rem 0.32rem;
+        border-radius: 0.22rem;
+      }
+      .mini-label {
+        font-size: 0.63rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--muted-foreground);
+        margin: 0 0 0.3rem;
+      }
+      .twoup {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.7rem;
+      }
+      .fullbleed-note {
+        font-family: var(--font-mono);
+        font-size: 0.63rem;
+        font-weight: 700;
+        padding: 0.15rem 0.4rem;
+        border-radius: 0.3rem;
+        display: inline-block;
+        margin-top: 0.4rem;
+      }
+      .fullbleed-note.yes {
+        background: var(--difficulty-easy-bg);
+        color: var(--difficulty-easy);
+      }
+      .fullbleed-note.part {
+        background: var(--difficulty-medium-bg);
+        color: var(--difficulty-medium);
+      }
+      .fullbleed-note.no {
+        background: var(--difficulty-hard-bg);
+        color: var(--difficulty-hard);
+      }
+      .callout {
+        border-radius: 0.75rem;
+        padding: 0.75rem 0.9rem;
+        font-size: 0.79rem;
+        margin: 1.2rem 0 0;
+      }
+      .callout.warn {
+        border: 1px solid color-mix(in oklab, var(--difficulty-medium) 30%, transparent);
+        background: var(--difficulty-medium-bg);
+        color: var(--difficulty-medium);
+      }
+      .callout.bad {
+        border: 1px solid color-mix(in oklab, var(--difficulty-hard) 30%, transparent);
+        background: var(--difficulty-hard-bg);
+        color: var(--difficulty-hard);
+      }
+      .callout p {
+        margin: 0 0 0.4rem;
+      }
+      .callout p:last-child {
+        margin: 0;
+      }
+      .rec {
+        display: inline-block;
+        font-size: 0.59rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        background: var(--primary);
+        color: var(--foreground);
+        padding: 0.1rem 0.38rem;
+        border-radius: 0.3rem;
+        vertical-align: 0.12em;
+      }
+      .hint {
+        font-size: 0.71rem;
+        color: var(--muted-foreground);
+        margin: 0.45rem 0 0;
+      }
+      pre.code {
+        font-family: var(--font-mono);
+        font-size: 0.69rem;
+        background: oklch(0.22 0.01 75);
+        color: oklch(0.93 0.02 75);
+        border-radius: 0.7rem;
+        padding: 0.7rem 0.85rem;
+        overflow-x: auto;
+        margin: 0.7rem 0 0;
+        line-height: 1.55;
+      }
+      pre.code .c {
+        color: oklch(0.6 0.02 75);
+      }
+      pre.code .k {
+        color: oklch(0.82 0.14 75);
+      }
+      pre.code .s {
+        color: oklch(0.78 0.12 150);
+      }
+    </style>
+  </head>
+  <body>
+    <header class="top">
+      <div class="top-inner">
+        <div>
+          <h1>Recipe images — UI decisions</h1>
+          <p class="sub">docs/plans/recipe-images · companion to <b>crop-prototype.html</b></p>
+        </div>
+        <nav class="jump">
+          <a href="#d">D · re-confirm the bound</a>
+          <a href="#e">E · empty header</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <h2 class="band">Settled</h2>
+      <div class="settled">
+        <div class="chip">
+          <span class="k">A</span>
+          <div class="v">Horizontal row, capped ~18–20rem</div>
+          <div class="w">Media bumped off <code>w-10</code>. The panel column is ~700px, so full width is 94% chrome.</div>
+        </div>
+        <div class="chip">
+          <span class="k">B</span>
+          <div class="v">One union field on the row, all derived</div>
+          <div class="w">Zero new <code>useState</code>. A deleted row cannot leave phantom state behind.</div>
+        </div>
+        <div class="chip">
+          <span class="k">C</span>
+          <div class="v">1:1, user-cropped at upload — steps too</div>
+          <div class="w">Deletes the crop warning, the aspect check and all per-surface framing.</div>
+        </div>
+        <div class="chip">
+          <span class="k">F</span>
+          <div class="v">Replace: upload → remove → set path</div>
+          <div class="w">Fails toward one orphan, never toward a lost photo. Decision 11's rule one level down.</div>
+        </div>
+        <div class="chip">
+          <span class="k">G</span>
+          <div class="v">Reuse the existing alert block</div>
+          <div class="w">Mirrors <code>slugTaken</code>, way-back button included. The checklist's green <code>Check</code> stays a constant.</div>
+        </div>
+        <div class="chip">
+          <span class="k">H</span>
+          <div class="v">Keep the step if it has a photo</div>
+          <div class="w"><code>s.instruction.trim() || s.image?.status === "done"</code>, with <i>No instruction yet.</i> beneath.</div>
+        </div>
+      </div>
+
+      <h2 class="band">Re-open</h2>
+
+      <!-- ================================ D ================================ -->
+      <section class="decision" id="d">
+        <div class="d-head">
+          <span class="d-key q">D</span>
+          <h2>You asked about full-bleed — here is what you actually picked</h2>
+        </div>
+        <p class="d-note">
+          "D3" only meant <b>the title sits on the photo</b> rather than in a tinted band beneath it. How wide the photo goes was the separate question, and <b>D3-a caps it at the reading column</b> — so it is not edge to edge. All
+          three keep your 1:1 crop intact; they differ only in how much width the hero claims. Drag the viewport to compare, then tell me if (a) is still the one.
+        </p>
+
+        <div class="controls">
+          <span class="ctrl-label">Viewport</span>
+          <input type="range" id="d-width" min="380" max="1400" step="10" value="1200" style="flex: 1; min-width: 12rem; accent-color: var(--primary)" />
+          <span id="d-width-val" style="font-family: var(--font-mono); font-size: 0.74rem; min-width: 4.5rem; text-align: right"></span>
+        </div>
+
+        <div class="opts three">
+          <div class="card sel" id="card-a">
+            <div class="card-head">
+              <h3>D3-a — capped at the reading column <span class="rec">your pick</span></h3>
+              <p><code>max-w-3xl</code> square, centred. Same column as the body text.</p>
+            </div>
+            <div class="card-body">
+              <div class="vp-shell"><div class="vp" id="vp-a"></div></div>
+              <span class="fullbleed-note no">not full-bleed</span>
+            </div>
+            <div class="cost">
+              <p class="plus">No new layout rule at all — the article is already <code>max-w-3xl</code> throughout.</p>
+              <p class="plus">Identical at every width, so the rail and the page agree with no breakpoint.</p>
+              <p class="minus">On a wide screen the hero is an island with tinted space either side. This is the one you may not have meant.</p>
+            </div>
+          </div>
+
+          <div class="card" id="card-b">
+            <div class="card-head">
+              <h3>D3-b — full-bleed, letterboxed on a blurred fill</h3>
+              <p>Spans the viewport at a wide ratio; the square sits complete inside it.</p>
+            </div>
+            <div class="card-body">
+              <div class="vp-shell"><div class="vp" id="vp-b"></div></div>
+              <span class="fullbleed-note yes">genuinely edge to edge</span>
+            </div>
+            <div class="cost">
+              <p class="plus">Real full-bleed drama with nothing cropped — only padded. Hero height is yours to pick, independent of the square.</p>
+              <p class="minus">A second <code>&lt;img&gt;</code> of the same file plus a blur layer; <code>next/image</code> fetches the asset at two sizes.</p>
+              <p class="minus">On a narrow screen the fill has nowhere to go and it degrades to (a) anyway.</p>
+            </div>
+          </div>
+
+          <div class="card" id="card-c">
+            <div class="card-head">
+              <h3>D3-c — edge to edge on mobile, capped above</h3>
+              <p>One rule: <code>w-full md:max-w-3xl md:mx-auto</code>.</p>
+            </div>
+            <div class="card-body">
+              <div class="vp-shell"><div class="vp" id="vp-c"></div></div>
+              <span class="fullbleed-note part">full-bleed where it is cheap</span>
+            </div>
+            <div class="cost">
+              <p class="plus">Genuinely edge to edge on phones, capped where a square would take over the screen. One layout, no blur, no second image.</p>
+              <p class="plus">The hero is only ever a square, so the crop guarantee holds at every breakpoint.</p>
+              <p class="minus">Two visual behaviours to hold in your head, and the rail is always in capped mode — the mobile look is never previewed.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="callout warn">
+          <p>
+            <b>Why none of them is "1:1 spanning the viewport":</b> a square that wide is that tall. At 1400px the hero would be 1400px before the title, so nothing else is ever above the fold. That option only exists if you give up
+            either the square (back to a wide crop, and the card re-crops it unpreviewed) or the crop guarantee (<code>max-h</code> + <code>object-cover</code>, which re-crops what you framed).
+          </p>
+        </div>
+      </section>
+
+      <!-- ================================ E ================================ -->
+      <section class="decision" id="e">
+        <div class="d-head">
+          <span class="d-key">E</span>
+          <h2>What does the header look like with no cover?</h2>
+        </div>
+        <p class="d-note">
+          This is where D3 bites, and my earlier version of this section drew it wrong — it put the cover <i>below</i> the title, which is D2. Under D3 the title lives <b>on</b> the photo, so "no cover" means the header has to be
+          something else entirely. That makes it a bigger question than a missing box: <b>the whole header swaps layout</b> when a photo lands.
+        </p>
+
+        <div class="opts three">
+          <div class="card">
+            <div class="card-head">
+              <h3>E1 — always reserve the square</h3>
+              <p>Empty dashed square with the title on it. One header, forever.</p>
+            </div>
+            <div class="card-body">
+              <div class="twoup">
+                <div>
+                  <p class="mini-label">wizard, empty</p>
+                  <div class="vp" id="e1-wiz"></div>
+                </div>
+                <div>
+                  <p class="mini-label">published, no cover</p>
+                  <div class="vp" id="e1-pub"></div>
+                </div>
+              </div>
+            </div>
+            <div class="cost">
+              <p class="plus"><b>One header layout</b> — D3's biggest cost disappears. No structural swap, no scrim/no-scrim fork.</p>
+              <p class="plus">Zero layout shift, so the scroll-drift bug below cannot happen.</p>
+              <p class="minus">A published recipe with no cover shows an empty dashed box to visitors, which is a gap announced to someone who cannot fill it.</p>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h3>E2 — fall back to the tinted band</h3>
+              <p>No cover, no photo: the header is exactly what it is today.</p>
+            </div>
+            <div class="card-body">
+              <div class="twoup">
+                <div>
+                  <p class="mini-label">wizard, empty</p>
+                  <div class="vp" id="e2-wiz"></div>
+                </div>
+                <div>
+                  <p class="mini-label">published, no cover</p>
+                  <div class="vp" id="e2-pub"></div>
+                </div>
+              </div>
+            </div>
+            <div class="cost">
+              <p class="plus">A coverless recipe looks deliberate rather than broken, on the public site and in the wizard alike.</p>
+              <p class="minus"><b>Two header layouts to maintain</b> — the cost flagged when D3 was picked, now unavoidable.</p>
+              <p class="minus">Largest possible layout shift: a band is replaced by a square, so the drift is bigger than the square's own height.</p>
+            </div>
+          </div>
+
+          <div class="card sel">
+            <div class="card-head">
+              <h3>E3 — reserve in the wizard, band on the page <span class="rec">worth a look</span></h3>
+              <p>Exactly what the <code>placeholders</code> prop already exists to do.</p>
+            </div>
+            <div class="card-body">
+              <div class="twoup">
+                <div>
+                  <p class="mini-label">wizard, empty</p>
+                  <div class="vp" id="e3-wiz"></div>
+                </div>
+                <div>
+                  <p class="mini-label">published, no cover</p>
+                  <div class="vp" id="e3-pub"></div>
+                </div>
+              </div>
+            </div>
+            <div class="cost">
+              <p class="plus">No drift in the rail <i>and</i> no empty box on the public site — the two goals stop competing.</p>
+              <p class="plus">It is the prop's own stated purpose: "a draft being typed has a description that isn't written yet, and those are different statements".</p>
+              <p class="minus">Still two header layouts in the component, but the second one is reached only when <code>placeholders</code> is off — so the fork is along a line that already exists.</p>
+            </div>
+          </div>
+        </div>
+
+        <p class="mini-label" style="margin-top: 1.5rem">The scroll drift, on the layout you choose</p>
+        <p class="d-note" style="margin-bottom: 0.9rem">
+          The cover field is on Details, but an upload still in flight when you press Next lands while you are on <b>Ingredients</b> — and <code>PreviewRail</code>'s effect only re-runs on <code>[step]</code>. Press the buttons in
+          order.
+        </p>
+
+        <div class="controls">
+          <span class="ctrl-label">Empty header</span>
+          <div class="seg" id="e-mode">
+            <button data-v="e1" aria-pressed="false">E1 reserve</button>
+            <button data-v="e2" aria-pressed="false">E2 band</button>
+            <button data-v="e3" aria-pressed="true">E3 reserve in wizard</button>
+          </div>
+          <button class="btn" id="e-go">Go to Ingredients</button>
+          <button class="btn primary" id="e-land">Cover lands now</button>
+          <button class="btn" id="e-reset">Reset</button>
+        </div>
+
+        <div class="opts two">
+          <div class="card">
+            <div class="card-head">
+              <h3>The rail, at its real 19rem</h3>
+              <p>The red line marks the Ingredients heading the effect scrolled to.</p>
+            </div>
+            <div class="card-body" style="display: flex; justify-content: center">
+              <div class="rail">
+                <div class="rail-head">
+                  <p>Live preview</p>
+                  <span>This updates as you fill in the form.</span>
+                </div>
+                <div class="rail-scroll" id="e-scroll"><div id="e-article"></div></div>
+              </div>
+            </div>
+            <div class="cost" id="e-verdict" style="border-top: 1px solid var(--border)"></div>
+          </div>
+          <div>
+            <pre class="code" id="e-code"></pre>
+            <div class="callout bad">
+              <p>
+                <b>The drift is only a bug because the effect's deps are wrong.</b> Reserving the space makes it unreachable; the other two need <code>recipe.cover_path</code> added to the dep array. Both are correct fixes — the
+                difference is whether the wrong thing is impossible or merely handled.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      function foodSvg(w, h, hue) {
+        const cx = w / 2,
+          cy = h * 0.5,
+          r = Math.min(w, h) * 0.34;
+        return (
+          "data:image/svg+xml;charset=utf-8," +
+          encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+<defs>
+<linearGradient id="t" x1="0" y1="0" x2="0.3" y2="1"><stop offset="0" stop-color="hsl(${hue},45%,38%)"/><stop offset="1" stop-color="hsl(${hue},50%,17%)"/></linearGradient>
+<radialGradient id="g" cx="50%" cy="45%" r="62%"><stop offset="0" stop-color="#fff3d6" stop-opacity="0.45"/><stop offset="1" stop-color="#fff3d6" stop-opacity="0"/></radialGradient>
+<linearGradient id="p" x1="0" y1="0" x2="0.4" y2="1"><stop offset="0" stop-color="#fdfaf4"/><stop offset="1" stop-color="#ddd3c4"/></linearGradient>
+<linearGradient id="b" x1="0" y1="0" x2="0.3" y2="1"><stop offset="0" stop-color="#f2c14e"/><stop offset="1" stop-color="#c07a1e"/></linearGradient>
+</defs>
+<rect width="${w}" height="${h}" fill="url(#t)"/><rect width="${w}" height="${h}" fill="url(#g)"/>
+<ellipse cx="${cx}" cy="${cy + r * 0.08}" rx="${r * 1.12}" ry="${r * 1.06}" fill="#000" fill-opacity="0.22"/>
+<circle cx="${cx}" cy="${cy}" r="${r}" fill="url(#p)"/><circle cx="${cx}" cy="${cy}" r="${r * 0.82}" fill="#f6efe2"/>
+<ellipse cx="${cx - r * 0.3}" cy="${cy - r * 0.16}" rx="${r * 0.46}" ry="${r * 0.2}" fill="url(#b)" transform="rotate(-18 ${cx - r * 0.3} ${cy - r * 0.16})"/>
+<ellipse cx="${cx + r * 0.22}" cy="${cy - r * 0.3}" rx="${r * 0.44}" ry="${r * 0.19}" fill="url(#b)" transform="rotate(14 ${cx + r * 0.22} ${cy - r * 0.3})"/>
+<ellipse cx="${cx + r * 0.05}" cy="${cy + r * 0.24}" rx="${r * 0.5}" ry="${r * 0.21}" fill="url(#b)" transform="rotate(-6 ${cx + r * 0.05} ${cy + r * 0.24})"/>
+<circle cx="${cx + r * 0.42}" cy="${cy + r * 0.46}" r="${r * 0.11}" fill="#7d3b2e"/>
+<ellipse cx="${cx + r * 0.5}" cy="${cy - r * 0.02}" rx="${r * 0.13}" ry="${r * 0.07}" fill="#5f8f45"/>
+</svg>`)
+        );
+      }
+      const COVER = foodSvg(1200, 1200, 28);
+
+      function segment(id, onPick) {
+        const root = document.getElementById(id);
+        root.addEventListener("click", (e) => {
+          const b = e.target.closest("button");
+          if (!b) return;
+          [...root.querySelectorAll("button")].forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+          onPick(b.dataset.v);
+        });
+      }
+
+      /* shared article fragments -------------------------------------------- */
+      const META = `<dl class="art-meta"><div><dt>Prep</dt><dd>15 min</dd></div><div><dt>Cooking</dt><dd>30 min</dd></div><div><dt>Serves</dt><dd>4</dd></div></dl>`;
+      const META_PH = `<dl class="art-meta"><div><dt>Prep</dt><dd>—</dd></div><div><dt>Cooking</dt><dd>—</dd></div><div><dt>Serves</dt><dd>—</dd></div></dl>`;
+      const BODY = `<div class="art-body"><h3 class="art-h2">Ingredients</h3><div style="height:.35rem;border-radius:999px;background:var(--tint);width:70%;margin-bottom:.3rem"></div><div style="height:.35rem;border-radius:999px;background:var(--tint);width:56%"></div></div>`;
+
+      /* D3 hero with a photo, title overlaid */
+      function heroWithCover(title) {
+        return `<div class="hero"><img src="${COVER}" alt=""><div class="scrim"></div><div class="over"><span class="badge onphoto">Easy</span><p class="art-title">${title}</p>${META}</div></div>`;
+      }
+      /* D3 hero, no photo, square reserved — no scrim, dark text */
+      function heroReserved(title, ph) {
+        return `<div class="hero empty"><div class="slot">🖼</div><div class="over"><span class="badge grey">no difficulty</span><p class="art-title">${title}</p>${ph ? `<p class="ph-text">No description yet.</p>` : ""}${ph ? META_PH : META}</div></div>`;
+      }
+      /* the current tinted band */
+      function bandHeader(title, ph) {
+        return `<div class="art-header"><div class="art-col"><span class="badge ${ph ? "grey" : ""}">${ph ? "no difficulty" : "Easy"}</span><p class="art-title">${title}</p>${
+          ph ? `<p class="ph-text">No description yet.</p>` : ""
+        }${ph ? META_PH : META}</div></div>`;
+      }
+
+      /* ---------------- D: the three bounds ---------------- */
+      const COLUMN_PX = 768;
+      let dWidth = 1200;
+
+      function dRender() {
+        document.getElementById("d-width-val").textContent = dWidth + "px";
+        const shell = document.getElementById("vp-a").parentElement.clientWidth;
+        const shown = Math.min(dWidth, shell);
+        const factor = shown / dWidth;
+
+        [
+          ["vp-a", "a"],
+          ["vp-b", "b"],
+          ["vp-c", "c"],
+        ].forEach(([id, variant]) => {
+          const vp = document.getElementById(id);
+          vp.style.width = shown + "px";
+          const w = Math.round(dWidth * factor);
+          const col = Math.round(COLUMN_PX * factor);
+
+          if (variant === "a") {
+            const side = Math.min(w, col);
+            vp.innerHTML = `<div style="display:flex;justify-content:center"><div style="width:${side}px">${heroWithCover("Gestoofde bakbanaan")}</div></div>${BODY}`;
+          } else if (variant === "b") {
+            const h = Math.round(Math.min(w * 0.5, 300 * factor + 120));
+            vp.innerHTML = `<div class="hero" style="height:${h}px"><div class="blurbed"><img class="bg" src="${COVER}" alt=""><img class="fg" src="${COVER}" alt=""></div><div class="scrim"></div><div class="over"><span class="badge onphoto">Easy</span><p class="art-title">Gestoofde bakbanaan</p>${META}</div></div>${BODY}`;
+          } else {
+            const side = w < col ? w : col;
+            vp.innerHTML = `<div style="display:flex;${w >= col ? "justify-content:center" : ""}"><div style="width:${side}px">${heroWithCover("Gestoofde bakbanaan")}</div></div>${BODY}`;
+          }
+        });
+      }
+
+      document.getElementById("d-width").addEventListener("input", (e) => {
+        dWidth = Number(e.target.value);
+        dRender();
+      });
+
+      /* ---------------- E: the three empty headers ---------------- */
+      function eStatics() {
+        document.getElementById("e1-wiz").innerHTML = heroReserved("Untitled recipe", true) + BODY;
+        document.getElementById("e1-pub").innerHTML = heroReserved("Pom", false) + BODY;
+
+        document.getElementById("e2-wiz").innerHTML = bandHeader("Untitled recipe", true) + BODY;
+        document.getElementById("e2-pub").innerHTML = bandHeader("Pom", false) + BODY;
+
+        document.getElementById("e3-wiz").innerHTML = heroReserved("Untitled recipe", true) + BODY;
+        document.getElementById("e3-pub").innerHTML = bandHeader("Pom", false) + BODY;
+      }
+
+      /* ---------------- E: the drift demo ---------------- */
+      let eMode = "e3";
+      let eHasCover = false;
+      let eScrolled = false;
+
+      function eArticle() {
+        /* In the rail, placeholders is ON — so E1 and E3 both reserve. */
+        const header = eHasCover ? heroWithCover("Gestoofde bakbanaan") : eMode === "e2" ? bandHeader("Untitled recipe", true) : heroReserved("Untitled recipe", true);
+        return `${header}<div class="art-body">
+          <h3 class="art-h2" id="e-ing">Ingredients</h3><p class="ph-text">No ingredients yet.</p>
+          <div class="sep"></div>
+          <h3 class="art-h2">Method</h3><p class="ph-text">No steps yet.</p>
+          <div style="height:7rem"></div></div>`;
+      }
+
+      function eRender(keepScroll) {
+        const scroller = document.getElementById("e-scroll");
+        const before = scroller.scrollTop;
+        document.getElementById("e-article").innerHTML = eArticle();
+        if (keepScroll) scroller.scrollTop = before; // the effect did NOT re-run
+
+        let drift = 0;
+        if (eScrolled) {
+          const target = document.getElementById("e-ing");
+          drift = Math.round(Math.max(0, target.offsetTop - 16) - scroller.scrollTop);
+          const flag = document.createElement("div");
+          flag.className = "heading-flag";
+          flag.style.top = target.offsetTop + "px";
+          flag.innerHTML = `<span>Ingredients heading</span>`;
+          document.getElementById("e-article").appendChild(flag);
+        }
+
+        const v = document.getElementById("e-verdict");
+        if (!eScrolled) v.innerHTML = `<p>Press <b>Go to Ingredients</b>, then <b>Cover lands now</b>.</p>`;
+        else if (drift === 0)
+          v.innerHTML = `<p class="plus"><b>No drift.</b> The square was already there, so the photo landing changed pixels and not geometry. Nothing to fix in <code>PreviewRail</code>.</p>`;
+        else
+          v.innerHTML = `<p class="minus"><b>Drifted ${drift}px.</b> ${
+            eMode === "e2" ? "The band was replaced by a square, so the shift is larger than the square itself." : "The square appeared where nothing was."
+          } The effect only re-runs on <code>[step]</code>, so the user is now looking at the wrong part of their own recipe.</p>`;
+
+        document.getElementById("e-code").innerHTML =
+          eMode === "e1"
+            ? `<span class="c">// RecipeArticle.tsx — one header, always a square</span>
+&lt;div className=<span class="s">"relative aspect-square"</span>&gt;
+  {cover ? &lt;Image … /&gt; : &lt;div className=<span class="s">"border border-dashed"</span> /&gt;}
+  &lt;Title /&gt;   <span class="c">// scrim only when cover exists</span>
+&lt;/div&gt;
+
+<span class="c">// PreviewRail.tsx untouched — no drift possible</span>`
+            : eMode === "e2"
+              ? `<span class="c">// RecipeArticle.tsx — two headers</span>
+{cover ? &lt;OverlaidHero … /&gt; : &lt;TintedBand … /&gt;}
+
+<span class="c">// PreviewRail.tsx — the deps fix is required</span>
+useEffect(() =&gt; { … }, [step, <span class="k">recipe.cover_path</span>])`
+              : `<span class="c">// RecipeArticle.tsx — the fork follows the prop</span>
+{cover
+  ? &lt;OverlaidHero … /&gt;
+  : <span class="k">placeholders</span>
+    ? &lt;ReservedSquare … /&gt;   <span class="c">// wizard only</span>
+    : &lt;TintedBand … /&gt;}      <span class="c">// published, no cover</span>
+
+<span class="c">// PreviewRail.tsx untouched — the rail always reserves</span>`;
+      }
+
+      document.getElementById("e-go").addEventListener("click", () => {
+        const scroller = document.getElementById("e-scroll");
+        const target = document.getElementById("e-ing");
+        eScrolled = true;
+        scroller.scrollTo({ top: Math.max(0, target.offsetTop - 16), behavior: "smooth" });
+        setTimeout(() => eRender(true), 420);
+      });
+      document.getElementById("e-land").addEventListener("click", () => {
+        eHasCover = true;
+        eRender(true);
+      });
+      document.getElementById("e-reset").addEventListener("click", () => {
+        eHasCover = false;
+        eScrolled = false;
+        document.getElementById("e-scroll").scrollTop = 0;
+        eRender(false);
+      });
+      segment("e-mode", (v) => {
+        eMode = v;
+        eHasCover = false;
+        eScrolled = false;
+        document.getElementById("e-scroll").scrollTop = 0;
+        eRender(false);
+      });
+
+      new ResizeObserver(() => dRender()).observe(document.body);
+      dRender();
+      eStatics();
+      eRender(false);
+    </script>
+  </body>
+</html>

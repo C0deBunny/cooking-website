@@ -1,0 +1,815 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>1:1 crop picker — working prototype</title>
+    <style>
+      :root {
+        --background: oklch(0.98 0.016 73.684);
+        --foreground: oklch(0.147 0.004 49.25);
+        --card: oklch(1 0 0);
+        --primary: oklch(0.75 0.183 55.934);
+        --muted: oklch(0.9702 0 0);
+        --muted-foreground: oklch(0.5555 0 0);
+        --destructive: oklch(0.637 0.237 25.331);
+        --border: oklch(0.9219 0 0);
+        --ring: oklch(0.709 0 0);
+        --sidebar: oklch(0.965 0.014 73.684);
+        --difficulty-easy: oklch(0.45 0.13 150);
+        --difficulty-easy-bg: oklch(0.93 0.06 150);
+        --difficulty-medium: oklch(0.52 0.14 55);
+        --difficulty-medium-bg: oklch(0.94 0.06 65);
+        --font-sans: "Alan Sans", ui-sans-serif, system-ui, sans-serif;
+        --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        --tint: color-mix(in oklab, var(--foreground) 5%, transparent);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--background);
+        color: var(--foreground);
+        font-family: var(--font-sans);
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+      }
+      main {
+        max-width: 74rem;
+        margin: 0 auto;
+        padding: 2rem 1.5rem 5rem;
+      }
+      h1 {
+        font-size: 1.4rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        margin: 0 0 0.3rem;
+      }
+      .lede {
+        font-size: 0.87rem;
+        color: var(--muted-foreground);
+        max-width: 68ch;
+        margin: 0 0 2rem;
+      }
+      code {
+        font-family: var(--font-mono);
+        font-size: 0.87em;
+        background: var(--tint);
+        padding: 0.05em 0.3em;
+        border-radius: 0.3rem;
+      }
+
+      .layout {
+        display: grid;
+        gap: 1.5rem;
+      }
+      @media (min-width: 1000px) {
+        .layout {
+          grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+          align-items: start;
+        }
+      }
+
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 1rem;
+        overflow: hidden;
+      }
+      .card-head {
+        padding: 0.8rem 1rem;
+        border-bottom: 1px solid var(--border);
+        background: var(--sidebar);
+      }
+      .card-head h2 {
+        font-size: 0.95rem;
+        font-weight: 700;
+        margin: 0;
+      }
+      .card-head p {
+        font-size: 0.74rem;
+        color: var(--muted-foreground);
+        margin: 0.1rem 0 0;
+      }
+      .card-body {
+        padding: 1rem;
+      }
+
+      /* ---------- the dialog mock ---------- */
+
+      .dialog {
+        border: 1px solid var(--border);
+        border-radius: 1rem;
+        background: var(--card);
+        box-shadow: 0 10px 30px -8px oklch(0 0 0 / 0.18);
+        overflow: hidden;
+      }
+      .dialog-head {
+        padding: 0.9rem 1.1rem 0.6rem;
+      }
+      .dialog-head h3 {
+        font-size: 1rem;
+        font-weight: 700;
+        margin: 0;
+      }
+      .dialog-head p {
+        font-size: 0.76rem;
+        color: var(--muted-foreground);
+        margin: 0.15rem 0 0;
+      }
+      .dialog-body {
+        padding: 0.4rem 1.1rem 1rem;
+      }
+      .dialog-foot {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.8rem 1.1rem;
+        border-top: 1px solid var(--border);
+        background: var(--sidebar);
+      }
+      .dialog-foot .spacer {
+        flex: 1;
+      }
+
+      /* ---------- the crop viewport ---------- */
+
+      .stage {
+        position: relative;
+        width: 100%;
+        max-width: 26rem;
+        margin: 0 auto;
+        aspect-ratio: 1;
+        overflow: hidden;
+        border-radius: 0.9rem;
+        background: oklch(0.22 0.01 75);
+        touch-action: none;
+        cursor: grab;
+        user-select: none;
+      }
+      .stage.dragging {
+        cursor: grabbing;
+      }
+      .stage img {
+        position: absolute;
+        transform-origin: 0 0;
+        will-change: transform;
+        pointer-events: none;
+        -webkit-user-drag: none;
+      }
+      /* rule-of-thirds guides, only while dragging — same trick every camera app uses */
+      .stage .guides {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.15s;
+      }
+      .stage.dragging .guides {
+        opacity: 1;
+      }
+      .stage .guides span {
+        position: absolute;
+        background: oklch(1 0 0 / 0.45);
+      }
+      .stage .guides .v {
+        top: 0;
+        bottom: 0;
+        width: 1px;
+      }
+      .stage .guides .h {
+        left: 0;
+        right: 0;
+        height: 1px;
+      }
+      .stage .hint {
+        position: absolute;
+        left: 50%;
+        bottom: 0.6rem;
+        transform: translateX(-50%);
+        font-size: 0.68rem;
+        font-weight: 600;
+        color: oklch(1 0 0 / 0.85);
+        background: oklch(0 0 0 / 0.45);
+        padding: 0.2rem 0.55rem;
+        border-radius: 999px;
+        pointer-events: none;
+        transition: opacity 0.2s;
+      }
+      .stage.dragging .hint {
+        opacity: 0;
+      }
+
+      .zoomrow {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        max-width: 26rem;
+        margin: 0.8rem auto 0;
+      }
+      .zoomrow input[type="range"] {
+        flex: 1;
+        accent-color: var(--primary);
+      }
+      .zoomrow span {
+        font-family: var(--font-mono);
+        font-size: 0.7rem;
+        color: var(--muted-foreground);
+        min-width: 2.6rem;
+        text-align: right;
+      }
+
+      .btn {
+        font: inherit;
+        font-size: 0.8rem;
+        font-weight: 600;
+        border: 1px solid var(--border);
+        background: var(--card);
+        color: var(--foreground);
+        padding: 0.4rem 0.8rem;
+        border-radius: 0.6rem;
+        cursor: pointer;
+      }
+      .btn:hover {
+        border-color: var(--ring);
+      }
+      .btn.primary {
+        background: var(--foreground);
+        border-color: var(--foreground);
+        color: oklch(0.99 0 0);
+      }
+      .btn.ghost {
+        background: transparent;
+        border-color: transparent;
+        color: var(--muted-foreground);
+      }
+
+      .filerow {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem 0.8rem;
+        margin-bottom: 1.25rem;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 0.75rem;
+        padding: 0.7rem 0.9rem;
+      }
+      .filerow .ctrl-label {
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--muted-foreground);
+      }
+      .seg {
+        display: inline-flex;
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        overflow: hidden;
+      }
+      .seg button {
+        font: inherit;
+        font-size: 0.76rem;
+        font-weight: 600;
+        border: 0;
+        background: var(--card);
+        color: var(--muted-foreground);
+        padding: 0.33rem 0.65rem;
+        cursor: pointer;
+      }
+      .seg button + button {
+        border-left: 1px solid var(--border);
+      }
+      .seg button[aria-pressed="true"] {
+        background: var(--foreground);
+        color: oklch(0.99 0 0);
+      }
+
+      /* ---------- output ---------- */
+
+      .outgrid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.9rem;
+      }
+      .outgrid .lab {
+        font-size: 0.66rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--muted-foreground);
+        margin: 0 0 0.3rem;
+      }
+      canvas.out,
+      .sq {
+        width: 100%;
+        aspect-ratio: 1;
+        display: block;
+        border-radius: 0.7rem;
+        background: var(--muted);
+        object-fit: cover;
+      }
+      .rcard {
+        border: 1px solid var(--border);
+        border-radius: 0.9rem;
+        overflow: hidden;
+      }
+      .rcard .sq,
+      .rcard canvas {
+        border-radius: 0;
+      }
+      .rcard-body {
+        padding: 0.6rem 0.7rem 0.7rem;
+      }
+      .rcard-body h4 {
+        font-size: 0.82rem;
+        font-weight: 700;
+        margin: 0 0 0.15rem;
+      }
+      .rcard-body p {
+        font-size: 0.68rem;
+        color: var(--muted-foreground);
+        margin: 0;
+      }
+      .badge {
+        display: inline-block;
+        font-size: 0.6rem;
+        font-weight: 700;
+        padding: 0.08rem 0.4rem;
+        border-radius: 999px;
+        background: var(--difficulty-easy-bg);
+        color: var(--difficulty-easy);
+        margin-bottom: 0.3rem;
+      }
+
+      pre.rect {
+        font-family: var(--font-mono);
+        font-size: 0.72rem;
+        background: oklch(0.22 0.01 75);
+        color: oklch(0.93 0.02 75);
+        border-radius: 0.7rem;
+        padding: 0.8rem 0.9rem;
+        overflow-x: auto;
+        margin: 1rem 0 0;
+        line-height: 1.6;
+      }
+      pre.rect .k {
+        color: oklch(0.82 0.14 75);
+      }
+      pre.rect .c {
+        color: oklch(0.62 0.02 75);
+      }
+
+      .facts {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+      .facts li {
+        font-size: 0.79rem;
+        padding: 0.5rem 0;
+        border-bottom: 1px dashed var(--border);
+        display: flex;
+        gap: 0.6rem;
+      }
+      .facts li:last-child {
+        border-bottom: 0;
+      }
+      .facts .m {
+        font-family: var(--font-mono);
+        font-weight: 700;
+        min-width: 4.2rem;
+        flex-shrink: 0;
+      }
+      .facts .good {
+        color: var(--difficulty-easy);
+      }
+      .facts .bad {
+        color: var(--destructive);
+      }
+
+      .callout {
+        border-radius: 0.75rem;
+        padding: 0.8rem 0.95rem;
+        font-size: 0.79rem;
+        margin: 1.25rem 0 0;
+      }
+      .callout.warn {
+        border: 1px solid color-mix(in oklab, var(--difficulty-medium) 30%, transparent);
+        background: var(--difficulty-medium-bg);
+        color: var(--difficulty-medium);
+      }
+      .callout.good {
+        border: 1px solid color-mix(in oklab, var(--difficulty-easy) 30%, transparent);
+        background: var(--difficulty-easy-bg);
+        color: var(--difficulty-easy);
+      }
+      .callout b {
+        font-weight: 700;
+      }
+      .callout p {
+        margin: 0 0 0.45rem;
+      }
+      .callout p:last-child {
+        margin: 0;
+      }
+
+      .flow {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.35rem;
+        margin: 0.5rem 0 0;
+      }
+      .flow .n {
+        font-family: var(--font-mono);
+        font-size: 0.7rem;
+        font-weight: 600;
+        border: 1px solid var(--border);
+        background: var(--card);
+        padding: 0.28rem 0.5rem;
+        border-radius: 0.45rem;
+      }
+      .flow .n.new {
+        border-color: var(--primary);
+        background: color-mix(in oklab, var(--primary) 16%, transparent);
+      }
+      .flow .a {
+        color: var(--muted-foreground);
+        font-size: 0.8rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>1:1 crop picker — a working prototype</h1>
+      <p class="lede">
+        Drag the photo. Scroll or use the slider to zoom. This is the real interaction, not a mockup — <b>press "Use this crop" and the square on the right is genuinely produced by the same
+        <code>drawImage</code> call the upload pipeline already makes.</b> Load one of your own photos to judge it properly; nothing leaves this page.
+      </p>
+
+      <div class="filerow">
+        <span class="ctrl-label">Photo</span>
+        <div class="seg" id="src-seg">
+          <button data-v="portrait" aria-pressed="true">3:4 portrait</button>
+          <button data-v="landscape" aria-pressed="false">3:2 landscape</button>
+          <button data-v="pano" aria-pressed="false">very wide</button>
+        </div>
+        <label class="btn" style="margin: 0">
+          Load your own photo…
+          <input type="file" id="file" accept="image/*" style="display: none" />
+        </label>
+        <span class="ctrl-label" id="natural" style="text-transform: none; letter-spacing: 0"></span>
+      </div>
+
+      <div class="layout">
+        <!-- ------------------------- the dialog ------------------------- -->
+        <div>
+          <div class="dialog">
+            <div class="dialog-head">
+              <h3>Choose the square</h3>
+              <p>Drag to reposition, scroll to zoom. This is exactly what gets saved.</p>
+            </div>
+            <div class="dialog-body">
+              <div class="stage" id="stage">
+                <img id="stage-img" alt="" />
+                <div class="guides">
+                  <span class="v" style="left: 33.333%"></span>
+                  <span class="v" style="left: 66.666%"></span>
+                  <span class="h" style="top: 33.333%"></span>
+                  <span class="h" style="top: 66.666%"></span>
+                </div>
+                <span class="hint">drag to reposition · scroll to zoom</span>
+              </div>
+
+              <div class="zoomrow">
+                <span style="text-align: left">zoom</span>
+                <input type="range" id="zoom" min="1" max="4" step="0.01" value="1" />
+                <span id="zoom-val">1.00×</span>
+              </div>
+            </div>
+            <div class="dialog-foot">
+              <button class="btn ghost" id="reset">Reset</button>
+              <span class="spacer"></span>
+              <button class="btn" id="cancel">Cancel</button>
+              <button class="btn primary" id="use">Use this crop</button>
+            </div>
+          </div>
+
+          <pre class="rect" id="rect"></pre>
+        </div>
+
+        <!-- ------------------------- the output ------------------------- -->
+        <div>
+          <div class="card">
+            <div class="card-head">
+              <h2>What actually gets uploaded</h2>
+              <p>One square webp. Every surface renders it at 1:1, so nothing crops it again.</p>
+            </div>
+            <div class="card-body">
+              <div class="outgrid">
+                <div>
+                  <p class="lab">Stored file</p>
+                  <canvas class="out" id="out" width="512" height="512"></canvas>
+                </div>
+                <div>
+                  <p class="lab">RecipeCard</p>
+                  <div class="rcard">
+                    <canvas id="out-card" width="512" height="512" style="width: 100%; aspect-ratio: 1; display: block"></canvas>
+                    <div class="rcard-body">
+                      <span class="badge">Easy</span>
+                      <h4>Gestoofde bakbanaan</h4>
+                      <p>15 min prep · 30 min cooking</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <ul class="facts" id="facts"></ul>
+            </div>
+          </div>
+
+          <div class="callout good">
+            <p><b>What this buys, beyond looking better:</b></p>
+            <p>
+              The crop warning, the aspect check that drives it, and the whole "which surface frames it how" question all <b>disappear</b> — because the file on disk is already the final framing. Decision 12's "the preview must not
+              lie" stops needing mitigation and becomes true by construction, which is the same move the plan already makes for the sanitiser rule.
+            </p>
+          </div>
+
+          <div class="callout warn">
+            <p><b>The EXIF trap mutates rather than going away.</b></p>
+            <p>
+              The <code>&lt;img&gt;</code> in this dialog applies EXIF rotation automatically — browsers default to <code>image-orientation: from-image</code>. <code>createImageBitmap</code> does <i>not</i>, unless passed the flag. So
+              a portrait phone photo would be cropped correctly on screen and then drawn <b>rotated and offset</b> to the canvas: the crop rect is computed against one orientation and applied to another. Worse than the original risk,
+              because the output is subtly wrong rather than obviously sideways.
+            </p>
+            <p><b>The fix is an ordering rule:</b> decode with <code>createImageBitmap(file, { imageOrientation: "from-image" })</code> <i>first</i>, paint that bitmap into the dialog, and never put the raw <code>File</code> in an
+              <code>&lt;img&gt;</code>. Then one orientation exists everywhere.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top: 2rem">
+        <div class="card-head">
+          <h2>What it costs to build</h2>
+          <p>Measured against this prototype, which is the whole interaction.</p>
+        </div>
+        <div class="card-body">
+          <p style="font-size: 0.84rem; margin: 0 0 0.5rem">
+            <b>The pipeline change is one line.</b> The plan already calls <code>drawImage</code>; a crop is the same call with the 9-argument source-rect form. Nothing about compression, webp, the bucket, the payload,
+            <code>save_recipe()</code> or the path convention changes at all.
+          </p>
+          <div class="flow">
+            <span class="n">File</span><span class="a">→</span>
+            <span class="n">createImageBitmap(file, {imageOrientation})</span><span class="a">→</span>
+            <span class="n new">crop dialog → {sx, sy, size}</span><span class="a">→</span>
+            <span class="n">drawImage(bmp, <b>sx, sy, size, size,</b> 0, 0, 1200, 1200)</span><span class="a">→</span>
+            <span class="n">convertToBlob(webp)</span><span class="a">→</span>
+            <span class="n">upload</span>
+          </div>
+
+          <ul class="facts" style="margin-top: 1rem">
+            <li><span class="m good">~150</span><span>lines for the dialog: square viewport, pointer drag with <code>setPointerCapture</code>, wheel + slider zoom, cover-clamping, and the source-rect maths. All of it is in this file — the drag handler is 12 lines.</span></li>
+            <li><span class="m good">0</span><span>new dependencies. <code>dialog.tsx</code> is already installed; there is no cropper in the shadcn registry, so a library would be a real third-party dependency rather than a registry copy-in.</span></li>
+            <li><span class="m bad">+1</span><span><code>slider.tsx</code> if you want the zoom slider to match the rest of the UI — a bare <code>&lt;input type="range"&gt;</code> is what you see here, and it does not.</span></li>
+            <li><span class="m bad">+1</span><span>state in <code>ImageField</code>: <code>idle → cropping → processing → uploading → done</code>. <code>attachment.tsx</code> has no <code>cropping</code> state, so the attachment sits <code>idle</code> beneath an open dialog.</span></li>
+            <li><span class="m bad">once</span><span><b>The crop is destructive and happens before upload.</b> "A bit higher" means picking the file again — there is no stored original to re-crop from. For a personal site that is fine, but it is a real property and it is the reason to decide it now rather than after.</span></li>
+            <li><span class="m bad">touch</span><span>Must be pointer events, not mouse events, or it is desktop-only. Pinch-zoom needs a second pointer; the wheel handler here covers desktop and the slider covers everything.</span></li>
+          </ul>
+        </div>
+      </div>
+    </main>
+
+    <script>
+      /* ------------------------------------------------------------------ *
+       * Stand-in photographs, inline SVG so the file works offline.
+       * ------------------------------------------------------------------ */
+      function foodSvg(w, h) {
+        const cx = w / 2,
+          cy = h * 0.5,
+          r = Math.min(w, h) * 0.33;
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+<defs>
+<linearGradient id="t" x1="0" y1="0" x2="0.3" y2="1"><stop offset="0" stop-color="#8d5c33"/><stop offset="1" stop-color="#4e2f18"/></linearGradient>
+<radialGradient id="g" cx="50%" cy="50%" r="62%"><stop offset="0" stop-color="#fff3d6" stop-opacity="0.5"/><stop offset="1" stop-color="#fff3d6" stop-opacity="0"/></radialGradient>
+<linearGradient id="p" x1="0" y1="0" x2="0.4" y2="1"><stop offset="0" stop-color="#fdfaf4"/><stop offset="1" stop-color="#ddd3c4"/></linearGradient>
+<linearGradient id="b" x1="0" y1="0" x2="0.3" y2="1"><stop offset="0" stop-color="#f2c14e"/><stop offset="1" stop-color="#c07a1e"/></linearGradient>
+</defs>
+<rect width="${w}" height="${h}" fill="url(#t)"/>
+<g stroke="#000" stroke-opacity="0.07" stroke-width="${w * 0.012}">
+${Array.from({ length: 8 }, (_, i) => `<line x1="0" y1="${(h / 8) * i + h * 0.03}" x2="${w}" y2="${(h / 8) * i - h * 0.02}"/>`).join("")}
+</g>
+<rect width="${w}" height="${h}" fill="url(#g)"/>
+<g opacity="0.85">
+<ellipse cx="${cx * 0.55}" cy="${h * 0.08}" rx="${w * 0.09}" ry="${h * 0.032}" fill="#3f6b34"/>
+<ellipse cx="${cx * 0.85}" cy="${h * 0.055}" rx="${w * 0.065}" ry="${h * 0.024}" fill="#4d7d3c"/>
+<ellipse cx="${cx * 1.4}" cy="${h * 0.075}" rx="${w * 0.075}" ry="${h * 0.028}" fill="#355c2c"/>
+</g>
+<ellipse cx="${cx}" cy="${cy + r * 0.08}" rx="${r * 1.12}" ry="${r * 1.06}" fill="#000" fill-opacity="0.22"/>
+<circle cx="${cx}" cy="${cy}" r="${r}" fill="url(#p)"/>
+<circle cx="${cx}" cy="${cy}" r="${r * 0.82}" fill="#f6efe2"/>
+<ellipse cx="${cx - r * 0.3}" cy="${cy - r * 0.16}" rx="${r * 0.46}" ry="${r * 0.2}" fill="url(#b)" transform="rotate(-18 ${cx - r * 0.3} ${cy - r * 0.16})"/>
+<ellipse cx="${cx + r * 0.22}" cy="${cy - r * 0.3}" rx="${r * 0.44}" ry="${r * 0.19}" fill="url(#b)" transform="rotate(14 ${cx + r * 0.22} ${cy - r * 0.3})"/>
+<ellipse cx="${cx + r * 0.05}" cy="${cy + r * 0.24}" rx="${r * 0.5}" ry="${r * 0.21}" fill="url(#b)" transform="rotate(-6 ${cx + r * 0.05} ${cy + r * 0.24})"/>
+<ellipse cx="${cx - r * 0.34}" cy="${cy + r * 0.4}" rx="${r * 0.34}" ry="${r * 0.16}" fill="#d68f28" transform="rotate(22 ${cx - r * 0.34} ${cy + r * 0.4})"/>
+<circle cx="${cx + r * 0.42}" cy="${cy + r * 0.46}" r="${r * 0.11}" fill="#7d3b2e"/>
+<circle cx="${cx - r * 0.05}" cy="${cy - r * 0.5}" r="${r * 0.09}" fill="#7d3b2e"/>
+<ellipse cx="${cx + r * 0.5}" cy="${cy - r * 0.02}" rx="${r * 0.13}" ry="${r * 0.07}" fill="#5f8f45"/>
+<g fill="#cfd3d6" opacity="0.9">
+<rect x="${cx - w * 0.028}" y="${h * 0.9}" width="${w * 0.056}" height="${h * 0.13}" rx="${w * 0.011}"/>
+<rect x="${cx - w * 0.085}" y="${h * 0.895}" width="${w * 0.011}" height="${h * 0.05}" rx="${w * 0.005}"/>
+<rect x="${cx + w * 0.074}" y="${h * 0.895}" width="${w * 0.011}" height="${h * 0.05}" rx="${w * 0.005}"/>
+</g>
+</svg>`;
+        return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+      }
+
+      const PRESETS = {
+        portrait: foodSvg(1200, 1600),
+        landscape: foodSvg(1600, 1067),
+        pano: foodSvg(1800, 700),
+      };
+
+      /* ================================================================== *
+       * THE CROPPER — this is the part that would be ported to React.
+       *
+       * State is three numbers: scale, and the image's top-left offset
+       * inside the square viewport. Everything else is derived.
+       * ================================================================== */
+
+      const stage = document.getElementById("stage");
+      const img = document.getElementById("stage-img");
+      const zoom = document.getElementById("zoom");
+
+      let nw = 0, nh = 0;       // natural pixel size of the source
+      let scale = 1, minScale = 1;
+      let ox = 0, oy = 0;       // offset of the image's top-left, in viewport px
+
+      const V = () => stage.clientWidth; // the viewport is square
+
+      /* Never let the image stop covering the square: that is the only rule. */
+      function clamp() {
+        const v = V();
+        ox = Math.min(0, Math.max(v - nw * scale, ox));
+        oy = Math.min(0, Math.max(v - nh * scale, oy));
+      }
+
+      function apply() {
+        clamp();
+        img.style.width = nw + "px";
+        img.style.height = nh + "px";
+        img.style.transform = `translate(${ox}px, ${oy}px) scale(${scale})`;
+        zoom.value = String(scale / minScale);
+        document.getElementById("zoom-val").textContent = (scale / minScale).toFixed(2) + "×";
+        renderRect();
+      }
+
+      /* Viewport geometry → source-pixel rect. The whole point of the widget. */
+      function sourceRect() {
+        const v = V();
+        return { sx: Math.round(-ox / scale), sy: Math.round(-oy / scale), size: Math.round(v / scale) };
+      }
+
+      function fit() {
+        const v = V();
+        minScale = Math.max(v / nw, v / nh); // cover, not contain
+        scale = minScale;
+        ox = (v - nw * scale) / 2;
+        oy = (v - nh * scale) / 2;
+        zoom.min = "1";
+        zoom.max = "4";
+        apply();
+      }
+
+      /* --- drag: 12 lines, and pointer events cover mouse and touch alike --- */
+      let dragging = false, lastX = 0, lastY = 0;
+
+      stage.addEventListener("pointerdown", (e) => {
+        dragging = true;
+        lastX = e.clientX;
+        lastY = e.clientY;
+        stage.classList.add("dragging");
+        stage.setPointerCapture(e.pointerId);
+      });
+      stage.addEventListener("pointermove", (e) => {
+        if (!dragging) return;
+        ox += e.clientX - lastX;
+        oy += e.clientY - lastY;
+        lastX = e.clientX;
+        lastY = e.clientY;
+        apply();
+      });
+      stage.addEventListener("pointerup", (e) => {
+        dragging = false;
+        stage.classList.remove("dragging");
+        stage.releasePointerCapture(e.pointerId);
+      });
+      stage.addEventListener("pointercancel", () => {
+        dragging = false;
+        stage.classList.remove("dragging");
+      });
+
+      /* --- zoom, anchored on the cursor so the point under it stays put --- */
+      function zoomTo(next, cx, cy) {
+        next = Math.max(minScale, Math.min(minScale * 4, next));
+        const k = next / scale;
+        ox = cx - (cx - ox) * k;
+        oy = cy - (cy - oy) * k;
+        scale = next;
+        apply();
+      }
+
+      stage.addEventListener(
+        "wheel",
+        (e) => {
+          e.preventDefault();
+          const box = stage.getBoundingClientRect();
+          zoomTo(scale * (e.deltaY < 0 ? 1.12 : 1 / 1.12), e.clientX - box.left, e.clientY - box.top);
+        },
+        { passive: false }
+      );
+
+      zoom.addEventListener("input", () => {
+        const v = V() / 2;
+        zoomTo(minScale * Number(zoom.value), v, v);
+      });
+
+      /* ================================================================== *
+       * Output — the same drawImage the pipeline already makes, 9-arg form.
+       * ================================================================== */
+
+      const OUT_SIZE = 1200;
+
+      function draw() {
+        const { sx, sy, size } = sourceRect();
+        [document.getElementById("out"), document.getElementById("out-card")].forEach((canvas) => {
+          const ctx = canvas.getContext("2d");
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, sx, sy, size, size, 0, 0, canvas.width, canvas.height);
+        });
+
+        const out = Math.min(OUT_SIZE, size);
+        const kept = Math.round((((size * size) / (nw * nh)) * 100));
+        document.getElementById("facts").innerHTML = `
+          <li><span class="m">source</span><span>${nw} × ${nh} px</span></li>
+          <li><span class="m">crop</span><span>${size} × ${size} px at (${sx}, ${sy}) — ${kept}% of the frame, chosen by you rather than by a centre crop</span></li>
+          <li><span class="m">stored</span><span>${out} × ${out} webp, quality 0.82 — roughly ${Math.max(30, Math.round((out * out) / 7200))} KB</span></li>
+          <li><span class="m good">warning</span><span>none needed — there is nothing left to crop later</span></li>`;
+      }
+
+      function renderRect() {
+        const { sx, sy, size } = sourceRect();
+        document.getElementById("rect").innerHTML =
+          `<span class="c">// live, as you drag — this is all the dialog returns</span>\n` +
+          `{ <span class="k">sx</span>: ${sx}, <span class="k">sy</span>: ${sy}, <span class="k">size</span>: ${size} }\n\n` +
+          `<span class="c">// and this is the only pipeline change:</span>\n` +
+          `ctx.drawImage(bitmap, <span class="k">${sx}</span>, <span class="k">${sy}</span>, <span class="k">${size}</span>, <span class="k">${size}</span>, 0, 0, ${Math.min(OUT_SIZE, size)}, ${Math.min(OUT_SIZE, size)})`;
+      }
+
+      /* ---------------------------- loading ---------------------------- */
+
+      function load(src) {
+        img.onload = () => {
+          nw = img.naturalWidth;
+          nh = img.naturalHeight;
+          document.getElementById("natural").textContent = `${nw} × ${nh} · ${(nw / nh).toFixed(2)}:1`;
+          fit();
+          draw();
+        };
+        img.src = src;
+      }
+
+      document.getElementById("src-seg").addEventListener("click", (e) => {
+        const b = e.target.closest("button");
+        if (!b) return;
+        [...e.currentTarget.querySelectorAll("button")].forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+        load(PRESETS[b.dataset.v]);
+      });
+
+      document.getElementById("file").addEventListener("change", (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        /* An objectURL in an <img> applies EXIF rotation for free — which is
+           exactly the mismatch the warning above is about. */
+        load(URL.createObjectURL(file));
+        [...document.querySelectorAll("#src-seg button")].forEach((x) => x.setAttribute("aria-pressed", "false"));
+      });
+
+      document.getElementById("use").addEventListener("click", draw);
+      document.getElementById("reset").addEventListener("click", () => {
+        fit();
+        draw();
+      });
+      document.getElementById("cancel").addEventListener("click", () => {
+        fit();
+        draw();
+      });
+
+      new ResizeObserver(() => nw && apply()).observe(stage);
+      load(PRESETS.portrait);
+    </script>
+  </body>
+</html>
