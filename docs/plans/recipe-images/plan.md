@@ -50,7 +50,13 @@ does not.
   all** — they are a client-side change plus the bucket to put files in.
 - **`recipe_images` exists and nothing writes it.** Columns `storage_path` (not null), `alt`,
   `sort_order`, `is_primary`, with a partial unique index allowing at most one primary per recipe.
-- **`lib/supabase/browser-client.ts` exists and is unused**, kept for exactly this.
+- **`lib/supabase/browser-client.ts` exists and is unused**, kept for exactly this. It wraps
+  `createBrowserClient` from `@supabase/ssr`
+  ([browser-client.ts:15](../../../lib/supabase/browser-client.ts#L15)), which is **cookie-backed** —
+  the same session `proxy.ts` refreshes and `server-client.ts` reads — so an upload from the wizard
+  carries the signed-in JWT and meets the `authenticated` policies. Worth knowing because the
+  alternative shape, a plain `createClient` holding its session in `localStorage`, would upload as
+  `anon` and fail with an RLS error that reads exactly like a broken policy.
 - **`components/ui/attachment.tsx` was pulled from the shadcn registry in `d46ddb8`** and is not yet
   used. It already carries the five-state machine an upload needs
   (`idle` / `uploading` / `processing` / `error` / `done`), with the dashed idle border, the busy
@@ -67,7 +73,9 @@ does not.
 - **There is no cropper in the shadcn registry.** Checked. Any alternative to hand-writing it is a
   real third-party dependency rather than a registry copy-in.
 - **There is no `slider.tsx`.** The crop dialog's zoom control needs it, or it is a bare
-  `<input type="range">` that looks nothing like the rest of the UI.
+  `<input type="range">` that looks nothing like the rest of the UI. It is in the registry and costs no
+  dependency — this project's shadcn primitives import from the installed `radix-ui` package
+  ([dialog.tsx:4](../../../components/ui/dialog.tsx#L4)) — so decision 49 pulls it in.
 - **`RecipeCard` has no media area at all.** It takes `{ title, description }`
   ([RecipeCard.tsx:3](../../../components/shared/RecipeCard.tsx#L3)), so a cover means changing its
   signature, not adding a prop.
@@ -141,25 +149,38 @@ Three files, in any order — see the note under the third.
   `select` / `insert` / `update` / `delete` policies on `storage.objects`, scoped to the
   `recipe-images` bucket and granted to `authenticated` and to nothing else.
 
-  **`select` is on that list deliberately, and an earlier draft of this plan left it off.** The bucket
+  **`select` is required, not defensive, and an earlier draft of this plan left it off.** The bucket
   being public serves object _bytes_ over `/object/public/…`; it grants nothing on `storage.objects`,
-  which is an ordinary table with its own RLS. Rendering therefore needs no policy — but `.remove()`
-  returns the rows it deleted, so it reads them first, and the sweep is a `.list()`, which is pure
-  `select`. Without the grant, the ✕ that decision 8 leans on to narrow the orphan leak may remove
-  nothing and report nothing, because a silent storage failure is the _designed_ behaviour under
-  decision 11. Decision 33.
+  which is an ordinary table with its own RLS. Rendering therefore needs no policy — but the delete
+  does, and this was verified rather than reasoned: storage-api runs the user-facing delete **as the
+  caller**, reaching
+  `delete from storage.objects where bucket_id = $1 and name = any($2) returning *`, and Postgres
+  applies SELECT policies to that statement because its `where` clause reads columns and it carries
+  `returning`. Probed on a throwaway table: with a permissive delete policy and no select policy, the
+  delete affects **zero rows**. So without the grant the ✕ removes neither the row nor the file, and
+  `.remove()` still returns `{ data: [], error: null }` — a silent storage failure being the
+  _designed_ behaviour under decision 11, nothing would ever say so. The sweep's `.list()` needs the
+  same grant. Decision 33.
+
+  **Both statements are permitted on the hosted project — checked, not assumed.** `storage.objects`
+  is owned by `supabase_storage_admin` and the migration role `postgres` is neither superuser nor a
+  member of it, which is exactly the shape that would refuse a `create policy`; probed against the
+  linked project, it succeeds anyway, and `postgres` carries `rolbypassrls` plus `insert` on
+  `storage.buckets`. The risk this plan carried — a policy that applies locally but not on push — is
+  closed. Decision 41.
 
   **The bucket must be made here** — not in the dashboard, and not in `supabase/config.toml` either.
-  `db reset` replays migrations into the local stack, so one `insert into storage.buckets` produces the
-  bucket in both places from one source. Uncommenting the `[storage.buckets.images]` block would be a
-  _second_ definition that only the local stack reads, letting local and hosted disagree on public,
-  size limit and MIME list — and per the drift risk below, nothing would compare them. A bucket created
-  by clicking is invisible to migration history in exactly the way CLAUDE.md's Table Editor rule warns
-  about. Decision 42.
+  Migrations reach the hosted project and every throwaway database the CLI builds, from one source;
+  uncommenting the `[storage.buckets.images]` block would be a _second_ definition that only a local
+  stack reads, letting local and hosted disagree on public, size limit and MIME list — and per the
+  drift risk below, only a hand-run query would compare them. A bucket created by clicking is
+  invisible to migration history in exactly the way CLAUDE.md's Table Editor rule warns about.
+  Decision 42.
 
   Expect the missing-policy failure mode to be confusing: RLS with no policies denies everything, so a
   forgotten `insert` policy looks like uploads silently failing while the site still renders fine. That
-  specific mistake is what the local `db reset` check in [Verification](#verification) exists to catch.
+  specific mistake is what the smoke test in [Verification](#verification) catches, in the milestone
+  where storage is the only suspect.
 
 - **`<ts>_recipe_images_drop_alt.sql`** — `alter table public.recipe_images drop column alt;`
 
@@ -287,10 +308,16 @@ Three files, in any order — see the note under the third.
 
 - **`app/admin/_components/recipe-wizard/ImageField.tsx`** — one component, both placements. Takes
   `value: StepImage`, `onChange`, and presentation props. Thin wrapper over `attachment.tsx`, mapping
-  the pipeline onto its `state` prop: `processing` while the canvas works, `uploading` while the bytes
-  go, `done` with the thumbnail in `AttachmentMedia variant="image"`, `error` with the message in
-  `AttachmentDescription` and a retry. Adds a hidden `<input type="file" accept="image/*">` and drop
-  handling; the registry component does the rest.
+  the pipeline onto its `state` prop: **`busy` maps to `uploading`, with one label**, `done` with the
+  thumbnail in `AttachmentMedia variant="image"`, `error` with the message in `AttachmentDescription`
+  and a retry. Adds a hidden `<input type="file" accept="image/*">` and drop handling; the registry
+  component does the rest.
+
+  An earlier draft split the canvas work onto `processing` and the byte transfer onto `uploading`.
+  `StepImage` has a single `busy` and cannot tell them apart — and the two states **render
+  identically**, the same shimmer on the title and nothing else
+  ([attachment.tsx:65](../../../components/ui/attachment.tsx#L65)), so the distinction a wider union
+  would buy is one the UI never draws. Decision 47.
 
   Uses the **horizontal** orientation, capped at ~18–20rem, with the media bumped up from
   `attachment.tsx`'s `w-10` so the photo is actually visible. Not full width: the wizard's panel column
@@ -310,6 +337,12 @@ Three files, in any order — see the note under the third.
   `.upload()` resolves. The object-URL alternatives need `URL.revokeObjectURL` cleanup and are lost on
   unmount anyway, so the remote path has to work regardless and would only get exercised less.
   Decision 39.
+
+  **Render it with a plain `<img>`, not `next/image`** — the one exception to the rule below, and it
+  needs a comment saying so. Decision 38's case for the optimizer is a 1200px file served into a 300px
+  slot six times per article; this thumbnail is ~64px, fetched seconds after its own upload and looked
+  at once, and `AttachmentMedia` already sizes a child `img` by CSS (`aspect-square`, `object-cover`)
+  rather than by intrinsic dimensions. Decision 48.
 
   **Set `type="button"` on every `AttachmentAction`.** `AttachmentTrigger` already defends itself
   ([attachment.tsx:108](../../../components/ui/attachment.tsx#L108)) but `AttachmentAction` is a shadcn
@@ -433,6 +466,14 @@ Three files, in any order — see the note under the third.
   wasted bytes, never toward a broken reference.** A storage failure must not surface as an error
   either, because the recipe genuinely was deleted.
 
+  **Comment the asymmetry with the line above it.** The row delete already does `.delete().select("id")`
+  and errors when nothing comes back, under the comment _"an RLS refusal on a delete is silent, so the
+  affected rows are checked"_ ([actions.ts:180-189](../../../lib/recipes/actions.ts#L180-L189)). The
+  storage removal lands in the same function and deliberately does **not** check its count — a zero-row
+  row delete means the user's intent failed and is actionable, while a zero-row file remove means the
+  intent succeeded and a file leaked. Unexplained, the new code reads as an oversight and gets
+  "fixed" into failing a delete that worked. Decision 50.
+
   Also **narrow the 23505 branch to the slug constraint by name** —
   `error.code === "23505" && error.message.includes("recipes_slug_key")`, with a comment saying plainly
   that this is a string match against a Postgres-generated message. **Five unique constraints are
@@ -512,7 +553,11 @@ Three files, in any order — see the note under the third.
   One source with `storage.ts`, and it survives a project move — the same reason the columns store paths
   rather than URLs. A `*.supabase.co` wildcard would also let any Supabase project's images through the
   optimizer. The cost is that `next.config.ts` now reads env at build time, so a missing variable fails
-  the build; that is the posture the Supabase clients already take at import. Easy to forget and not
+  the build — the posture the Supabase clients already take at import, and not a new dependency:
+  `public-client.ts` throws at module scope
+  ([public-client.ts:7-12](../../../lib/supabase/public-client.ts#L7-L12)) and the public pages
+  prerender, so today's build already requires this variable. Next loads `.env` files before importing
+  the config file, so `process.env` is populated there. Easy to forget and not
   optional either way: `next/image` throws on any remote host not listed. Decision 45.
 
   **`next/image` earns its place here despite the file already being final.** Decisions 3 and 13 make
@@ -543,7 +588,13 @@ Three files, in any order — see the note under the third.
   between "compress in the browser because phone photos are 4–12MB" and "you cannot use this from a
   phone" is written down rather than rediscovered.
 
-  A third for **storage having no drift detection**, per decision 43 and the risk below.
+  A third for **the bucket row having no drift detection** — and for the default diff engine reporting
+  clean over storage policy drift, which is the more surprising half. Per decision 43 and the risk
+  below.
+
+  A fourth for **no edit path**, since decision 23's generated tile is permanent for the six existing
+  recipes rather than transitional: nothing in or out of this plan lets an existing recipe gain a
+  cover.
 
 - **[docs/image-storage.md](../../image-storage.md)** — rewritten in place from an open-questions
   document into a decisions record. Every one of its seven questions now has an answer, so left as-is
@@ -557,8 +608,9 @@ Three files, in any order — see the note under the third.
   merely unaddressed. **Add** the storage-drift gap from decision 43, since this is the document
   someone will read before touching the bucket.
 
-- **`CLAUDE.md`** — a new `db:reset` script joins the Commands list (decision 41), and five statements
-  that this work falsifies:
+- **`CLAUDE.md`** — a new `db:diff:storage` script joins the Commands list (decision 43), with one
+  sentence on why it runs a different engine than the `db:diff` beside it, and five statements that
+  this work falsifies:
   - the client table calls `browser-client.ts` "currently unused"; it becomes used, for uploads. The
     rest of that line — do not reach for it to fetch or mutate data — stays correct.
   - "Don't write cleanup code for child rows" needs its counterpoint sharpened, because `deleteRecipe`
@@ -568,7 +620,8 @@ Three files, in any order — see the note under the third.
   - the four-table description should note that `recipe_images.alt` is gone, since a reader comparing
     the doc to the generated schema would otherwise assume drift.
   - the Database section's drift warning is about the Table Editor and the four recipe tables. Storage
-    needs its own line, because `db:diff` does not cover it and the bucket is a row (decision 43).
+    needs its own line: the policies are covered only by `db:diff:storage`, the default engine reports
+    clean over drift it cannot see, and the bucket is a row nothing diffs (decision 43).
 
 - **[docs/permission-model.md](../../permission-model.md)** — a pointer, now that the model extends
   past the table boundary.
@@ -592,21 +645,19 @@ Three files, in any order — see the note under the third.
   before anything is attached, so there is no attachment to put an error in, and
   `AttachmentDescription` is `truncate`, which would cut the half of the message that says what to do
   instead. Decision 30._
-- **A local `db reset` proves the policies exist, not that they will apply.** Docker was installed on
-  2026-08-08, so the local stack is available and this plan uses it (decision 41) — but only so far.
-  Locally `postgres` is effectively superuser, while on the hosted project `storage.objects` is owned by
-  `supabase_storage_admin`. **A `create policy` that succeeds under `db reset` can still fail under
-  `db:push`.** _Mitigation: treat the local check as catching a forgotten policy — the confusing failure
-  above — and not as proof of applicability. Re-inspect with `npx supabase db query --linked` after
-  pushing, plus a real upload and a signed-out fetch._
-- **Storage is outside every drift check this project has, and the bucket is outside all of them.**
-  `db:diff` excludes the `storage` schema by default, so the policies are not covered by the drift
-  detection Docker just unlocked — and the bucket itself is a **row** in `storage.buckets`, data rather
-  than schema, so no diff engine would see it whatever the scope. `No schema changes found` can print
-  while the bucket is missing, public when it should not be, or wide open on MIME. CLAUDE.md's "never
-  change structure in the dashboard" rule therefore carries more weight here than anywhere else in the
-  project, with nothing behind it. _Mitigation: recorded in known-issues and in the rewritten
-  image-storage.md, with a deliberate `db query` check rather than a diff. Decision 43._
+- **~~A `create policy` that applies locally may fail under `db:push`.~~ Closed 2026-08-08.** Probed
+  against the linked project: `postgres` is neither superuser nor a member of `supabase_storage_admin`,
+  which owns `storage.objects`, and the `create policy` succeeds regardless; the bucket insert is
+  covered by `rolbypassrls` plus an `insert` grant. Kept here rather than deleted because it reads like
+  a live risk in every other Supabase project's notes. Decision 41.
+- **The bucket row is outside every drift check, and always will be.** `storage.buckets` holds data,
+  not schema, so no diff engine sees it whatever the scope: `No schema changes found` can print while
+  the bucket is missing, public when it should not be, or wide open on MIME. The _policies_ are
+  coverable — but only under the non-default engine, and the default one reports clean over drift it
+  cannot see. CLAUDE.md's "never change structure in the dashboard" rule therefore still carries extra
+  weight for the bucket's own settings. _Mitigation: `npm run db:diff:storage` for the policies, a
+  documented `db query --linked` snippet for the bucket row, both recorded in known-issues and in the
+  rewritten image-storage.md. Decision 43._
 - **Orphaned files accumulate.** Accepted; see decision 8 and the known-issues entry.
 - **Unpublished recipes' photos are fetchable by URL** even though RLS hides the row. Accepted — uuids
   are unguessable — but it is a real divergence from how drafts behave everywhere else.
@@ -623,26 +674,36 @@ Three files, in any order — see the note under the third.
 
 ## Milestones
 
-Three, and each one ends with `npm run lint` and `npm run typecheck` green. Decision 40.
+Three, and each one ends with `npm run lint` and `npm run typecheck` green. Decision 40, corrected —
+the first split could not end milestone 2 green, because `toRecipeView()` lives inside
+`RecipeArticle.tsx` and both detail pages call it, so touching the article pulls the types, the embed
+and `next.config.ts` forward with it.
 
-1. **Foundation** — the three migrations, `lib/supabase/storage.ts`, `upload.ts`. Nothing
-   user-visible. Verified at the SQL level locally and then against the linked project.
-2. **The wizard** — `CropDialog`, `ImageField`, the `draft.ts` and `RecipeWizard` changes, the three
-   panels, **and `RecipeArticle` in the same milestone.** `PreviewRail` renders the real article
-   (decision 12), so splitting it out would end a milestone with a preview that omits the photos just
-   uploaded — the one thing that preview may not do.
-3. **Public surfaces and docs** — `queries.ts`, the three type changes, `RecipeCard`, `next.config.ts`,
-   and the doc rewrites.
+1. **Foundation** — the three migrations, `lib/supabase/storage.ts`, `upload.ts`, and the
+   `db:diff:storage` script. Nothing user-visible. Rehearsed with `npm run db:diff`, pushed, then
+   verified by query and by the smoke test below.
+2. **The wizard and the detail page** — `CropDialog`, `ImageField`, `slider`, the `draft.ts` and
+   `RecipeWizard` changes, the three panels, **`RecipeArticle`**, and everything it drags with it:
+   `RecipeView`, `RecipeWithChildren`, the `RECIPE_WITH_CHILDREN` embed and `next.config.ts`.
+   `PreviewRail` renders the real article (decision 12), so splitting it out would end a milestone with
+   a preview that omits the photos just uploaded — the one thing that preview may not do.
+3. **The public list and docs** — `getRecipes()`'s narrow embed, `RecipeListItem`, `RecipeCard`, and
+   the doc rewrites.
 
 ## Verification
 
-There is no test suite, so this is the whole of it. The first pass can now run before anything reaches
-the real project; the other three are browser work and unchanged by Docker.
+There is no test suite, so this is the whole of it.
 
-- **Storage policy pass.** `db reset`, then assert via `db query --local` that the bucket row exists
-  with the intended public / size / MIME values and that all four policies are present and scoped to
-  this bucket. Repeat against the linked project after `db:push` — see the risk above for why the local
-  run is necessary but not sufficient. This is also what settles whether the `select` grant was needed.
+- **Migration rehearsal.** `npm run db:diff` before pushing anything. Building its shadow database
+  replays every migration into a real Postgres, so a broken `create or replace`, a typo'd policy or a
+  rejected `insert into storage.buckets` fails there rather than on the live project. It leaves no
+  database standing afterwards, which is the whole reason the next pass exists.
+- **Storage policy pass**, after `db:push`. Assert with `db query --linked` that the bucket row carries
+  the intended public / size / MIME values and that all four policies are present and scoped to this
+  bucket, then run `npm run db:diff:storage` once to see it clean. Follow it with the **smoke test**:
+  on `/admin`, signed in, call `upload.ts`'s own helpers from the console — upload a small webp, list
+  it, remove it — and confirm the remove reports **one** row, not zero. That single number is what
+  proves the `select` grant of decision 33, and doing it here means storage is the only suspect.
 - **Pipeline pass.** A portrait phone photo with EXIF rotation, end to end: the output must be upright
   _and_ correctly framed, since the wrong ordering yields rotated and offset rather than merely
   sideways. A HEIC file surfaces the toast. A non-webp blob is rejected by the bucket, proving the
@@ -657,13 +718,13 @@ the real project; the other three are browser work and unchanged by Docker.
 ## Open questions
 
 - **The sweep's 24-hour age floor is a guess.** It only needs to exceed the longest plausible wizard
-  session.
-- **Whether `slider.tsx` is worth pulling in** for the crop dialog's zoom, or whether wheel and pinch
-  plus a bare range input is enough for a control the owner uses a handful of times a week.
+  session, and belongs to a feature nobody is building yet.
 
-_Two entries were closed by the 2026-08-08 grill and are recorded here so they are not reopened: the
-path convention now has a single source (decision 44), and `getRecipes()` joins images with a narrow
-primary-filtered embed rather than denormalising (decision 36)._
+_Three entries were closed by the 2026-08-08 grills and are recorded here so they are not reopened:
+the path convention now has a single source (decision 44), `getRecipes()` joins images with a narrow
+primary-filtered embed rather than denormalising (decision 36), and `slider` is pulled in from the
+registry — it is a file copy-in, not a dependency, since this project's shadcn primitives already
+import from the installed `radix-ui` package (decision 49)._
 
 ## Assets
 

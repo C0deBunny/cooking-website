@@ -410,6 +410,12 @@ except where a supersession note says so.
 - **Trade-off:** it invents a visual idiom for a state that should shrink over time, and needs a colour
   derivation nobody asked for. Accepted because `RecipeCard` has no media area at all today
   (`{ title, description }`), so its signature is changing regardless.
+- **Amended 2026-08-08: the state does not shrink over time.** There is no edit path — `app/admin/`
+  holds create, manage, preview and tags, and the only write actions are `saveRecipe`,
+  `togglePublished` and `deleteRecipe` — so the six existing recipes cannot receive a cover without
+  being deleted and retyped. The tile is the permanent look for pre-image recipes until an edit path
+  exists, which no non-goal in this plan provides. Accepted as-is: a cover-only edit affordance would
+  reverse a non-goal, and retyping six recipes risks changing live URLs.
 
 ## 24. Replace uploads the new file before it removes the old one
 
@@ -588,12 +594,22 @@ day, which is what 41–43 respond to.
   is an ordinary table with its own RLS. Two things this plan needs are not byte reads:
   `.remove()` returns the deleted `FileObject[]`, so the API reads the rows before deleting them, and
   the sweep in decision 8 is `.list()`, which is pure `select`.
-- **Why it matters more than it looks:** without it, ✕ may remove nothing and report nothing, because
-  a zero-row remove fails in the _safe_ direction under decision 11. The narrowing decision 8 claims —
-  that ✕ shrinks the leak to "closed the tab" — would quietly never have been true.
-- **Why not defer it:** it costs nothing now. `authenticated` already reads every row of every recipe
-  table, and deferring turns the sweep from pure app code into app code plus a migration nobody
-  remembers is needed.
+- **Verified 2026-08-08, and it is stronger than "may remove nothing".** Two halves, both checked
+  rather than reasoned:
+  - storage-api runs the user-facing delete **as the caller**, not as an admin — `storage/object.js`
+    calls `this.db.deleteObjects(…)` where the bucket lookup two functions above deliberately uses
+    `asSuperUser()`. The SQL it reaches is
+    `delete from storage.objects where bucket_id = $1 and name = any($2) returning *`.
+  - Postgres applies **SELECT policies to that statement**, because its `where` clause reads columns
+    and it carries `returning`. Probed against the linked project on a throwaway RLS table, rolled
+    back: with a permissive `for delete … using (true)` policy and no select policy, `authenticated`
+    deleting one row by id affected **0 rows**. Adding a select policy made the identical delete work.
+- **So without the grant, ✕ deletes neither the row nor the file**, and `.remove()` returns
+  `{ data: [], error: null }` — indistinguishable from success, and invisible under decision 11.
+  The narrowing decision 8 claims — that ✕ shrinks the leak to "closed the tab" — would quietly never
+  have been true. This is a requirement, not insurance.
+- **The shape already has a precedent:** every recipe table pairs its `authenticated writes X` policy
+  with an `authenticated reads all X`. Storage is the same pattern, for the same reason.
 - **Trade-off:** none identified. It widens `authenticated`'s reach over a bucket it can already write.
 
 ## 34. There is no ordering constraint between the drop and the function replace
@@ -631,8 +647,10 @@ day, which is what 41–43 respond to.
 - **Why not leave it:** `toPayload` sends at most one image, so nothing is reachable today — which is
   exactly the kind of comment that is still there, unread, when the gallery lands.
 - **Trade-off:** a string match against a message Postgres formats, which is stable in practice and
-  guaranteed by nothing. With Docker (41) each violation can now be triggered locally and the real
-  message read, rather than guessed.
+  guaranteed by nothing. The constraint names are read rather than guessed —
+  `recipes_slug_key`, `recipe_images_recipe_id_storage_path_key`,
+  `recipe_images_recipe_id_sort_order_key`, `recipe_steps_recipe_id_step_number_key` and the partial
+  `recipe_images_one_primary_idx`, confirmed against the linked project on 2026-08-08.
 
 ## 36. A narrow, primary-filtered embed for the list query
 
@@ -700,6 +718,8 @@ day, which is what 41–43 respond to.
   rather than something to arrange. The object-URL versions also need `URL.revokeObjectURL` cleanup and
   are lost on unmount anyway — so the remote path has to work regardless, and would get exercised less.
 - **Trade-off:** one small CDN fetch for bytes that were in memory a moment ago.
+- **Amended by 48**, which settles what element renders those bytes. This decision only settles where
+  the `src` comes from.
 
 ## 40. Three milestones, with `RecipeArticle` in the wizard one
 
@@ -716,29 +736,53 @@ day, which is what 41–43 respond to.
   photos nobody can see, including in the wizard's own preview.
 - **Trade-off:** three stops each needing lint and typecheck green, on a feature whose pieces are
   genuinely interdependent.
+- **Amended 2026-08-08: the split as written cannot end milestone 2 green.** `toRecipeView()` lives
+  inside `RecipeArticle.tsx` and takes `RecipeWithChildren`, and both detail pages call it — so
+  touching the article drags in three things milestone 3 was holding: `RecipeView`'s new fields (or it
+  does not typecheck), `RecipeWithChildren.recipe_images` (or `toRecipeView` cannot read a cover), and
+  the `RECIPE_WITH_CHILDREN` embed (or it typechecks and renders nothing). `next/image` throws on an
+  unconfigured host, so `next.config.ts` cannot wait either. Moving `RecipeArticle` to milestone 3
+  instead is the one repair this decision already rules out. **Corrected split:** milestone 2 becomes
+  the wizard _and_ the detail page — both type changes, the `RECIPE_WITH_CHILDREN` embed and
+  `next.config.ts` join it; milestone 3 becomes the public list and the docs — `getRecipes()`'s narrow
+  embed, `RecipeListItem`, `RecipeCard`, the rewrites. Milestone 1 additionally ends with the upload
+  smoke test described in 41.
 
-## 41. A local stack for migrations only, not for the app
+## 41. No local stack; rehearse in the shadow database, verify against the linked project
 
-- **Date:** 2026-08-08
-- **Considered:** no local stack, Docker used only for `db:diff` · `supabase start` plus a local
-  `.env.local` so the whole pipeline runs against localhost · start the stack to verify migrations at
-  the SQL level, app stays on the linked project
-- **Chosen:** the third. Add a `db:reset` script; before `db:push`, assert via `db query --local` that
-  the bucket row and all four storage policies exist. The browser passes still run against the linked
-  project.
-- **Why this changed:** the plan was written believing this project could not run Docker. Docker
-  Desktop was installed 2026-08-08, so the risk "storage policies cannot be verified locally" is no
-  longer true as stated — but it is not fully false either, which is the point of the bound below.
-- **What the local check actually buys, and what it does not.** It catches a _forgotten_ policy, which
-  is the confusing failure the plan calls out — RLS with no policies denies everything, so a missing
-  `insert` looks like uploads silently failing while the site renders fine. It does **not** prove the
-  migration will apply to the hosted project: locally `postgres` is effectively superuser, while on
-  hosted `storage.objects` is owned by `supabase_storage_admin`. A `create policy` that succeeds under
-  `db reset` can still fail under `db:push`.
-- **Why not point the app at localhost:** it needs `.env.local` swapping and a seeded local owner
-  account, and doubles every URL in every manual pass, to verify a pipeline whose remaining risks
-  (EXIF, HEIC, the crop maths) are browser-side and identical against either backend.
-- **Trade-off:** one new script, and a verification step that is honest about being partial.
+- **Date:** 2026-08-08 · **rewritten the same day, after the probes below**
+- **Considered:** `supabase start` plus a local `.env.local` so the whole pipeline runs against
+  localhost · start the stack to verify migrations at the SQL level, app stays on the linked project
+  (this decision's first answer) · no local stack at all
+- **Chosen:** no local stack. `npm run db:diff` is the rehearsal, `db:push` is the apply, and
+  `db query --linked` plus a browser smoke test are the verification. No `db:reset` script, no
+  `supabase start`.
+- **Why the first answer was withdrawn.** It rested on the local pass catching a migration that would
+  not apply to hosted — and that risk was probed directly and does not exist. On the linked project
+  `storage.objects` is owned by `supabase_storage_admin` and `postgres` is neither superuser nor a
+  member of that role, exactly as feared, yet `create policy … on storage.objects` as `postgres`
+  **succeeds** (probed inside a transaction that then aborted; zero policies left behind). `postgres`
+  also carries `rolbypassrls` and `insert` on `storage.buckets`, so the bucket row applies too.
+- **The rehearsal survives without the stack, which is what makes this cheap.** `db:diff` builds a
+  shadow database and **replays every migration into it** — that is how a probe migration containing
+  both `insert into storage.buckets` and `create policy on storage.objects` was applied and verified.
+  A broken `create or replace`, a typo'd policy or a missing schema fails there, loudly, before
+  anything reaches the real project. What the shadow does not give you is a database left standing to
+  query afterwards.
+- **It also settles an ordering worry nobody raised:** the storage schema ships inside the Postgres
+  image, so `insert into storage.buckets` cannot run before `storage` exists.
+- **What replaces the local assertion.** After `db:push`: the documented `db query --linked` snippet
+  from 43 for the bucket row and the four policies, then a **console smoke test on `/admin` while
+  signed in that calls `upload.ts`'s own helpers** — upload, list, remove — rather than raw
+  supabase-js. That exercises `PATH_PREFIX`, the blob's `type`, the year-long `cacheControl` and the
+  remove semantics of 33, which is the code the app will actually run. `upload.ts` therefore stays in
+  milestone 1: it is what milestone 1 verifies with.
+- **Why not `supabase start` anyway:** `db reset` refuses without it, and a full start pulls kong,
+  postgrest, studio, pg-meta, imgproxy, mailpit, vector and supavisor on top of what is already
+  cached — a multi-gigabyte prerequisite for a check whose justification has just been removed.
+- **Trade-off:** a forgotten `insert` policy is now discovered on the hosted project rather than
+  before it. The smoke test is what makes that a thirty-second discovery instead of a milestone-2
+  mystery.
 
 ## 42. The bucket stays a migration-only artifact
 
@@ -748,36 +792,54 @@ day, which is what 41–43 respond to.
 - **Chosen:** migration only — the plan's conclusion, but its reason has to change. It said the
   `config.toml` block is "a red herring: it configures the local Docker stack, which this project
   cannot run." Docker is installed now, so that sentence is false.
-- **The conclusion gets stronger, not weaker.** `db reset` replays migrations into the local stack, so
-  one `insert into storage.buckets` already produces the bucket in both places. Declaring it in
-  `config.toml` as well would be a second definition that only the local stack reads, letting local and
-  hosted disagree on public, size limit and MIME list with nothing comparing them — and per decision 43
-  nothing would.
+- **The conclusion gets stronger, not weaker.** Migrations reach both the hosted project and any
+  throwaway or local database the CLI builds — a probe migration's `insert into storage.buckets`
+  applied cleanly in `db:diff`'s shadow database, which runs no storage service at all. Declaring the
+  bucket in `config.toml` as well would be a second definition that only a local stack reads, letting
+  local and hosted disagree on public, size limit and MIME list with nothing comparing them — and per
+  decision 43 nothing but a hand-run query would.
+- **Amended by 41:** this decision's first version leaned on `db reset` existing. It no longer does,
+  and the conclusion is unaffected — a `config.toml` bucket would now configure a stack this project
+  never starts, which is where this reasoning stood before Docker was installed at all.
 - **Why not delete the block:** it is CLI boilerplate a future `supabase init` puts back, and removing
   it makes this plan edit a file it otherwise never touches.
 - **Trade-off:** the bucket's settings live in SQL rather than in a config file where they would be
   easier to eyeball.
 
-## 43. Storage has no drift detection, and that is recorded rather than fixed
+## 43. Storage policies get their own diff command; the bucket row is the gap that stays
 
-- **Date:** 2026-08-08
-- **Considered:** widen `db:diff` to `--schema public,storage` · add a `scripts/check-storage.mjs`
-  assertion · record the gap and rely on a deliberate `db query` check
-- **Chosen:** record it, in the plan and in the rewritten `image-storage.md`.
-- **The gap is two-layered and both layers matter.** `db:diff` excludes the `storage` schema by
-  default, so storage _policies_ are outside the drift detection Docker just unlocked. And the bucket
-  itself is a **row** in `storage.buckets` — data, not schema — so no diff engine would ever see it
-  whatever the schema scope. `No schema changes found` can be printed while the bucket is public when
-  it should not be, missing entirely, or wide open on MIME.
+- **Date:** 2026-08-08 · **rewritten the same day, after the engines were actually compared**
+- **Considered:** widen `db:diff` to `--schema public,storage` · a second `db:diff:storage` script ·
+  a `scripts/check-storage.mjs` assertion · record the gap and rely on a deliberate `db query`
+- **Chosen:** a second script — `"db:diff:storage": "supabase db diff --linked --schema storage
+--use-migra"` — for the policies, plus a documented `db query --linked` snippet in
+  `image-storage.md` for the bucket row, which no diff can ever cover.
+- **The first version of this decision said storage drift was undetectable. Half of that was wrong.**
+  Tested by planting a policy in a throwaway migration that the linked project did not have:
+  - `db diff --linked --schema storage` on the default **pg-delta** engine printed
+    `No schema changes found` — it does not merely omit storage, it actively reassures.
+  - the same command with **`--use-migra`** printed
+    `drop policy "zz probe select" on "storage"."objects"`, correctly.
+  - on a clean tree, `--use-migra --schema storage` prints nothing, so the check is noise-free today.
+    The "signal arrives mixed with noise from storage's own upgrades" argument against widening was
+    speculation, and it is currently false.
+- **What stays true:** the bucket is a **row** in `storage.buckets` — data, not schema — so no diff
+  engine will ever see it whatever the scope. `No schema changes found` can still print while the
+  bucket is missing, public when it should not be, or wide open on MIME.
 - **Why this deserves saying out loud:** `CLAUDE.md` tells you never to change structure in the
-  dashboard because drift is invisible. For the four recipe tables that now has a backstop. For storage
-  it has none, so the rule is carrying more weight here than anywhere else in the project.
-- **Why not widen `db:diff`:** it would cover policies but never the bucket row, and it pulls
-  Supabase-managed storage objects into the diff, so the signal arrives mixed with noise the storage
-  service generates on its own upgrades.
-- **Why not the script:** real coverage of both layers, but a new script with no precedent in the repo,
-  for a bucket that changes approximately never. Worth revisiting if storage grows a second bucket.
-- **Trade-off:** the guard is a human remembering to run a query.
+  dashboard because drift is invisible. The four recipe tables have a backstop; storage policies now
+  have one too, but only under a non-default engine — so the trap worth recording is that the
+  _default_ engine says storage is fine when it is not.
+- **Why not switch the project to migra** (`[experimental.pgdelta] enabled = false`, one command
+  covering both schemas): it downgrades the engine for every future diff to fix one schema's blind
+  spot, and pg-delta is where the CLI is heading. The cost of the split is one sentence explaining why
+  the neighbouring command uses a different engine.
+- **Why not the script:** `check-storage.mjs` would cover both layers, but it is a new file with no
+  precedent in the repo, for a bucket that changes approximately never. Worth revisiting if storage
+  grows a second bucket.
+- **Trade-off:** two diff commands with two engines, and migra is labelled legacy in `config.toml` —
+  a future CLI could remove it, at which point the check fails loudly rather than silently. The
+  bucket's settings still depend on a human running a query.
 
 ## 44. One `PATH_PREFIX`, with the regex built from it
 
@@ -829,6 +891,65 @@ day, which is what 41–43 respond to.
   field and the Review alert both render this, and they must not word the same failure differently.
 - **Why not fully generic:** an expired session and an oversized file would look identical, and the
   retry button will fail the same way for the first of those.
+
+## 47. One `busy`, one word — `processing` and `uploading` are not distinguishable
+
+- **Date:** 2026-08-08
+- **Considered:** widen the union to `{ status: "busy"; phase: "cropping" | "uploading" }` so the label
+  can change mid-flight · keep the union and hold the phase in `ImageField`'s own state · keep the
+  union and use one word
+- **Chosen:** one word. `busy` maps to `attachment.tsx`'s `state="uploading"` with a single label.
+- **Why:** the plan told `ImageField` to render `processing` while the canvas works and `uploading`
+  while the bytes go, but `StepImage` has one `busy` and cannot tell them apart. Reading the component
+  settles it in the other direction: `processing` and `uploading` render **identically** — the same
+  shimmer on the title, nothing else differing. The distinction the wider union would buy is a
+  distinction the UI does not draw.
+- **Why not local phase state:** it dies with the panel, so returning to a step mid-upload shows the
+  wrong word — the same unmount failure decision 18 rejected, for a smaller prize.
+- **Trade-off:** the label reads "uploading" during the ~200ms of canvas work. Nobody will see it.
+
+## 48. A plain `<img>` for the field thumbnail; `next/image` on the article only
+
+- **Date:** 2026-08-08
+- **Considered:** `next/image` everywhere, so there is one way to render a stored photo · a plain
+  `<img>` inside `AttachmentMedia`
+- **Chosen:** a plain `<img>` in `ImageField`; `next/image` keeps the article's hero and 300px step
+  photos, which is what decision 38 actually argued for.
+- **Why the exception:** 38's case was serving a 1200px file into a 300px slot, six times per page.
+  The field thumbnail is ~64px, fetched seconds after its own upload, looked at once, and then gone —
+  warming a CDN variant for it buys nothing, and `AttachmentMedia` already styles a child `img`
+  (`aspect-square`, `object-cover`) rather than sizing by intrinsic dimensions.
+- **Trade-off:** two ways of rendering a stored photo, which needs one comment at the `<img>` saying
+  which case this is and why it is not the article's case.
+
+## 49. Pull in `slider` rather than a bare range input
+
+- **Date:** 2026-08-08 · closes the plan's second open question
+- **Considered:** `npx shadcn@latest add slider` · the bare `<input type="range">` the prototype uses
+- **Chosen:** the registry component.
+- **Why it was close and then wasn't:** the honest argument for the bare input was avoiding a
+  dependency for a control used a handful of times a week. There is no dependency — this project's
+  shadcn primitives import from the unified `radix-ui` package, which is already installed, so this is
+  a file copy-in. The prototype's own notes say the raw control does not match the UI, and it sits
+  inside a shadcn `Dialog` in the one screen the owner touches for every photo.
+- **Trade-off:** one more generated file in `components/ui/` to leave unedited.
+
+## 50. A zero-row `.remove()` stays silent, and the asymmetry gets a comment
+
+- **Date:** 2026-08-08
+- **Considered:** treat `data.length === 0` as an error, matching the row delete beside it ·
+  `console.warn` the mismatch · treat it as success
+- **Chosen:** treat it as success, per decision 11 — with a comment naming why the neighbouring line
+  does the opposite.
+- **Why the comment is not optional:** `deleteRecipe` already does
+  `.delete().select("id")` and errors when nothing came back, under the comment _"an RLS refusal on a
+  delete is silent, so the affected rows are checked"_. The new storage cleanup lands in that same
+  function and deliberately does not. Unexplained, that reads as an oversight and gets "fixed".
+- **The distinction to write down:** a zero-row **row** delete means the user's intent failed and is
+  actionable. A zero-row **file** remove means the intent succeeded — the photo is off the recipe —
+  and a file leaked, which the owner cannot act on and which the sweep in decision 8 exists for.
+- **Trade-off:** the one fingerprint of a regressed `select` policy (decision 33) goes unreported.
+  Accepted knowingly: `db:diff:storage` from 43 is what catches that, and it catches it earlier.
 - **Trade-off:** a mapping keyed on status codes and message fragments, which can go stale against
   Supabase's wording. The fallback carries the raw message, so a stale mapping degrades to option one
   rather than to silence.

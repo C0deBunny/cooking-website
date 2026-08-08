@@ -16,6 +16,12 @@ Rules and traps live here. The reasoning behind them lives in `docs/`, linked pe
 - **`db:pull` and `db:diff` need Docker Desktop actually running**, not merely installed — they build
   a throwaway shadow Postgres and replay every migration into it. If the engine is down they fail at
   `Creating shadow database…`. The first run pulls ~4.8 GB of images; later runs take seconds.
+- **"failed to run docker. Docker Desktop is a prerequisite" can mean PATH, not Docker.** If it appears
+  _after_ `Creating shadow database…` succeeds, the daemon is plainly fine: the diff step pulls its own
+  image, the pull needs `docker-credential-desktop`, and that lives in
+  `C:\Program Files\Docker\Docker\resources\bin` — on the machine PATH, but absent from any shell
+  started before Docker was installed. Restart the terminal. A shadow container can be left running on
+  port 54320 after such a failure and will block the next run; remove it.
 - **`db:diff` carries `--linked` on purpose — don't drop it.** Bare `supabase db diff` defaults to
   `--local` and dies with `ECONNREFUSED 127.0.0.1:54322` looking for a local stack this project never
   runs.
