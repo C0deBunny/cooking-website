@@ -15,7 +15,36 @@ import type { RecipeView } from "@/types/recipes";
  */
 
 export type IngredientDraft = { amount: string; unit: string; name: string };
-export type StepDraft = { instruction: string; note: string };
+
+/**
+ * One photo's entire state, as one field rather than three.
+ *
+ * `null` is "no photo". The three statuses are the pipeline in `upload.ts`, collapsed to what the
+ * rest of the wizard needs to know — `busy` covers both the canvas work and the byte transfer,
+ * because `attachment.tsx` renders `processing` and `uploading` identically and the distinction
+ * would be one the UI never draws (decision 47).
+ *
+ * **The union is the point, not the brevity.** Three separate fields would permit "has a path
+ * *and* an error", which is meaningless; this shape makes it unrepresentable. And because the
+ * state lives on the row, deleting a step takes its state with it — a busy `Set` or error `Map`
+ * lifted into `RecipeWizard` outlives the row it describes, so Review would go on reporting a
+ * failure for a step that no longer exists, with Publish blocked and no reachable cause
+ * (decision 18).
+ */
+export type StepImage = null | { status: "busy" } | { status: "done"; path: string } | { status: "failed"; reason: string };
+
+/**
+ * `id` is client-only and exists for one job: an upload resolves seconds after it starts, and the
+ * only mutation primitive is positional. Start an upload on step 3, click ↑ on step 4, and the
+ * finished path lands on the wrong step while the genuinely busy one stays `{status:"busy"}`
+ * forever — `uploading` never clears, Publish is disabled permanently, and nothing on screen says
+ * why. So write-backs go through `replaceById` below, not `replaceAt` (decision 31).
+ *
+ * It never reaches the payload: `toPayload()` maps step fields explicitly. SSR and hydration
+ * generating different ids is harmless for the same reason — it never reaches the DOM. On the
+ * edit path later, the real `recipe_steps.id` hydrates into this field.
+ */
+export type StepDraft = { id: string; instruction: string; note: string; image: StepImage };
 
 export type Draft = {
   title: string;
@@ -24,6 +53,7 @@ export type Draft = {
   prep_minutes: string;
   cook_minutes: string;
   servings: string;
+  cover: StepImage;
   ingredients: IngredientDraft[];
   steps: StepDraft[];
   published: boolean;
@@ -33,19 +63,30 @@ export type Draft = {
 export const NO_DIFFICULTY = "unset";
 
 export const EMPTY_INGREDIENT: IngredientDraft = { amount: "", unit: "", name: "" };
-export const EMPTY_STEP: StepDraft = { instruction: "", note: "" };
 
-export const EMPTY_DRAFT: Draft = {
-  title: "",
-  description: "",
-  difficulty: NO_DIFFICULTY,
-  prep_minutes: "",
-  cook_minutes: "",
-  servings: "",
-  ingredients: [{ ...EMPTY_INGREDIENT }],
-  steps: [{ ...EMPTY_STEP }],
-  published: false,
-};
+/**
+ * Factories, not shared constants — `{ ...EMPTY_STEP }` would clone one id onto every row, which
+ * is the one thing the id exists to prevent. `RecipeWizard` uses the lazy `useState(() =>
+ * emptyDraft())` for the same reason.
+ */
+export function newStep(): StepDraft {
+  return { id: crypto.randomUUID(), instruction: "", note: "", image: null };
+}
+
+export function emptyDraft(): Draft {
+  return {
+    title: "",
+    description: "",
+    difficulty: NO_DIFFICULTY,
+    prep_minutes: "",
+    cook_minutes: "",
+    servings: "",
+    cover: null,
+    ingredients: [{ ...EMPTY_INGREDIENT }],
+    steps: [newStep()],
+    published: false,
+  };
+}
 
 /* ------------------------------------------------------------------------------------------ *
  * Sanitisers
@@ -57,6 +98,13 @@ export const EMPTY_DRAFT: Draft = {
  *
  * There are two rules because the schema has two: prep/cook/servings are
  * `optionalNumber({ integer: true })`, ingredient amount is `{ integer: false }`.
+ *
+ * **There is deliberately no sanitiser for the image fields, and that is not an oversight.** The
+ * rule in CLAUDE.md — a field with a validation rule and no keystroke sanitiser makes the tick lie
+ * — exists because inputs are *typed*. `ImageField` has no text input: it yields either `null` or
+ * a path its own pipeline just built, so the state the schema rejects is unreachable by
+ * construction rather than sanitised away. Do not bolt a meaningless sanitiser onto a field with
+ * no keystrokes, and do not read this absence as the rule being optional.
  * ------------------------------------------------------------------------------------------ */
 
 /** Whole minutes and whole people. A minus sign, a decimal point and `abc` are all untypeable. */
@@ -118,6 +166,19 @@ export function parseAmount(value: string): number | null {
  * that will actually be submitted rather than something adjacent to it. Empty strings are left
  * as-is for the fields the schema normalises itself; only the two conversions the schema cannot
  * do — the difficulty sentinel and the fraction — happen here.
+ *
+ * **The images are the one place this stops being a literal pass-through, and that is worth
+ * saying.** The original argument for this function was that the draft holds exactly the fields
+ * `save_recipe()` reads, so nothing can be lost in translation. The substance survives — the draft
+ * holds a *path* and never a `File`, the submit is still one JSON blob and one transaction, and
+ * each ✓ still parses this payload rather than the draft — but `StepImage` is a union, so a path
+ * has to be picked out of it. That union is what makes "has a path *and* an error" unrepresentable
+ * and what makes a deleted step take its own state with it (decision 18); a plain
+ * `image_path: string | null` on the row would restore the pass-through and lose both.
+ *
+ * A photo still uploading or failed contributes nothing here: `busy` and `failed` both resolve to
+ * null. `RecipeWizard` is what stops a half-finished upload from quietly reaching the database as
+ * an absent image — it blocks the submit while either is true.
  */
 export function toPayload(draft: Draft): RecipeInput {
   return {
@@ -138,7 +199,12 @@ export function toPayload(draft: Draft): RecipeInput {
       amount: parseAmount(ingredient.amount),
       unit: ingredient.unit,
     })),
-    steps: draft.steps.map((step) => ({ instruction: step.instruction, note: step.note })),
+    steps: draft.steps.map((step) => ({ instruction: step.instruction, note: step.note, image_path: step.image?.status === "done" ? step.image.path : null })),
+
+    // A list carrying at most one row, flagged primary. `recipe_images` supports many rows with
+    // sort_order and one primary, so shaping the payload this way makes a gallery later a UI
+    // change rather than a payload change (decision 1).
+    images: draft.cover?.status === "done" ? [{ storage_path: draft.cover.path, is_primary: true }] : [],
   };
 }
 
@@ -156,6 +222,13 @@ export function toPayload(draft: Draft): RecipeInput {
  * "Untitled recipe" itself, under its `placeholders` prop, along with the rest of the empty
  * skeleton — a placeholder smuggled into the data would also be what the checklist and any future
  * reader of this view see.
+ *
+ * The step filter is the third difference, and it is about photos. Attaching a photo before typing
+ * the instruction is the natural order of work, so a step with a finished photo and no text is
+ * kept: without that the preview shows no trace of a photo that is genuinely in the draft and
+ * genuinely about to be saved. The article renders "No instruction yet." beneath it under
+ * `placeholders`, which is only ever reachable here — the prop is off on both saved-recipe routes
+ * (decision 26).
  */
 export function toPreview(draft: Draft): RecipeView {
   const minutes = (value: string) => {
@@ -171,6 +244,12 @@ export function toPreview(draft: Draft): RecipeView {
     cook_minutes: minutes(draft.cook_minutes),
     servings: minutes(draft.servings),
     notes: null,
+
+    // Flat, not a `recipe_images` row array — see the note on `RecipeView` in types/recipes.ts.
+    // Carrying the row shape here would make the wizard fabricate a one-element list of fake image
+    // rows, which is the exact pattern that view exists to prevent (decision 37).
+    cover: draft.cover?.status === "done" ? draft.cover.path : null,
+
     ingredients: draft.ingredients
       .filter((ingredient) => ingredient.name.trim())
       .map((ingredient) => ({
@@ -178,7 +257,9 @@ export function toPreview(draft: Draft): RecipeView {
         amount: parseAmount(ingredient.amount),
         unit: ingredient.unit.trim() || null,
       })),
-    steps: draft.steps.filter((step) => step.instruction.trim()).map((step) => ({ instruction: step.instruction.trim(), note: step.note.trim() || null })),
+    steps: draft.steps
+      .filter((step) => step.instruction.trim() || step.image?.status === "done")
+      .map((step) => ({ instruction: step.instruction.trim(), note: step.note.trim() || null, image_path: step.image?.status === "done" ? step.image.path : null })),
   };
 }
 
@@ -195,4 +276,18 @@ export function move<T>(items: T[], from: number, to: number) {
 
 export function replaceAt<T>(items: T[], index: number, patch: Partial<T>) {
   return items.map((item, i) => (i === index ? { ...item, ...patch } : item));
+}
+
+/**
+ * The same patch, addressed by identity rather than by position.
+ *
+ * **Use this for anything that lands asynchronously.** `replaceAt` is correct for a keystroke,
+ * where the row cannot have moved between the event and the setState. An upload resolves seconds
+ * later, by which time the user may have reordered or deleted the row — and a positional write
+ * then patches whichever step now sits at that index, leaving the real one busy forever
+ * (decision 31). A row that has been deleted matches nothing and the patch is dropped, which is
+ * the correct outcome: its state went with it.
+ */
+export function replaceById<T extends { id: string }>(items: T[], id: string, patch: Partial<T>) {
+  return items.map((item) => (item.id === id ? { ...item, ...patch } : item));
 }

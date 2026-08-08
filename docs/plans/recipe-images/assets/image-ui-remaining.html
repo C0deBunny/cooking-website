@@ -811,8 +811,8 @@
           <h2>How big is a step photo in the article?</h2>
         </div>
         <p class="q-note">
-          The reading column is <code>max-w-3xl</code> = 768px, and the photo is 1:1. Drag the step count and watch the page height — <b>this is the number that decides it</b>, not how any single step looks. Everything is drawn at
-          true 768px scale, then scaled down to fit.
+          The reading column is <code>max-w-3xl</code> = 768px, and the photo is 1:1. Drag the step count and watch the page height — <b>this is the number that decides it</b>, not how any single step
+          looks. Everything is drawn at true 768px scale, then scaled down to fit.
         </p>
 
         <div class="controls">
@@ -879,8 +879,8 @@
           <h2>What does a coverless recipe look like in the grid?</h2>
         </div>
         <p class="q-note">
-          <code>RecipeCard</code> takes <code>{ title, description }</code> today and has <b>no media area at all</b>, so you are adding one. Every existing recipe has no cover, so a mixed grid is not an edge case — it is the state
-          of the site the day this ships. Toggle how many have covers.
+          <code>RecipeCard</code> takes <code>{ title, description }</code> today and has <b>no media area at all</b>, so you are adding one. Every existing recipe has no cover, so a mixed grid is not
+          an edge case — it is the state of the site the day this ships. Toggle how many have covers.
         </p>
 
         <div class="controls">
@@ -937,7 +937,8 @@
           <h2>Where does the cover field sit on the Details panel?</h2>
         </div>
         <p class="q-note">
-          Current order is title + address line → description → a 3-column grid of difficulty / prep / cook. A square field is the largest thing on that panel, so "alongside title and description" is not specific enough.
+          Current order is title + address line → description → a 3-column grid of difficulty / prep / cook. A square field is the largest thing on that panel, so "alongside title and description" is
+          not specific enough.
         </p>
 
         <div class="opts three">
@@ -984,9 +985,7 @@
           <span class="q-num">4</span>
           <h2>Is the step photo field always visible, or collapsed until used?</h2>
         </div>
-        <p class="q-note">
-          Push the step count up. The question is whether eight dashed "Add a photo" bars are an invitation or clutter on a panel whose job is text.
-        </p>
+        <p class="q-note">Push the step count up. The question is whether eight dashed "Add a photo" bars are an invitation or clutter on a panel whose job is text.</p>
 
         <div class="controls">
           <span class="ctrl-label">Steps</span>
@@ -1030,8 +1029,8 @@
           <h2>Does the wizard need to work on a phone?</h2>
         </div>
         <p class="q-note">
-          This is the one worth arguing about. <code>/admin</code> is deliberately desktop-first — <code>AdminSidebar</code> is <code>collapsible="none"</code> with a fixed 16rem rail, and <code>PreviewRail</code> is hidden below
-          1024px. But <b>this feature's entire input is a phone photo</b>, so as specified, adding a recipe photo means getting the photo onto a desktop first.
+          This is the one worth arguing about. <code>/admin</code> is deliberately desktop-first — <code>AdminSidebar</code> is <code>collapsible="none"</code> with a fixed 16rem rail, and
+          <code>PreviewRail</code> is hidden below 1024px. But <b>this feature's entire input is a phone photo</b>, so as specified, adding a recipe photo means getting the photo onto a desktop first.
         </p>
 
         <div class="opts three">
@@ -1094,8 +1093,8 @@
 
         <div class="callout bad">
           <p>
-            <b>The tension in one line:</b> decision 3 chose browser-side compression specifically because "a phone photo is 4–12MB", and the crop picker was built with pointer events specifically so touch works. Both assume a phone.
-            The route they run on does not.
+            <b>The tension in one line:</b> decision 3 chose browser-side compression specifically because "a phone photo is 4–12MB", and the crop picker was built with pointer events specifically so
+            touch works. Both assume a phone. The route they run on does not.
           </p>
         </div>
       </section>
@@ -1117,7 +1116,11 @@
             <div class="card-body">
               <div class="panel">
                 <p class="plabel">Cover photo</p>
-                <div class="attrow"><img id="s6-thumb-a" alt="" /><div class="meta"><b>cover.webp</b><span>1200 × 1200 · 186 KB</span></div><button class="iconbtn">⟳</button><button class="iconbtn">✕</button></div>
+                <div class="attrow">
+                  <img id="s6-thumb-a" alt="" />
+                  <div class="meta"><b>cover.webp</b><span>1200 × 1200 · 186 KB</span></div>
+                  <button class="iconbtn">⟳</button><button class="iconbtn">✕</button>
+                </div>
               </div>
             </div>
             <div class="cost">
@@ -1134,7 +1137,9 @@
               <div class="panel">
                 <p class="plabel">Cover photo</p>
                 <div class="attrow" style="margin-bottom: 0.5rem">
-                  <img id="s6-thumb-b" alt="" /><div class="meta"><b>cover.webp</b><span>1200 × 1200 · 186 KB</span></div><button class="iconbtn">⟳</button><button class="iconbtn">✕</button>
+                  <img id="s6-thumb-b" alt="" />
+                  <div class="meta"><b>cover.webp</b><span>1200 × 1200 · 186 KB</span></div>
+                  <button class="iconbtn">⟳</button><button class="iconbtn">✕</button>
                 </div>
                 <div class="inp ph">Describe the photo (optional)</div>
               </div>
@@ -1152,8 +1157,14 @@
             <div class="card-body">
               <div class="panel">
                 <p class="plabel" style="margin-bottom: 0.4rem">Describe your photos <span style="font-weight: 400; color: var(--muted-foreground)">— optional, helps screen readers</span></p>
-                <div style="display: flex; gap: 0.4rem; align-items: center; margin-bottom: 0.4rem"><img id="s6-thumb-c" alt="" style="width: 2.2rem; height: 2.2rem; border-radius: 0.35rem; object-fit: cover" /><div class="inp ph" style="flex: 1; margin: 0">Cover</div></div>
-                <div style="display: flex; gap: 0.4rem; align-items: center"><div class="tph" style="width: 2.2rem; height: 2.2rem; border-radius: 0.35rem; background: var(--muted); display: grid; place-items: center; font-size: 0.7rem">2</div><div class="inp ph" style="flex: 1; margin: 0">Step 2</div></div>
+                <div style="display: flex; gap: 0.4rem; align-items: center; margin-bottom: 0.4rem">
+                  <img id="s6-thumb-c" alt="" style="width: 2.2rem; height: 2.2rem; border-radius: 0.35rem; object-fit: cover" />
+                  <div class="inp ph" style="flex: 1; margin: 0">Cover</div>
+                </div>
+                <div style="display: flex; gap: 0.4rem; align-items: center">
+                  <div class="tph" style="width: 2.2rem; height: 2.2rem; border-radius: 0.35rem; background: var(--muted); display: grid; place-items: center; font-size: 0.7rem">2</div>
+                  <div class="inp ph" style="flex: 1; margin: 0">Step 2</div>
+                </div>
               </div>
             </div>
             <div class="cost">
@@ -1171,8 +1182,8 @@
           <h2>HEIC / decode failure <span class="default-tag">default: toast</span></h2>
         </div>
         <p class="q-note">
-          <code>createImageBitmap</code> throws before any upload exists, so there is no attachment to put an error in yet — and if the field is empty, forcing it into <code>error</code> means inventing a state for a photo that was
-          never accepted.
+          <code>createImageBitmap</code> throws before any upload exists, so there is no attachment to put an error in yet — and if the field is empty, forcing it into <code>error</code> means
+          inventing a state for a photo that was never accepted.
         </p>
 
         <div class="opts two">
@@ -1184,7 +1195,10 @@
             <div class="card-body" style="background: var(--tint)">
               <div class="panel" style="margin-bottom: 0.7rem">
                 <p class="plabel">Cover photo</p>
-                <div class="attrow idle"><div class="tph">🖼</div><div class="meta"><b>Add a cover photo</b><span>optional</span></div></div>
+                <div class="attrow idle">
+                  <div class="tph">🖼</div>
+                  <div class="meta"><b>Add a cover photo</b><span>optional</span></div>
+                </div>
               </div>
               <div class="toast">
                 <span class="ic">⚠</span>
@@ -1278,19 +1292,21 @@
               <div>
                 <p class="hint" style="margin: 0 0 0.3rem; font-weight: 700; color: var(--foreground)">Cancel → idle <span class="badge-rec">default</span></p>
                 <div class="fsm">
-                  <span class="st">idle</span><span class="ar">→</span><span class="lbl">pick</span><span class="ar">→</span><span class="st hot">cropping</span><span class="ar">→</span><span class="lbl">cancel</span><span class="ar">→</span
-                  ><span class="st">idle</span>
+                  <span class="st">idle</span><span class="ar">→</span><span class="lbl">pick</span><span class="ar">→</span><span class="st hot">cropping</span><span class="ar">→</span
+                  ><span class="lbl">cancel</span><span class="ar">→</span><span class="st">idle</span>
                 </div>
                 <p class="hint">Nothing retained. Re-cropping means re-picking the file — one extra click, and no <code>File</code> is held in state, which is what decision 4 was careful about.</p>
               </div>
               <div>
                 <p class="hint" style="margin: 0 0 0.3rem; font-weight: 700; color: var(--foreground)">Cancel → keep the file for a retry</p>
                 <div class="fsm">
-                  <span class="st">idle</span><span class="ar">→</span><span class="lbl">pick</span><span class="ar">→</span><span class="st hot">cropping</span><span class="ar">→</span><span class="lbl">cancel</span><span class="ar">→</span
-                  ><span class="st">picked, not cropped</span><span class="ar">→</span><span class="lbl">reopen</span><span class="ar">→</span><span class="st hot">cropping</span>
+                  <span class="st">idle</span><span class="ar">→</span><span class="lbl">pick</span><span class="ar">→</span><span class="st hot">cropping</span><span class="ar">→</span
+                  ><span class="lbl">cancel</span><span class="ar">→</span><span class="st">picked, not cropped</span><span class="ar">→</span><span class="lbl">reopen</span><span class="ar">→</span
+                  ><span class="st hot">cropping</span>
                 </div>
                 <p class="hint">
-                  Saves a click, but invents a fourth field state holding a <code>File</code> that <code>toPayload</code> cannot resolve — the exact shape decision 4 rejected. And under B4's union it has no status to live in.
+                  Saves a click, but invents a fourth field state holding a <code>File</code> that <code>toPayload</code> cannot resolve — the exact shape decision 4 rejected. And under B4's union it
+                  has no status to live in.
                 </p>
               </div>
             </div>
@@ -1454,7 +1470,8 @@
 
       document.getElementById("s3-a").innerHTML = `<div class="panel"><div style="margin-bottom:.7rem">${COVER_FIELD}</div>${TITLE_FIELD}${DESC_FIELD}${GRID_FIELDS}</div>`;
       document.getElementById("s3-b").innerHTML = `<div class="panel">${TITLE_FIELD}${DESC_FIELD}<div style="margin-bottom:.7rem">${COVER_FIELD}</div>${GRID_FIELDS}</div>`;
-      document.getElementById("s3-c").innerHTML = `<div class="panel"><div style="display:grid;grid-template-columns:minmax(0,1fr) 8.5rem;gap:.7rem;align-items:start"><div>${TITLE_FIELD}${DESC_FIELD}</div><div><p class="plabel">Cover photo</p><img src="${COVER}" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:.5rem;display:block"><div style="display:flex;gap:.25rem;margin-top:.3rem"><button class="iconbtn">⟳</button><button class="iconbtn">✕</button></div></div></div>${GRID_FIELDS}</div>`;
+      document.getElementById("s3-c").innerHTML =
+        `<div class="panel"><div style="display:grid;grid-template-columns:minmax(0,1fr) 8.5rem;gap:.7rem;align-items:start"><div>${TITLE_FIELD}${DESC_FIELD}</div><div><p class="plabel">Cover photo</p><img src="${COVER}" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:.5rem;display:block"><div style="display:flex;gap:.25rem;margin-top:.3rem"><button class="iconbtn">⟳</button><button class="iconbtn">✕</button></div></div></div>${GRID_FIELDS}</div>`;
 
       /* ============================== 4 ============================== */
       function render4() {
@@ -1481,10 +1498,12 @@
 
       /* ============================== 5 ============================== */
       /* (a) today: a fixed 16rem rail plus a 700px form on a 390px screen */
-      document.getElementById("s5-a").innerHTML = `<div style="display:flex;gap:.5rem"><div style="width:16rem;flex-shrink:0;background:var(--sidebar);border-radius:.5rem;padding:.5rem"><p class="plabel">Chique's</p><div style="font-size:.7rem;color:var(--muted-foreground)">Dashboard<br>Create<br>Manage</div></div><div class="overflowing"><div class="panel">${TITLE_FIELD}${DESC_FIELD}</div></div></div><p class="hint" style="padding:0 .3rem">↔ horizontal scroll</p>`;
+      document.getElementById("s5-a").innerHTML =
+        `<div style="display:flex;gap:.5rem"><div style="width:16rem;flex-shrink:0;background:var(--sidebar);border-radius:.5rem;padding:.5rem"><p class="plabel">Chique's</p><div style="font-size:.7rem;color:var(--muted-foreground)">Dashboard<br>Create<br>Manage</div></div><div class="overflowing"><div class="panel">${TITLE_FIELD}${DESC_FIELD}</div></div></div><p class="hint" style="padding:0 .3rem">↔ horizontal scroll</p>`;
 
       /* (c) responsive: rail collapsed to a bar, panel full width, cropper full screen */
-      document.getElementById("s5-c").innerHTML = `<div style="display:flex;align-items:center;gap:.5rem;padding:.45rem .6rem;border-bottom:1px solid var(--border);background:var(--sidebar)"><span style="font-size:.9rem">☰</span><b style="font-size:.75rem">Recipe Creator</b></div><div style="padding:.6rem"><div style="display:flex;gap:.25rem;margin-bottom:.5rem">${["Details", "Ingr.", "Steps", "Review"].map((s, i) => `<span style="flex:1;text-align:center;font-size:.6rem;font-weight:700;padding:.2rem;border-radius:.3rem;background:${i === 0 ? "var(--foreground)" : "var(--tint)"};color:${i === 0 ? "oklch(.99 0 0)" : "var(--muted-foreground)"}">${s}</span>`).join("")}</div><div class="panel">${TITLE_FIELD}<p class="plabel">Cover photo</p><div class="attrow idle" style="max-width:100%"><div class="tph">🖼</div><div class="meta"><b>Add a cover photo</b><span>tap to take one</span></div></div></div></div>`;
+      document.getElementById("s5-c").innerHTML =
+        `<div style="display:flex;align-items:center;gap:.5rem;padding:.45rem .6rem;border-bottom:1px solid var(--border);background:var(--sidebar)"><span style="font-size:.9rem">☰</span><b style="font-size:.75rem">Recipe Creator</b></div><div style="padding:.6rem"><div style="display:flex;gap:.25rem;margin-bottom:.5rem">${["Details", "Ingr.", "Steps", "Review"].map((s, i) => `<span style="flex:1;text-align:center;font-size:.6rem;font-weight:700;padding:.2rem;border-radius:.3rem;background:${i === 0 ? "var(--foreground)" : "var(--tint)"};color:${i === 0 ? "oklch(.99 0 0)" : "var(--muted-foreground)"}">${s}</span>`).join("")}</div><div class="panel">${TITLE_FIELD}<p class="plabel">Cover photo</p><div class="attrow idle" style="max-width:100%"><div class="tph">🖼</div><div class="meta"><b>Add a cover photo</b><span>tap to take one</span></div></div></div></div>`;
 
       render1();
       render2();

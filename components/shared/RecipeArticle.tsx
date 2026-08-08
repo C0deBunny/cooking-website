@@ -1,7 +1,9 @@
 // import lib
 import { cn } from "@/lib/utils";
+import { publicImageUrl } from "@/lib/supabase/storage";
 
 // import components
+import Image from "next/image";
 import DifficultyBadge from "@/components/shared/DifficultyBadge";
 import { Separator } from "@/components/ui/separator";
 
@@ -14,7 +16,13 @@ import type { RecipeView, RecipeWithChildren } from "@/types/recipes";
  * preview. The first two differ only in which query feeds them; the third has no query at all,
  * which is why the prop is RecipeView rather than a row — see types/recipes.ts.
  *
- * Images are absent on purpose — no Storage bucket exists yet, see docs/image-storage.md.
+ * Photos are rendered here rather than only in the wizard because the wizard's live preview *is*
+ * this component. Leaving them out would mean a preview that omits the photos just uploaded, which
+ * is a preview that lies about what is being published (decision 12).
+ *
+ * Every stored photo is already a square, cropped by the person who uploaded it, so nothing here
+ * crops anything: the file *is* the final framing. That is why there is no aspect handling below
+ * and no "this photo will be cropped" warning anywhere (decision 13).
  *
  * ⚠ This component may never gain a server-only import. The wizard is a client component, so
  * importing it there compiles this file into the client bundle as well as leaving it a server
@@ -40,6 +48,12 @@ export function toRecipeView(recipe: RecipeWithChildren): RecipeView {
     cook_minutes: recipe.cook_minutes,
     servings: recipe.servings,
     notes: recipe.notes,
+
+    // The rows carry sort_order and is_primary; the article is told about neither. Resolving the
+    // primary here is what keeps `RecipeView` a view rather than a row shape, and it is also where
+    // a gallery would later branch (decision 37).
+    cover: recipe.recipe_images.find((image) => image.is_primary)?.storage_path ?? null,
+
     ingredients: recipe.recipe_ingredients,
     steps: recipe.recipe_steps,
   };
@@ -142,30 +156,97 @@ export default function RecipeArticle({ recipe, placeholders = false, align = "c
   // saved recipe that records prep but not cooking.
   const meta = filled.length > 0 ? filled : placeholders ? PLACEHOLDER_META : [];
 
+  const heading = (
+    <h1 className={cn("text-4xl font-bold mb-4", placeholders && !title && "font-semibold text-muted-foreground italic")}>{placeholders && !title ? "Untitled recipe" : recipe.title}</h1>
+  );
+
+  const description = recipe.description ? <p className="text-lg text-muted-foreground">{recipe.description}</p> : placeholders ? <p className={PLACEHOLDER_TEXT}>No description yet.</p> : null;
+
+  const metaRow =
+    meta.length > 0 ? (
+      <dl className="flex flex-wrap gap-x-8 gap-y-2 mt-8">
+        {meta.map((entry) => (
+          <div key={entry.label}>
+            <dt className="text-xs uppercase tracking-wide text-muted-foreground">{entry.label}</dt>
+            <dd className="text-base font-medium">{entry.value}</dd>
+          </div>
+        ))}
+      </dl>
+    ) : null;
+
+  /**
+   * Three headers, and the fork is the `placeholders` line that already exists.
+   *
+   * With a cover: an overlaid square at *column* width, not full-bleed. A square that wide is that
+   * tall, so a viewport-wide version would put everything else permanently below the fold — and
+   * the obvious bound, `max-h` plus `object-cover`, would re-crop the square the user just framed
+   * and hand back the warning decision 13 deleted. Column-bleed needs no new layout rule, since
+   * the article is `max-w-3xl` throughout, and is identical at every width, so the preview rail
+   * and the page agree with no breakpoint (decision 20).
+   *
+   * Without a cover, the fork: the wizard reserves the square as an empty dashed frame, a saved
+   * recipe falls back to today's tinted band. That is what `placeholders` is for — a draft being
+   * typed has a cover that is not chosen yet, a published recipe with no cover simply has none,
+   * and showing visitors an empty dashed box announces a gap they cannot fill.
+   *
+   * **Reserving it is also what keeps `PreviewRail` correct.** The cover field lives on Details,
+   * but an upload still in flight when Next is pressed lands while the user is on Ingredients —
+   * and that component's scroll effect depends only on `[step]`. A square appearing where nothing
+   * was would move the article underneath a scroll position computed without it. Reserving the
+   * space makes that unreachable rather than handled; remove it and `recipe.cover` has to join
+   * that effect's dependency array (decision 21).
+   */
   return (
     <article className="w-full text-foreground">
-      <header className="bg-foreground/5 w-full">
-        <div className={cn(column, "px-6 py-8")}>
-          <div className="flex flex-wrap items-center gap-2 mb-4">
-            <DifficultyBadge difficulty={recipe.difficulty} />
+      {recipe.cover ? (
+        <header className="bg-foreground/5 w-full">
+          <div className={cn(column, "relative aspect-square overflow-hidden")}>
+            <Image src={publicImageUrl(recipe.cover)} alt="" fill sizes="(max-width: 768px) 100vw, 768px" priority className="object-cover" />
+
+            {/* A scrim rather than a solid bar: the text sits on the photo, so it needs contrast
+                that survives whatever is underneath it. */}
+            <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/25 to-transparent" />
+
+            {/* alt="" on the image above, deliberately. The title is overlaid on this photo, so
+                the accessible name is already adjacent and a description would be a duplicate. */}
+            <div className="absolute inset-x-0 bottom-0 px-6 py-8 text-white">
+              <div className="flex flex-wrap items-center gap-2 mb-4">
+                <DifficultyBadge difficulty={recipe.difficulty} />
+              </div>
+
+              <h1 className="text-4xl font-bold mb-4">{recipe.title}</h1>
+              {recipe.description ? <p className="text-lg text-white/80">{recipe.description}</p> : null}
+
+              {meta.length > 0 ? (
+                <dl className="flex flex-wrap gap-x-8 gap-y-2 mt-8">
+                  {meta.map((entry) => (
+                    <div key={entry.label}>
+                      <dt className="text-xs uppercase tracking-wide text-white/70">{entry.label}</dt>
+                      <dd className="text-base font-medium">{entry.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              ) : null}
+            </div>
           </div>
+        </header>
+      ) : (
+        <header className="bg-foreground/5 w-full">
+          {/* One element, two shapes. Under `placeholders` the square is reserved as an empty
+              dashed frame with the text sitting at its foot — no scrim, ordinary foreground text,
+              because there is no photo to sit on. Off it, this is exactly the band the article had
+              before covers existed. */}
+          <div className={cn(column, "px-6 py-8", placeholders && "flex aspect-square flex-col justify-end border-2 border-dashed border-border")}>
+            <div className="flex flex-wrap items-center gap-2 mb-4">
+              <DifficultyBadge difficulty={recipe.difficulty} />
+            </div>
 
-          <h1 className={cn("text-4xl font-bold mb-4", placeholders && !title && "font-semibold text-muted-foreground italic")}>{placeholders && !title ? "Untitled recipe" : recipe.title}</h1>
-
-          {recipe.description ? <p className="text-lg text-muted-foreground">{recipe.description}</p> : placeholders ? <p className={PLACEHOLDER_TEXT}>No description yet.</p> : null}
-
-          {meta.length > 0 ? (
-            <dl className="flex flex-wrap gap-x-8 gap-y-2 mt-8">
-              {meta.map((entry) => (
-                <div key={entry.label}>
-                  <dt className="text-xs uppercase tracking-wide text-muted-foreground">{entry.label}</dt>
-                  <dd className="text-base font-medium">{entry.value}</dd>
-                </div>
-              ))}
-            </dl>
-          ) : null}
-        </div>
-      </header>
+            {heading}
+            {description}
+            {metaRow}
+          </div>
+        </header>
+      )}
 
       <div className={cn(column, "px-6 py-12")}>
         <section aria-labelledby="ingredients-heading">
@@ -214,8 +295,24 @@ export default function RecipeArticle({ recipe, placeholders = false, align = "c
                   </span>
 
                   <div className="space-y-2 pt-1">
-                    <p>{step.instruction}</p>
+                    {/* Reachable only in the wizard: a photo can be attached before the
+                        instruction is typed, and `toPreview()` keeps such a step so the preview
+                        shows the photo that is genuinely about to be saved (decision 26). */}
+                    {step.instruction ? <p>{step.instruction}</p> : placeholders ? <p className={PLACEHOLDER_TEXT}>No instruction yet.</p> : null}
+
                     {step.note ? <p className="text-sm text-muted-foreground italic">{step.note}</p> : null}
+
+                    {/* ~300px, indented to the text column, not full column width. The deciding
+                        number is page height: at six steps, a 768px square per step runs to about
+                        nine screens and the method stops reading as a sequence — one step per
+                        screen. 300px is large enough to read as a photograph and small enough that
+                        two or three steps share a screen (decision 22).
+
+                        alt="" because this sits directly beneath the instruction that describes
+                        it, so the accessible name is already adjacent. */}
+                    {step.image_path ? (
+                      <Image src={publicImageUrl(step.image_path)} alt="" width={300} height={300} sizes="300px" className="mt-4 aspect-square w-full max-w-75 rounded-xl object-cover" />
+                    ) : null}
                   </div>
                 </li>
               ))}

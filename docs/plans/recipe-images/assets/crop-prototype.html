@@ -446,8 +446,9 @@
     <main>
       <h1>1:1 crop picker — a working prototype</h1>
       <p class="lede">
-        Drag the photo. Scroll or use the slider to zoom. This is the real interaction, not a mockup — <b>press "Use this crop" and the square on the right is genuinely produced by the same
-        <code>drawImage</code> call the upload pipeline already makes.</b> Load one of your own photos to judge it properly; nothing leaves this page.
+        Drag the photo. Scroll or use the slider to zoom. This is the real interaction, not a mockup —
+        <b>press "Use this crop" and the square on the right is genuinely produced by the same <code>drawImage</code> call the upload pipeline already makes.</b> Load one of your own photos to judge
+        it properly; nothing leaves this page.
       </p>
 
       <div class="filerow">
@@ -534,20 +535,22 @@
           <div class="callout good">
             <p><b>What this buys, beyond looking better:</b></p>
             <p>
-              The crop warning, the aspect check that drives it, and the whole "which surface frames it how" question all <b>disappear</b> — because the file on disk is already the final framing. Decision 12's "the preview must not
-              lie" stops needing mitigation and becomes true by construction, which is the same move the plan already makes for the sanitiser rule.
+              The crop warning, the aspect check that drives it, and the whole "which surface frames it how" question all <b>disappear</b> — because the file on disk is already the final framing.
+              Decision 12's "the preview must not lie" stops needing mitigation and becomes true by construction, which is the same move the plan already makes for the sanitiser rule.
             </p>
           </div>
 
           <div class="callout warn">
             <p><b>The EXIF trap mutates rather than going away.</b></p>
             <p>
-              The <code>&lt;img&gt;</code> in this dialog applies EXIF rotation automatically — browsers default to <code>image-orientation: from-image</code>. <code>createImageBitmap</code> does <i>not</i>, unless passed the flag. So
-              a portrait phone photo would be cropped correctly on screen and then drawn <b>rotated and offset</b> to the canvas: the crop rect is computed against one orientation and applied to another. Worse than the original risk,
-              because the output is subtly wrong rather than obviously sideways.
+              The <code>&lt;img&gt;</code> in this dialog applies EXIF rotation automatically — browsers default to <code>image-orientation: from-image</code>. <code>createImageBitmap</code> does
+              <i>not</i>, unless passed the flag. So a portrait phone photo would be cropped correctly on screen and then drawn <b>rotated and offset</b> to the canvas: the crop rect is computed
+              against one orientation and applied to another. Worse than the original risk, because the output is subtly wrong rather than obviously sideways.
             </p>
-            <p><b>The fix is an ordering rule:</b> decode with <code>createImageBitmap(file, { imageOrientation: "from-image" })</code> <i>first</i>, paint that bitmap into the dialog, and never put the raw <code>File</code> in an
-              <code>&lt;img&gt;</code>. Then one orientation exists everywhere.</p>
+            <p>
+              <b>The fix is an ordering rule:</b> decode with <code>createImageBitmap(file, { imageOrientation: "from-image" })</code> <i>first</i>, paint that bitmap into the dialog, and never put
+              the raw <code>File</code> in an <code>&lt;img&gt;</code>. Then one orientation exists everywhere.
+            </p>
           </div>
         </div>
       </div>
@@ -559,25 +562,53 @@
         </div>
         <div class="card-body">
           <p style="font-size: 0.84rem; margin: 0 0 0.5rem">
-            <b>The pipeline change is one line.</b> The plan already calls <code>drawImage</code>; a crop is the same call with the 9-argument source-rect form. Nothing about compression, webp, the bucket, the payload,
-            <code>save_recipe()</code> or the path convention changes at all.
+            <b>The pipeline change is one line.</b> The plan already calls <code>drawImage</code>; a crop is the same call with the 9-argument source-rect form. Nothing about compression, webp, the
+            bucket, the payload, <code>save_recipe()</code> or the path convention changes at all.
           </p>
           <div class="flow">
-            <span class="n">File</span><span class="a">→</span>
-            <span class="n">createImageBitmap(file, {imageOrientation})</span><span class="a">→</span>
-            <span class="n new">crop dialog → {sx, sy, size}</span><span class="a">→</span>
-            <span class="n">drawImage(bmp, <b>sx, sy, size, size,</b> 0, 0, 1200, 1200)</span><span class="a">→</span>
+            <span class="n">File</span><span class="a">→</span> <span class="n">createImageBitmap(file, {imageOrientation})</span><span class="a">→</span>
+            <span class="n new">crop dialog → {sx, sy, size}</span><span class="a">→</span> <span class="n">drawImage(bmp, <b>sx, sy, size, size,</b> 0, 0, 1200, 1200)</span><span class="a">→</span>
             <span class="n">convertToBlob(webp)</span><span class="a">→</span>
             <span class="n">upload</span>
           </div>
 
           <ul class="facts" style="margin-top: 1rem">
-            <li><span class="m good">~150</span><span>lines for the dialog: square viewport, pointer drag with <code>setPointerCapture</code>, wheel + slider zoom, cover-clamping, and the source-rect maths. All of it is in this file — the drag handler is 12 lines.</span></li>
-            <li><span class="m good">0</span><span>new dependencies. <code>dialog.tsx</code> is already installed; there is no cropper in the shadcn registry, so a library would be a real third-party dependency rather than a registry copy-in.</span></li>
-            <li><span class="m bad">+1</span><span><code>slider.tsx</code> if you want the zoom slider to match the rest of the UI — a bare <code>&lt;input type="range"&gt;</code> is what you see here, and it does not.</span></li>
-            <li><span class="m bad">+1</span><span>state in <code>ImageField</code>: <code>idle → cropping → processing → uploading → done</code>. <code>attachment.tsx</code> has no <code>cropping</code> state, so the attachment sits <code>idle</code> beneath an open dialog.</span></li>
-            <li><span class="m bad">once</span><span><b>The crop is destructive and happens before upload.</b> "A bit higher" means picking the file again — there is no stored original to re-crop from. For a personal site that is fine, but it is a real property and it is the reason to decide it now rather than after.</span></li>
-            <li><span class="m bad">touch</span><span>Must be pointer events, not mouse events, or it is desktop-only. Pinch-zoom needs a second pointer; the wheel handler here covers desktop and the slider covers everything.</span></li>
+            <li>
+              <span class="m good">~150</span
+              ><span
+                >lines for the dialog: square viewport, pointer drag with <code>setPointerCapture</code>, wheel + slider zoom, cover-clamping, and the source-rect maths. All of it is in this file —
+                the drag handler is 12 lines.</span
+              >
+            </li>
+            <li>
+              <span class="m good">0</span
+              ><span
+                >new dependencies. <code>dialog.tsx</code> is already installed; there is no cropper in the shadcn registry, so a library would be a real third-party dependency rather than a registry
+                copy-in.</span
+              >
+            </li>
+            <li>
+              <span class="m bad">+1</span
+              ><span><code>slider.tsx</code> if you want the zoom slider to match the rest of the UI — a bare <code>&lt;input type="range"&gt;</code> is what you see here, and it does not.</span>
+            </li>
+            <li>
+              <span class="m bad">+1</span
+              ><span
+                >state in <code>ImageField</code>: <code>idle → cropping → processing → uploading → done</code>. <code>attachment.tsx</code> has no <code>cropping</code> state, so the attachment sits
+                <code>idle</code> beneath an open dialog.</span
+              >
+            </li>
+            <li>
+              <span class="m bad">once</span
+              ><span
+                ><b>The crop is destructive and happens before upload.</b> "A bit higher" means picking the file again — there is no stored original to re-crop from. For a personal site that is fine,
+                but it is a real property and it is the reason to decide it now rather than after.</span
+              >
+            </li>
+            <li>
+              <span class="m bad">touch</span
+              ><span>Must be pointer events, not mouse events, or it is desktop-only. Pinch-zoom needs a second pointer; the wheel handler here covers desktop and the slider covers everything.</span>
+            </li>
           </ul>
         </div>
       </div>
@@ -644,9 +675,12 @@ ${Array.from({ length: 8 }, (_, i) => `<line x1="0" y1="${(h / 8) * i + h * 0.03
       const img = document.getElementById("stage-img");
       const zoom = document.getElementById("zoom");
 
-      let nw = 0, nh = 0;       // natural pixel size of the source
-      let scale = 1, minScale = 1;
-      let ox = 0, oy = 0;       // offset of the image's top-left, in viewport px
+      let nw = 0,
+        nh = 0; // natural pixel size of the source
+      let scale = 1,
+        minScale = 1;
+      let ox = 0,
+        oy = 0; // offset of the image's top-left, in viewport px
 
       const V = () => stage.clientWidth; // the viewport is square
 
@@ -685,7 +719,9 @@ ${Array.from({ length: 8 }, (_, i) => `<line x1="0" y1="${(h / 8) * i + h * 0.03
       }
 
       /* --- drag: 12 lines, and pointer events cover mouse and touch alike --- */
-      let dragging = false, lastX = 0, lastY = 0;
+      let dragging = false,
+        lastX = 0,
+        lastY = 0;
 
       stage.addEventListener("pointerdown", (e) => {
         dragging = true;
@@ -752,7 +788,7 @@ ${Array.from({ length: 8 }, (_, i) => `<line x1="0" y1="${(h / 8) * i + h * 0.03
         });
 
         const out = Math.min(OUT_SIZE, size);
-        const kept = Math.round((((size * size) / (nw * nh)) * 100));
+        const kept = Math.round(((size * size) / (nw * nh)) * 100);
         document.getElementById("facts").innerHTML = `
           <li><span class="m">source</span><span>${nw} × ${nh} px</span></li>
           <li><span class="m">crop</span><span>${size} × ${size} px at (${sx}, ${sy}) — ${kept}% of the frame, chosen by you rather than by a centre crop</span></li>

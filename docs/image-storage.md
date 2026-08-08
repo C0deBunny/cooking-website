@@ -1,92 +1,158 @@
-# Image storage — open, needs investigation
+# Image storage — decided and built
 
-**Status:** nothing is built. The schema has columns for images, there is no bucket, no Storage
-policies, and no app code. This is not broken yet because nothing uses it — but it blocks the recipe
-create form, which needs uploads.
+**Status:** built on 2026-08-08. There is a bucket, there are Storage policies, there is a path
+convention, and the app uploads, renders and deletes files through them.
 
-Recorded 2026-08-01 so the gap isn't rediscovered later. Companion to
-[permission-model.md](permission-model.md), whose model stops at the table boundary and does not
-currently cover files.
+This document was an open-questions record from 2026-08-01 until then, held open deliberately until
+it was clear how the create form would handle uploads. It is rewritten in place rather than
+superseded because `CLAUDE.md` links to it from two sections, and a new file would leave the stale
+one still linked. The full reasoning is `docs/plans/recipe-images/` — plan and decisions; this is
+the summary a future reader needs before touching the bucket.
 
-## What exists today
+Companion to [permission-model.md](permission-model.md), whose model stops at the table boundary.
+Storage is a **second** policy surface, and this is the half that covers it.
 
-**In the schema** — two columns pointing at files that don't exist yet:
+## What exists
 
-- `recipe_images` — `storage_path` (not null), `alt`, `sort_order`, `is_primary`, one row per image,
-  at most one primary per recipe.
-- `recipe_steps.image_path` — nullable, an optional photo per step.
+**In the schema** — two columns, both holding a **path inside a bucket, not a URL.** That keeps the
+project id and CDN hostname out of the database, so the rows survive a project move and the URL
+shape can change without a data migration. Preserve it.
 
-Both hold a **path inside a bucket, not a URL.** That is the right call — it keeps the project id and
-CDN hostname out of the database, so the rows survive a project move and the URL shape can change
-without a data migration.
+- `recipe_images` — `storage_path` (not null), `sort_order`, `is_primary`, one row per image, at
+  most one primary per recipe. **There is no `alt` column**; it was dropped in
+  `20260808140817_recipe_images_drop_alt.sql`. See "Alt text" below.
+- `recipe_steps.image_path` — nullable, one optional photo per step.
 
-**In the app** — nothing executable. No code reads `recipe_images`, constructs a public URL, or calls
-`supabase.storage`. `lib/recipes/queries.ts` selects from `recipes` alone and doesn't join the images
-table. The only references are inert: the `RecipeImage` type alias in `types/recipes.ts` (with a note
-on `RecipeWithChildren` saying images are omitted on purpose), and a comment on `deleteRecipe` in
-`lib/recipes/actions.ts` flagging the orphan trap below.
+**In the bucket** — `recipe-images`, created by `insert into storage.buckets` in
+`20260808140816_recipe_images_storage.sql`: public, `file_size_limit` 2MiB, `allowed_mime_types`
+`{image/webp}`.
+
+**In the app**
+
+- `lib/supabase/storage.ts` — the bucket name, the path builder, the validation pattern, and a pure
+  `publicImageUrl(path)`.
+- `app/admin/_components/recipe-wizard/upload.ts` — decode, crop, compress, upload, remove.
+- `app/admin/_components/recipe-wizard/CropDialog.tsx` — the 1:1 crop picker.
+- `lib/recipes/actions.ts` — `deleteRecipe` removes a recipe's files.
 
 **In `supabase/config.toml`** — `[storage] enabled = true`, and a commented-out
 `[storage.buckets.images]` example.
 
-> **Don't be misled by that commented block.** `config.toml` configures the **local** dev stack —
-> which this project never starts, Docker being installed or not. Uncommenting it does nothing to the
-> linked hosted project. Buckets there are created in the dashboard or via SQL, and Storage policies
-> are rows in `storage.objects` policies, applied like any other migration.
+> **Leave that commented block alone.** `config.toml` configures the **local** dev stack, which this
+> project never starts even though Docker is installed. Uncommenting it would create a _second_
+> definition of the bucket that only a local stack reads, free to disagree with the migration on
+> public, size limit and MIME list — and per the drift note below, nothing would compare them. The
+> block is CLI boilerplate a future `supabase init` puts back; it is not deleted only because
+> removing it would mean editing a file this work otherwise never touches.
 
-## Why it needs deciding rather than just doing
+## The seven questions, and their answers
 
-The permission model is "visitors read, admins write." That is enforced for **rows** by RLS on the
-four recipe tables. **Storage is a separate policy system** — nothing written in the schema migration
-applies to it. So the same rule has to be expressed a second time, on a different surface, and the
-two ways of getting it wrong pull in opposite directions:
+**1. Public bucket or signed URLs?** Public. It buys URLs that `next/image` and the CDN can both
+cache, with no signing, no expiry logic and no request-time work. The accepted cost: an
+**unpublished** recipe's photos are fetchable by anyone holding the URL even though RLS hides the
+row. Uuid paths make that unguessable, but it is a genuine divergence from how drafts behave
+everywhere else, and it was accepted deliberately.
 
-- **Private bucket, no read policy** → the public site renders broken images. Visitors can't fetch
-  files, and the failure looks like a front-end bug rather than a permissions one.
-- **Public bucket, no write policy** → world-readable is probably fine and likely what you want, but
-  if insert/update/delete are left open, anyone can upload into the bucket or delete your photos.
-  The publishable key is in every visitor's browser, so this is reachable from a browser console
-  without touching the app.
+**2. Who may write?** `authenticated`, and nothing else — mirroring the four recipe tables. `anon`
+is granted nothing at all, because rendering does not need it: the public object URL serves bytes
+without touching `storage.objects`.
+
+**3. Upload from where?** Straight from the browser, with `lib/supabase/browser-client.ts` — the
+client that existed unused for exactly this. It wraps `createBrowserClient`, which is cookie-backed,
+so the upload carries the signed-in JWT and meets the `authenticated` policies.
+
+> A plain `createClient` holding its session in `localStorage` would upload as `anon` and fail with
+> an RLS error that reads exactly like a broken policy. Worth knowing before debugging one.
+
+Direct upload also sidesteps Vercel's 4.5MB cap on a server action's request body, which a single
+phone photo clears.
+
+**4. Path convention.** Flat: `recipes/<uuid>.webp`. No per-recipe folder — there is no `recipe_id`
+while the wizard is running, since a recipe is not saved until Review. The folder would have existed
+so a delete could wipe a prefix, and that was never going to work anyway: the rows are the only
+record of which files belong to what, so a delete has to read the paths off them regardless.
+
+No date or `covers/`/`steps/` prefix either: a prefix that carries meaning can become wrong, and a
+uuid claims nothing. The prefix lives once in `PATH_PREFIX` in `lib/supabase/storage.ts`, with the
+validation regex built from it, so the builder and the check cannot disagree.
+
+**5. Limits and validation.** 2MiB and `image/webp` only, both on the bucket. Everything leaving the
+browser is already webp, so the bucket physically rejects anything that bypassed the compression
+pipeline — and nothing else enforces that pipeline, which lives in one client-side file.
+
+> ⚠ **The MIME the bucket checks comes from the blob's own `type`, not from the `contentType`
+> option.** For a `Blob` body supabase-js wraps it in `FormData` and never sets a content-type header
+> at all, so `contentType` is silently ignored. `convertToBlob({ type: "image/webp" })` in
+> `upload.ts` is therefore load-bearing on the _bucket policy_; passing `contentType` "to be safe"
+> looks like a guard and is a no-op.
+
+**6. Resizing / format.** In the browser, before upload: the crop rectangle is drawn to an
+`OffscreenCanvas` at up to 1200px square and re-encoded as webp at quality 0.82.
+`[storage.image_transformation]` is Pro-plan only, so server-side resizing was never an option;
+`next/image` handles the rest at render time.
+
+**7. Orphan cleanup.** Not built, deliberately, and recorded as
+[known issue 4](known-issues.md). The ✕ control deletes its file immediately, which narrows the leak
+to "closed the tab".
 
 ## The trap: cascade deletes rows, not files
 
-`on delete cascade` removes a recipe's `recipe_images` rows. **The files stay in the bucket forever.**
-Postgres has no idea the bucket exists.
+`on delete cascade` removes a recipe's `recipe_images` rows. **The files stay in the bucket
+forever.** Postgres has no idea the bucket exists.
 
-This is worth stating plainly because `CLAUDE.md` says not to write cleanup code for deletes — true
-for rows, and false for files. Deleting a recipe therefore needs an explicit
-`supabase.storage.from(...).remove([...])`, and the paths have to be read _before_ the row is deleted
-or they're gone. Whatever the delete action ends up looking like, it needs to handle the
-half-succeeded case: files removed but the row delete failed, or the reverse.
+Still true, and now with code depending on it. `CLAUDE.md` says not to write cleanup code for
+deletes — true for rows, false for files. `deleteRecipe` therefore does, in this order, and the
+order is the whole design:
 
-## Questions to answer when this is picked up
+1. **read** `recipe_images.storage_path` and `recipe_steps.image_path` — once the row is gone,
+   cascade has taken the only record of which files belonged to it;
+2. **delete the row**, letting cascade take the children;
+3. **remove the files**, best effort, never failing the action.
 
-1. **Public bucket or signed URLs?** A personal recipe site is public content, so a public bucket is
-   the obvious default — simple URLs, cacheable by the CDN, no expiry logic. The one thing it costs:
-   images of an _unpublished_ recipe are reachable by URL even though the recipe is hidden. Probably
-   irrelevant here since nobody knows the path, but it's a real difference from how RLS treats drafts,
-   and worth a conscious yes rather than an accident.
-2. **Who may write?** To match the table model: insert/update/delete for `authenticated` only, no
-   grant of any kind to `anon`.
-3. **Upload path from where?** Server action, or direct browser upload with `browser-client.ts` (the
-   client that exists for exactly this and is currently unused). Direct upload avoids passing file
-   bytes through the Next server; a server action keeps one code path and can validate first.
-4. **Path convention.** Something stable and collision-proof — e.g. `recipes/<recipe_id>/<uuid>.webp`.
-   Note recipe _slug_ is a bad path component: it's editable, and renaming would orphan every file.
-   The `unique (recipe_id, storage_path)` constraint already assumes paths are unique per recipe.
-5. **Limits and validation.** MIME allowlist and a size cap, set on the bucket rather than trusted
-   from the client. `config.toml` shows the local default at 50MiB, which is far larger than a recipe
-   photo needs.
-6. **Resizing / format.** `[storage.image_transformation]` is commented out in `config.toml` and
-   noted there as Pro-plan only, so on the free tier resizing has to happen before upload or via
-   `next/image` at render time.
-7. **Orphan cleanup**, per the trap above — plus what happens to files when an upload succeeds and the
-   row insert fails.
+Rows before files is the counterintuitive part. It fixes which way a half-failure falls: _files
+orphaned, rows gone_ is harmless and is what the sweep exists for, while _files gone, rows still
+referencing them_ is a live recipe rendering broken images at visitors. **Every failure falls toward
+wasted bytes, never toward a broken reference** — the same rule governs the wizard's ✕ (which clears
+the draft field even when the remove fails) and its replace control (which uploads the new file
+before removing the old).
 
-## Suggested direction, not yet decided
+## `select` on `storage.objects` is required, not defensive
 
-Public bucket named `recipe-images`, read granted to everyone, write restricted to `authenticated`,
-paths keyed by `recipe_id` and a uuid, MIME limited to jpeg/png/webp with a low single-digit MB cap,
-and an explicit file-removal step in the recipe delete action. That's the smallest thing consistent
-with the existing permission model — but it wants an actual look at how the create form will handle
-uploads before it gets written into a migration.
+The bucket being public serves object _bytes_ over `/object/public/…`. It grants nothing on
+`storage.objects`, which is an ordinary table with its own RLS. Rendering needs no policy — but
+**deleting does**, and this was verified rather than reasoned:
+
+- storage-api runs the user-facing delete **as the caller**, reaching
+  `delete from storage.objects where bucket_id = $1 and name = any($2) returning *`;
+- Postgres applies SELECT policies to that statement, because its `where` clause reads columns and
+  it carries `returning`.
+
+Probed on a throwaway table: with a permissive delete policy and **no** select policy, the delete
+affects **zero rows**. So without the grant the ✕ removes neither the row nor the file, and
+`.remove()` still returns `{ data: [], error: null }` — and since a storage failure is deliberately
+silent, nothing would ever say so. The future sweep's `.list()` needs the same grant.
+
+**How to check it end to end:** signed in on `/admin`, upload a small webp through the wizard, then
+delete the recipe and confirm the object is gone from the bucket. A remove that reports success while
+the file survives is this policy having regressed.
+
+## Alt text: `alt=""`, and the column is gone
+
+Both placements pass an empty alt, and that is the correct value rather than a placeholder for
+future work. Under the hero the title is overlaid **on** the photo; a step photo sits directly
+beneath the instruction that describes it. In both cases the accessible name is already adjacent and
+a duplicate would be noise. `next/image` still requires the prop, so this is a decision about where
+the string comes from, not whether one exists.
+
+The column was dropped rather than left carrying `null` forever — a reader comparing the schema to
+the code would otherwise assume the app had simply forgotten to write it.
+
+## Drift: this bucket is outside every automatic check
+
+`storage.buckets` holds **data**, not schema, so no diff engine sees the bucket row whatever the
+scope — and the _policies_ are visible only under `npm run db:diff:storage`, which runs migra
+because the default pg-delta engine prints `No schema changes found` over storage drift it cannot
+see.
+
+Full detail and the by-hand bucket query: [known issue 5](known-issues.md). `CLAUDE.md`'s "never
+change structure in the dashboard" rule carries extra weight here for exactly that reason.

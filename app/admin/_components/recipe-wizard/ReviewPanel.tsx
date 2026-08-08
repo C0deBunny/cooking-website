@@ -23,6 +23,13 @@ type Props = {
   preview: RecipeView;
   state: RecipeFormState;
   slugTaken: boolean;
+
+  /** Any photo still uploading. Blocks the save, because the payload would omit it. */
+  uploading: boolean;
+
+  /** Photos that failed, already carrying written messages rather than Postgres strings. */
+  failedPhotos: { label: string; reason: string }[];
+
   formAction: (formData: FormData) => void;
   isPending: boolean;
   onPatch: (patch: Partial<Draft>) => void;
@@ -48,7 +55,7 @@ type Props = {
  * a draft", and a save-and-stay would have to thread the returned id back into the draft or the
  * second click would insert a second recipe (decision 13).
  */
-export default function ReviewPanel({ draft, payload, preview, state, slugTaken, formAction, isPending, onPatch, onBack, onBackToDetails }: Props) {
+export default function ReviewPanel({ draft, payload, preview, state, slugTaken, uploading, failedPhotos, formAction, isPending, onPatch, onBack, onBackToDetails }: Props) {
   const slug = slugify(draft.title);
   const ingredientCount = preview.ingredients.length;
   const stepCount = preview.steps.length;
@@ -80,6 +87,32 @@ export default function ReviewPanel({ draft, payload, preview, state, slugTaken,
               Back to Details
             </Button>
           ) : null}
+        </div>
+      ) : null}
+
+      {/* Failed photos land in the same alert treatment, with a way back to where the field is —
+          mirroring the slug collision above rather than inventing a second reporting idiom
+          (decision 25). The checklist below is untouched and its green Check stays a constant:
+          each step genuinely parses, so the step *is* complete and only its photo failed.
+
+          Saving is still allowed. A failed photo is a photo the recipe will not have, which is a
+          state worth reporting and not one worth refusing — unlike an upload still in flight,
+          which would be silently dropped from a payload built a moment too early. */}
+      {failedPhotos.length > 0 ? (
+        <div role="alert" className="mb-4 flex flex-wrap items-start gap-3 rounded-xl border border-destructive/35 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          <CircleAlert className="mt-0.5 size-4 shrink-0" />
+          <div className="flex-1 space-y-1">
+            {failedPhotos.map((photo) => (
+              <p key={photo.label}>
+                <b>{photo.label}</b> did not upload. {photo.reason}
+              </p>
+            ))}
+            <p className="text-destructive/80">Saving now publishes the recipe without them.</p>
+          </div>
+
+          <Button type="button" variant="outline" size="sm" onClick={onBack}>
+            Back to Method
+          </Button>
         </div>
       ) : null}
 
@@ -121,10 +154,16 @@ export default function ReviewPanel({ draft, payload, preview, state, slugTaken,
                 it buys a round trip and the same message in red. Only a *known* one: the check
                 answers "free" whenever it could not find out, so an unreachable server or a slow
                 answer leaves this enabled and the 23505 branch catches what gets through. */}
+            {/* Also disabled while a photo is uploading, and for a different reason than the
+                collision: the payload is built from the draft, and a path that has not arrived yet
+                is simply absent from it — so a save mid-upload publishes a recipe missing a photo
+                that was seconds from being ready, silently. Deliberately not folded into the
+                stepper's ✓ marks, which are each that step's own safeParse and nothing else
+                (decision 10). */}
             <PanelNav onBack={onBack}>
-              <Button type="submit" disabled={isPending || slugTaken}>
-                {isPending ? <Spinner /> : <Save />}
-                {isPending ? "Saving…" : "Save recipe"}
+              <Button type="submit" disabled={isPending || slugTaken || uploading}>
+                {isPending || uploading ? <Spinner /> : <Save />}
+                {isPending ? "Saving…" : uploading ? "Waiting for a photo…" : "Save recipe"}
               </Button>
             </PanelNav>
           </form>

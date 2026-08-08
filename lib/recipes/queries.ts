@@ -4,10 +4,16 @@ import { createPublicClient } from "@/lib/supabase/public-client";
 import { createClient } from "@/lib/supabase/server-client";
 
 // import types
-import type { Recipe, Recipes, RecipeWithChildren } from "@/types/recipes";
+import type { RecipeListItem, Recipes, RecipeWithChildren } from "@/types/recipes";
 
-/** The children the detail page renders, ordered by their ordering columns rather than by luck. */
-const RECIPE_WITH_CHILDREN = "*, recipe_ingredients(*), recipe_steps(*)";
+/**
+ * The children the detail page renders, ordered by their ordering columns rather than by luck.
+ *
+ * One constant covers `getRecipeBySlug` and `getDraftBySlug`, so the two cannot drift. The images
+ * embed is unfiltered here — `toRecipeView()` picks the primary — because the detail page is the
+ * surface a gallery would land on first. `getRecipes()` below takes a narrower one on purpose.
+ */
+const RECIPE_WITH_CHILDREN = "*, recipe_ingredients(*), recipe_steps(*), recipe_images(*)";
 
 /**
  * The recipe list. Cached and tagged, so saveRecipe can invalidate it — uses the public client
@@ -16,14 +22,18 @@ const RECIPE_WITH_CHILDREN = "*, recipe_ingredients(*), recipe_steps(*)";
  * Note there is no `.eq("published", true)`: RLS is what hides drafts from visitors. Don't
  * "fix" that by adding a filter, and don't read the absence of one as a way to see drafts.
  */
-export async function getRecipes(): Promise<Recipe[]> {
+export async function getRecipes(): Promise<RecipeListItem[]> {
   "use cache";
 
   cacheTag("recipes");
 
   const supabase = createPublicClient();
 
-  const { data, error } = await supabase.from("recipes").select("*").order("created_at", { ascending: false });
+  // Narrow and primary-filtered, deliberately not RECIPE_WITH_CHILDREN. The filter is what keeps
+  // this one row per recipe once a gallery exists, so `RecipeCard` never has to pick; the single
+  // column ships one string to a card that needs one string rather than every image column.
+  // `getRecipesForAdmin` stays a bare select — the manage page shows no covers (decision 36).
+  const { data, error } = await supabase.from("recipes").select("*, recipe_images(storage_path)").eq("recipe_images.is_primary", true).order("created_at", { ascending: false });
 
   if (error) {
     throw new Error("Failed to fetch recipes: " + error.message);

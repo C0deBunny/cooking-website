@@ -684,8 +684,8 @@
           <h2>You asked about full-bleed — here is what you actually picked</h2>
         </div>
         <p class="d-note">
-          "D3" only meant <b>the title sits on the photo</b> rather than in a tinted band beneath it. How wide the photo goes was the separate question, and <b>D3-a caps it at the reading column</b> — so it is not edge to edge. All
-          three keep your 1:1 crop intact; they differ only in how much width the hero claims. Drag the viewport to compare, then tell me if (a) is still the one.
+          "D3" only meant <b>the title sits on the photo</b> rather than in a tinted band beneath it. How wide the photo goes was the separate question, and <b>D3-a caps it at the reading column</b> —
+          so it is not edge to edge. All three keep your 1:1 crop intact; they differ only in how much width the hero claims. Drag the viewport to compare, then tell me if (a) is still the one.
         </p>
 
         <div class="controls">
@@ -746,8 +746,9 @@
 
         <div class="callout warn">
           <p>
-            <b>Why none of them is "1:1 spanning the viewport":</b> a square that wide is that tall. At 1400px the hero would be 1400px before the title, so nothing else is ever above the fold. That option only exists if you give up
-            either the square (back to a wide crop, and the card re-crops it unpreviewed) or the crop guarantee (<code>max-h</code> + <code>object-cover</code>, which re-crops what you framed).
+            <b>Why none of them is "1:1 spanning the viewport":</b> a square that wide is that tall. At 1400px the hero would be 1400px before the title, so nothing else is ever above the fold. That
+            option only exists if you give up either the square (back to a wide crop, and the card re-crops it unpreviewed) or the crop guarantee (<code>max-h</code> + <code>object-cover</code>, which
+            re-crops what you framed).
           </p>
         </div>
       </section>
@@ -759,8 +760,8 @@
           <h2>What does the header look like with no cover?</h2>
         </div>
         <p class="d-note">
-          This is where D3 bites, and my earlier version of this section drew it wrong — it put the cover <i>below</i> the title, which is D2. Under D3 the title lives <b>on</b> the photo, so "no cover" means the header has to be
-          something else entirely. That makes it a bigger question than a missing box: <b>the whole header swaps layout</b> when a photo lands.
+          This is where D3 bites, and my earlier version of this section drew it wrong — it put the cover <i>below</i> the title, which is D2. Under D3 the title lives <b>on</b> the photo, so "no
+          cover" means the header has to be something else entirely. That makes it a bigger question than a missing box: <b>the whole header swaps layout</b> when a photo lands.
         </p>
 
         <div class="opts three">
@@ -832,15 +833,17 @@
             <div class="cost">
               <p class="plus">No drift in the rail <i>and</i> no empty box on the public site — the two goals stop competing.</p>
               <p class="plus">It is the prop's own stated purpose: "a draft being typed has a description that isn't written yet, and those are different statements".</p>
-              <p class="minus">Still two header layouts in the component, but the second one is reached only when <code>placeholders</code> is off — so the fork is along a line that already exists.</p>
+              <p class="minus">
+                Still two header layouts in the component, but the second one is reached only when <code>placeholders</code> is off — so the fork is along a line that already exists.
+              </p>
             </div>
           </div>
         </div>
 
         <p class="mini-label" style="margin-top: 1.5rem">The scroll drift, on the layout you choose</p>
         <p class="d-note" style="margin-bottom: 0.9rem">
-          The cover field is on Details, but an upload still in flight when you press Next lands while you are on <b>Ingredients</b> — and <code>PreviewRail</code>'s effect only re-runs on <code>[step]</code>. Press the buttons in
-          order.
+          The cover field is on Details, but an upload still in flight when you press Next lands while you are on <b>Ingredients</b> — and <code>PreviewRail</code>'s effect only re-runs on
+          <code>[step]</code>. Press the buttons in order.
         </p>
 
         <div class="controls">
@@ -876,8 +879,8 @@
             <pre class="code" id="e-code"></pre>
             <div class="callout bad">
               <p>
-                <b>The drift is only a bug because the effect's deps are wrong.</b> Reserving the space makes it unreachable; the other two need <code>recipe.cover_path</code> added to the dep array. Both are correct fixes — the
-                difference is whether the wrong thing is impossible or merely handled.
+                <b>The drift is only a bug because the effect's deps are wrong.</b> Reserving the space makes it unreachable; the other two need <code>recipe.cover_path</code> added to the dep array.
+                Both are correct fixes — the difference is whether the wrong thing is impossible or merely handled.
               </p>
             </div>
           </div>

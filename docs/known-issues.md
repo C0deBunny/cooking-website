@@ -7,21 +7,21 @@ Companion to [schema-current.html](schema-current.html), which is generated from
 see [database-workflow.md](database-workflow.md).
 
 Two larger open topics have their own docs rather than an entry here:
-[image-storage.md](image-storage.md) (no bucket exists yet — blocks the create form) and
+[image-storage.md](image-storage.md) (the bucket, its policies and the path convention) and
 [permission-model.md](permission-model.md) (the two-role model, and what a rebuild would take).
 
-## 1. Reordering collides on the unique constraint — now images only
+## 1. Reordering collides on the unique constraint — now a gallery editor problem only
 
 - **Found:** 2026-08-01, while diagramming the schema
-- **Status:** **resolved for steps and ingredients, still open for images.** `save_recipe()`
-  replaces a recipe's steps and ingredients wholesale on every save, so their positions are
-  rewritten from array order and the old rows are gone before the new ones land — there is never
-  an interleaved swap to collide. Images are not written by that function (no Storage bucket
-  exists yet), so they are still patched row by row, and `recipe_images` gained
-  `unique (recipe_id, sort_order)` in the same migration. The problem below now describes the
-  gallery editor and nothing else. Decide it with the Storage work.
+- **Status:** **resolved for all three child tables.** `save_recipe()` replaces a recipe's steps,
+  ingredients and images wholesale on every save, so their positions are rewritten from array order
+  and the old rows are gone before the new ones land — there is never an interleaved swap to
+  collide. Images joined that list on 2026-08-08 with the recipe-images work; until then they were
+  the outstanding case. What is left below describes a hypothetical gallery editor that patches
+  rows in place, which nothing does.
 - **Where:** `supabase/migrations/20260801122716_initial_schema.sql` for steps and ingredients;
-  `20260801145317_recipe_content_fields.sql` for the image constraint that inherited the problem
+  `20260801145317_recipe_content_fields.sql` for the image constraint;
+  `20260808140818_save_recipe_images.sql` for the images block that resolved it
 
 Both constraints are non-deferrable, so Postgres checks them after **every row** of an `update`, not
 at the end of the statement. Swapping two positions therefore fails halfway through:
@@ -100,3 +100,106 @@ inserting several images without setting it explicitly was the easy path into ex
 
 All three child tables are now unique on their ordering column, so that is the correct wording for
 `CLAUDE.md` and [database-workflow.md](database-workflow.md).
+
+## 4. Orphaned files accumulate in the `recipe-images` bucket
+
+- **Found:** 2026-08-06, designing the recipe-images work — an accepted cost, not a discovery
+- **Status:** accepted. Decision 8 of `docs/plans/recipe-images/decisions.md`
+- **Where:** `app/admin/_components/recipe-wizard/upload.ts`, `lib/recipes/actions.ts`
+
+Photos are uploaded the moment they are cropped, so the file exists before the recipe does. Nothing
+reconciles the bucket against the rows, and there are three ways a file ends up referenced by
+nothing:
+
+- **An abandoned wizard session.** Upload a photo, close the tab, and the object stays. The ✕
+  control deletes its file immediately, so this narrows to "closed the tab" — a handful of files a
+  year for a single-owner site.
+- **A replaced image, once an edit path exists.** `save_recipe()` replaces `recipe_images`
+  wholesale, and Postgres has no idea the bucket exists.
+- **A storage failure during a delete.** `deleteRecipe` removes files best-effort and never fails
+  on it, deliberately: the recipe genuinely was deleted, so reporting otherwise would be false.
+  Nothing surfaces the leak.
+
+`beforeunload` cleanup was rejected — browsers do not guarantee the request lands, and it would fire
+on a deliberate refresh too, deleting files from a session the user was about to resume.
+
+**The wanted fix** is an admin-side sweep: list the bucket, diff against
+`recipe_images.storage_path ∪ recipe_steps.image_path`, delete what nothing references.
+
+> ⚠ **Only objects older than roughly 24 hours are candidates.** A file uploaded thirty seconds ago
+> by a wizard that is still open is unreferenced but _not_ orphaned, and a naive diff would delete a
+> photo out from under a live editing session. The age floor only has to exceed the longest
+> plausible wizard session; 24 hours is a guess with room in it.
+
+The sweep's `.list()` needs the `select` policy on `storage.objects` that
+`20260808140816_recipe_images_storage.sql` already grants — see
+[image-storage.md](image-storage.md).
+
+## 5. Storage drift is invisible to the default diff engine, and the bucket row to every engine
+
+- **Found:** 2026-08-08, comparing the engines rather than assuming
+- **Status:** partially mitigated by `npm run db:diff:storage`; the bucket row cannot be covered
+- **Where:** `package.json`, `supabase/migrations/20260808140816_recipe_images_storage.sql`
+
+`CLAUDE.md` says never to change structure in the dashboard because drift is invisible. The four
+recipe tables have `npm run db:diff` as a backstop. Storage has two gaps behind that rule:
+
+- **The policies** on `storage.objects` are diffable, but only under the non-default engine.
+  `supabase db diff --linked --schema storage` on the default **pg-delta** engine prints
+  `No schema changes found` over a planted policy — it does not merely omit storage, it actively
+  reassures. The same command with `--use-migra` reports the drift correctly. That is what
+  `npm run db:diff:storage` runs, and why it uses a different engine than the `db:diff` beside it.
+- **The bucket is a row**, not schema — `storage.buckets` holds data — so no diff engine will ever
+  see it whatever the scope. `No schema changes found` can print while the bucket is missing,
+  public when it should not be, or wide open on MIME.
+
+Check the bucket by hand instead:
+
+```
+npx supabase db query --linked "select id, public, file_size_limit, allowed_mime_types from storage.buckets where id = 'recipe-images'"
+```
+
+Expected: `public = true`, `file_size_limit = 2097152`, `allowed_mime_types = {image/webp}`.
+
+Switching the project to migra wholesale (`[experimental.pgdelta] enabled = false`) would let one
+command cover both schemas, at the cost of downgrading every future diff to fix one schema's blind
+spot — and pg-delta is where the CLI is heading. A `scripts/check-storage.mjs` covering both layers
+is the thing to build if storage ever grows a second bucket.
+
+## 6. `/admin` does not work on a phone, including the photo screens
+
+- **Found:** 2026-08-06, designing the recipe-images work
+- **Status:** accepted and deliberate. Decision 28 of `docs/plans/recipe-images/decisions.md`
+- **Where:** `app/admin/_components/AdminSidebar.tsx`, the whole `recipe-wizard/` folder
+
+`/admin` is desktop-first: the sidebar is `collapsible="none"` with a fixed 16rem rail, `PreviewRail`
+is hidden below 1024px, and the crop dialog is a centred modal with a drag surface that would fight
+browser chrome on a phone.
+
+The tension worth writing down is that **the photos come from a phone.** The upload pipeline
+compresses in the browser precisely because a phone photo is 4–12MB — and then the only place you
+can run it is a laptop, so the photo has to reach the laptop first. That is the current workflow and
+it is fine for a site updated a few times a month; it is not an oversight.
+
+Making the wizard responsive would mean a narrow layout for `DetailsPanel`'s two-column row, a
+`Sheet` or drawer for the preview, and revisiting `Dialog` for the cropper. All additive.
+
+## 7. An existing recipe cannot gain a cover photo
+
+- **Found:** 2026-08-08, re-checking decision 23's assumption that pre-image recipes shrink over time
+- **Status:** accepted. Amendment to decision 23 of `docs/plans/recipe-images/decisions.md`
+- **Where:** `app/admin/` — there is no edit route
+
+The wizard is create-only. `app/admin/` holds create, manage, preview and tags, and the only write
+actions are `saveRecipe`, `togglePublished` and `deleteRecipe` — so the recipes that existed before
+photos did cannot receive one without being deleted and retyped, which would change live URLs.
+
+The consequence is that `RecipeCard`'s generated tile — a square tinted from the slug carrying the
+title's first letter — is the **permanent** look for those recipes rather than a transitional state,
+and the grid stays mixed indefinitely. That was accepted knowingly: a cover-only edit affordance
+would reverse the plan's create-only non-goal, and the tile was chosen to look intentional rather
+than like a gap.
+
+The draft shape the wizard uses is the shape an edit would hydrate into, so a real edit path is
+wiring rather than a rewrite — including for images, where a saved `recipe_steps.id` drops into the
+same `StepDraft.id` field the uploads already write back through.

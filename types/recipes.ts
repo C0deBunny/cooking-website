@@ -17,11 +17,25 @@ export type RecipeDifficulty = Database["public"]["Enums"]["recipe_difficulty"];
 /**
  * A recipe with the children the detail page renders, matching the embedded select in
  * `getRecipeBySlug`. Composed from the aliases above rather than restated, so a column change
- * still surfaces here. Images are absent on purpose — no Storage bucket exists yet.
+ * still surfaces here.
  */
 export type RecipeWithChildren = Recipe & {
   recipe_ingredients: RecipeIngredient[];
   recipe_steps: RecipeStep[];
+  recipe_images: RecipeImage[];
+};
+
+/**
+ * What `getRecipes()` returns, and deliberately not `Recipe[]`.
+ *
+ * That query is a bare `select("*")` today, so its rows are plain table rows. Adding the cover
+ * means adding an embed, and an embed changes the type — a card rendering `recipe.recipe_images`
+ * off a `Recipe` would be a compile error, which is the point. The embed is narrow and filtered to
+ * the primary in the query, so this is one path per recipe rather than every image column
+ * (decision 36).
+ */
+export type RecipeListItem = Recipe & {
+  recipe_images: Pick<RecipeImage, "storage_path">[];
 };
 
 /**
@@ -41,6 +55,16 @@ export type RecipeWithChildren = Recipe & {
  * from the schema and cannot drift from it.
  */
 export type RecipeView = Pick<Recipe, "title" | "description" | "difficulty" | "prep_minutes" | "cook_minutes" | "servings" | "notes"> & {
+  /**
+   * The cover's storage path, flat rather than row-shaped, and this follows directly from the
+   * paragraph above. A `recipe_images[]` here would make the wizard fabricate a one-element list
+   * of fake image rows — an id, a recipe_id and a sort_order it does not have — which is exactly
+   * the fake-row constructor this view exists to avoid. `toRecipeView()` resolves the primary out
+   * of the real rows; the wizard's `toPreview()` reads its draft union. The article never learns
+   * that a `recipe_images` row exists (decision 37).
+   */
+  cover: string | null;
+
   ingredients: Pick<RecipeIngredient, "name" | "amount" | "unit">[];
-  steps: Pick<RecipeStep, "instruction" | "note">[];
+  steps: Pick<RecipeStep, "instruction" | "note" | "image_path">[];
 };

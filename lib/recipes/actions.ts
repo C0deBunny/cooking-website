@@ -4,6 +4,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath, updateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server-client";
+import { IMAGE_BUCKET } from "@/lib/supabase/storage";
 import { getCurrentUser, requireUser } from "@/lib/auth/queries";
 import { isSlugTaken } from "@/lib/recipes/queries";
 import { detailsSchema, publishToggleSchema, recipeIdSchema, recipeSchema, slugTakenMessage, type RecipeFormState, type RecipeMutationState } from "@/lib/recipes/schema";
@@ -97,7 +98,15 @@ export async function saveRecipe(_prevState: RecipeFormState, formData: FormData
     // Still reachable with checkSlugTaken in front of it, and not only through the obvious race:
     // the check answers "free" whenever it could not find out. This branch is the enforcement,
     // that one is the courtesy — don't delete it on the grounds that the form now checks first.
-    if (error.code === "23505") {
+    //
+    // Narrowed to the slug constraint **by name**, which is a string match against a message
+    // Postgres generates — fragile, and the alternative is worse. Five unique constraints are
+    // reachable through save_recipe(), not one: recipes_slug_key, the two child ordering
+    // constraints (which `with ordinality` makes unreachable), recipe_images (recipe_id,
+    // storage_path) and the partial recipe_images_one_primary_idx. All raise 23505. Matching the
+    // code alone reports an image bug as a title problem — unreachable today, since toPayload()
+    // sends at most one image, and live the moment a gallery exists (decision 35).
+    if (error.code === "23505" && error.message.includes("recipes_slug_key")) {
       return { error: slugTakenMessage(parsed.data.slug), takenSlug: parsed.data.slug };
     }
 
@@ -160,11 +169,26 @@ export async function togglePublished(id: number, published: boolean): Promise<R
 }
 
 /**
- * Deletes one recipe. Its ingredients and steps go with it — every child's `recipe_id` is
- * `on delete cascade`, so there is no cleanup to write here and none should be added.
+ * Deletes one recipe. Its ingredients, steps and image rows go with it — every child's `recipe_id`
+ * is `on delete cascade`, so there is no *row* cleanup to write here and none should be added.
  *
- * Nothing is orphaned today because no Storage bucket exists. That stops being true the moment
- * one does: the rows in recipe_images would cascade away while the files behind them stayed.
+ * **Files are the exception, and they are the reason this function got longer.** Postgres has no
+ * idea the Storage bucket exists, so cascade removes the rows naming the photos and leaves the
+ * photos themselves in the bucket forever. CLAUDE.md's "don't write cleanup code for child rows"
+ * is about rows and stays true; read literally it would tell you to delete the block below.
+ *
+ * The order is deliberate and each step is forced by the one before it:
+ *
+ *  1. read the paths — once the row is gone, cascade has taken the only record of which files
+ *     belonged to it;
+ *  2. delete the row, letting cascade take the children;
+ *  3. remove the files, best effort, never failing the action.
+ *
+ * Step 2 before step 3 is the counterintuitive part. It fixes which way a half-failure falls:
+ * rows-first leaves *files orphaned, rows gone*, which is harmless and is what the sweep in
+ * docs/known-issues.md exists to collect. Files-first risks *files gone, rows still referencing
+ * them*, which is a live recipe rendering broken images at visitors. Every failure here falls
+ * toward wasted bytes and never toward a broken reference (decision 11).
  */
 export async function deleteRecipe(id: number): Promise<RecipeMutationState> {
   await requireUser();
@@ -177,6 +201,15 @@ export async function deleteRecipe(id: number): Promise<RecipeMutationState> {
 
   const supabase = await createClient();
 
+  // Read first — see the ordering note above. Failures here are ignored rather than reported: not
+  // knowing which files to delete is a reason to leak them, not a reason to refuse the delete.
+  const [{ data: images }, { data: steps }] = await Promise.all([
+    supabase.from("recipe_images").select("storage_path").eq("recipe_id", parsed.data),
+    supabase.from("recipe_steps").select("image_path").eq("recipe_id", parsed.data),
+  ]);
+
+  const paths = [...(images ?? []).map((image) => image.storage_path), ...(steps ?? []).map((step) => step.image_path)].filter((path): path is string => path !== null);
+
   // Same reason as above: an RLS refusal on a delete is silent, so the affected rows are checked.
   const { data, error } = await supabase.from("recipes").delete().eq("id", parsed.data).select("id");
 
@@ -186,6 +219,19 @@ export async function deleteRecipe(id: number): Promise<RecipeMutationState> {
 
   if (data.length === 0) {
     return { error: "That recipe no longer exists, or you are no longer signed in." };
+  }
+
+  if (paths.length > 0) {
+    // ⚠ The asymmetry with the line above is deliberate, and unexplained it reads as an oversight
+    // and gets "fixed" into failing a delete that worked. A zero-row *row* delete means the user's
+    // intent failed and is actionable. A zero-row *file* remove means the intent succeeded — the
+    // recipe is gone — and a file leaked, which the owner cannot act on and which the sweep exists
+    // for. So this checks neither the error nor the count (decisions 11 and 50).
+    //
+    // The cost accepted with it: a regressed `select` policy on storage.objects would make every
+    // remove here silently affect nothing. `npm run db:diff:storage` is what catches that, earlier
+    // and more plainly than a count check here could.
+    await supabase.storage.from(IMAGE_BUCKET).remove(paths);
   }
 
   updateTag("recipes");

@@ -35,7 +35,6 @@ export type Database = {
     Tables: {
       recipe_images: {
         Row: {
-          alt: string | null;
           id: number;
           is_primary: boolean;
           recipe_id: number;
@@ -43,7 +42,6 @@ export type Database = {
           storage_path: string;
         };
         Insert: {
-          alt?: string | null;
           id?: number;
           is_primary?: boolean;
           recipe_id: number;
@@ -51,7 +49,6 @@ export type Database = {
           storage_path: string;
         };
         Update: {
-          alt?: string | null;
           id?: number;
           is_primary?: boolean;
           recipe_id?: number;

@@ -110,8 +110,14 @@ These are very different amounts of work; settle which one is meant before touch
 need an admin variant, and `AdminGate` would need to use it — otherwise normal users reach the admin
 UI and merely get empty results from RLS, which is a confusing way to be denied.
 
-**5. Extend it to Storage**, which is a separate policy system and currently has nothing. See
-[image-storage.md](image-storage.md).
+**5. Revisit Storage, which is a separate policy system with its own four policies.** Since
+2026-08-08 the `recipe-images` bucket grants select, insert, update and delete to `authenticated`
+and nothing to `anon` — the same "two roles, not three" model this document describes, expressed a
+second time on a different surface. That means it inherits this document's problem exactly: every
+logged-in account can overwrite or delete every photo. It also has a gap the tables do not — the
+bucket is public, so an **unpublished** recipe's photos are fetchable by URL even though RLS hides
+the row. Both are recorded and accepted in [image-storage.md](image-storage.md), which is the
+document to read before changing anything about the bucket.
 
 **Order matters:** do all of the above _before_ enabling signups, not after. The window between
 "signups on" and "policies tightened" is a window where anyone can register and delete every recipe.

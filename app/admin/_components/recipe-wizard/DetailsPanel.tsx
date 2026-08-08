@@ -4,6 +4,7 @@ import { cn, slugify } from "@/lib/utils";
 import { digitsOnly, NO_DIFFICULTY } from "./draft";
 
 // import components
+import ImageField from "./ImageField";
 import PanelNav from "./PanelNav";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 // import types
-import type { Draft } from "./draft";
+import type { Draft, StepImage } from "./draft";
 
 const TITLE_MAX = 100;
 const DESCRIPTION_MAX = 160;
@@ -66,10 +67,11 @@ type Props = {
   draft: Draft;
   takenSlug?: string;
   onPatch: (patch: Partial<Draft>) => void;
+  onCover: (image: StepImage) => void;
   onNext: () => void;
 };
 
-export default function DetailsPanel({ draft, takenSlug, onPatch, onNext }: Props) {
+export default function DetailsPanel({ draft, takenSlug, onPatch, onCover, onNext }: Props) {
   return (
     <Card className="py-6">
       <CardHeader>
@@ -79,37 +81,51 @@ export default function DetailsPanel({ draft, takenSlug, onPatch, onNext }: Prop
 
       <CardContent>
         <div className="space-y-5">
-          <div className="space-y-2">
-            <Label htmlFor="title">
-              Title <span className="text-destructive">*</span>
-            </Label>
+          {/* The cover sits in a second column spanning both text rows, so it costs no vertical
+              space at all. Above the title would put an optional field ahead of the only required
+              one; below the description pushes difficulty and both times off a laptop screen
+              (decision 19). The stacking rule below 640px is the cost that buys that. */}
+          <div className="grid gap-5 sm:grid-cols-[minmax(0,1fr)_auto]">
+            <div className="space-y-5">
+              <div className="space-y-2">
+                <Label htmlFor="title">
+                  Title <span className="text-destructive">*</span>
+                </Label>
 
-            <div className="relative">
-              <Input id="title" value={draft.title} maxLength={TITLE_MAX} onChange={(event) => onPatch({ title: event.target.value })} placeholder="Gestoofde bakbanaan" className="pr-16" />
-              <span className="pointer-events-none absolute right-3 bottom-2 text-xs text-muted-foreground tabular-nums">
-                {draft.title.length}/{TITLE_MAX}
-              </span>
+                <div className="relative">
+                  <Input id="title" value={draft.title} maxLength={TITLE_MAX} onChange={(event) => onPatch({ title: event.target.value })} placeholder="Gestoofde bakbanaan" className="pr-16" />
+                  <span className="pointer-events-none absolute right-3 bottom-2 text-xs text-muted-foreground tabular-nums">
+                    {draft.title.length}/{TITLE_MAX}
+                  </span>
+                </div>
+
+                <AddressLine title={draft.title} takenSlug={takenSlug} />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="description">Short description</Label>
+
+                <div className="relative">
+                  <Textarea
+                    id="description"
+                    rows={2}
+                    maxLength={DESCRIPTION_MAX}
+                    value={draft.description}
+                    onChange={(event) => onPatch({ description: event.target.value })}
+                    placeholder="One or two lines that show under the title."
+                    className="pr-16"
+                  />
+                  <span className="pointer-events-none absolute right-3 bottom-2 text-xs text-muted-foreground tabular-nums">
+                    {draft.description.length}/{DESCRIPTION_MAX}
+                  </span>
+                </div>
+              </div>
             </div>
 
-            <AddressLine title={draft.title} takenSlug={takenSlug} />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="description">Short description</Label>
-
-            <div className="relative">
-              <Textarea
-                id="description"
-                rows={2}
-                maxLength={DESCRIPTION_MAX}
-                value={draft.description}
-                onChange={(event) => onPatch({ description: event.target.value })}
-                placeholder="One or two lines that show under the title."
-                className="pr-16"
-              />
-              <span className="pointer-events-none absolute right-3 bottom-2 text-xs text-muted-foreground tabular-nums">
-                {draft.description.length}/{DESCRIPTION_MAX}
-              </span>
+            <div className="space-y-2">
+              <Label>Cover photo</Label>
+              <ImageField value={draft.cover} onChange={onCover} variant="cover" label="Cover photo" />
+              <p className="text-xs text-muted-foreground">Cropped to a square. Optional.</p>
             </div>
           </div>
 

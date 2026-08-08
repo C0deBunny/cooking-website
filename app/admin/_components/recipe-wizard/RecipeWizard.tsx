@@ -5,7 +5,7 @@ import { useActionState, useEffect, useMemo, useState } from "react";
 import { Check, Lock } from "lucide-react";
 import { detailsSchema, ingredientsSchema, stepsSchema } from "@/lib/recipes/schema";
 import { slugify } from "@/lib/utils";
-import { EMPTY_DRAFT, toPayload, toPreview } from "./draft";
+import { emptyDraft, replaceById, toPayload, toPreview } from "./draft";
 
 // import actions
 import { checkSlugTaken, saveRecipe } from "@/lib/recipes/actions";
@@ -20,7 +20,7 @@ import StepsPanel from "./StepsPanel";
 import { Button } from "@/components/ui/button";
 
 // import types
-import type { Draft } from "./draft";
+import type { Draft, StepImage } from "./draft";
 import type { RecipeFormState } from "@/lib/recipes/schema";
 
 /**
@@ -49,7 +49,9 @@ import type { RecipeFormState } from "@/lib/recipes/schema";
 const SLUG_CHECK_DELAY_MS = 400;
 
 export default function RecipeWizard() {
-  const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
+  // Lazy, because `emptyDraft()` mints a uuid for its first step — the eager form would call it on
+  // every render and throw the row's identity away each time.
+  const [draft, setDraft] = useState<Draft>(() => emptyDraft());
   const [step, setStep] = useState(0);
 
   // Here rather than in ReviewPanel so a returned error outlives that panel: a slug collision
@@ -60,6 +62,29 @@ export default function RecipeWizard() {
     setDraft((current) => ({ ...current, ...next }));
   }
 
+  /* ---------------------------------------------------------------------------------------- *
+   * The two photo write-backs
+   *
+   * Both are here rather than in the panels, and both take the functional form of setDraft, for
+   * one reason: an upload resolves seconds after it starts. A panel computing its next array from
+   * a closed-over `draft.steps` — which is what every keystroke handler correctly does — would be
+   * writing against a snapshot the user has since edited.
+   *
+   * The step write-back addresses the row by `id`, never by index. Start an upload on step 3,
+   * click ↑ on step 4, and a positional write lands the finished path on the wrong step and leaves
+   * the right one busy forever, with Publish disabled and nothing on screen saying why. A row that
+   * was deleted meanwhile matches nothing and the patch is dropped, which is correct: its state
+   * went with it (decision 31).
+   * ---------------------------------------------------------------------------------------- */
+
+  function setCover(image: StepImage) {
+    setDraft((current) => ({ ...current, cover: image }));
+  }
+
+  function setStepImage(id: string, image: StepImage) {
+    setDraft((current) => ({ ...current, steps: replaceById(current.steps, id, { image }) }));
+  }
+
   // Parsed from the payload rather than from the draft, so each ✓ is checking the object that
   // will actually be submitted rather than something adjacent to it.
   const payload = useMemo(() => toPayload(draft), [draft]);
@@ -68,6 +93,28 @@ export default function RecipeWizard() {
   const complete = useMemo(() => [detailsSchema.safeParse(payload).success, ingredientsSchema.safeParse(payload).success, stepsSchema.safeParse(payload).success], [payload]);
 
   const allComplete = complete.every(Boolean);
+
+  /* ---------------------------------------------------------------------------------------- *
+   * Photos in flight, and photos that failed
+   *
+   * Derived, like everything else on this component — there is no new `useState` for either, which
+   * is the whole point of putting the state on the row (decision 18).
+   *
+   * Neither one joins `complete[]`. Each ✓ is that step's own `safeParse` and nothing else, for
+   * exactly the reason spelled out for `slugTaken` below: an upload in flight is an asynchronous
+   * fact about the world, not a property of the data's shape, and folding it in would make a step
+   * tick and un-tick as photos land. They block the submit instead (decision 10).
+   * ---------------------------------------------------------------------------------------- */
+
+  const uploading = useMemo(() => draft.cover?.status === "busy" || draft.steps.some((entry) => entry.image?.status === "busy"), [draft]);
+
+  const failedPhotos = useMemo(
+    () => [
+      ...(draft.cover?.status === "failed" ? [{ label: "The cover photo", reason: draft.cover.reason }] : []),
+      ...draft.steps.flatMap((entry, index) => (entry.image?.status === "failed" ? [{ label: `The photo on step ${index + 1}`, reason: entry.image.reason }] : [])),
+    ],
+    [draft]
+  );
 
   /* ---------------------------------------------------------------------------------------- *
    * The live address check
@@ -165,9 +212,9 @@ export default function RecipeWizard() {
           article is rendered full width underneath the checklist instead. */}
       <div className={step === 3 ? "grid grid-cols-1 gap-5" : "grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1.85fr)_minmax(19rem,0.95fr)]"}>
         <div className="min-w-0">
-          {step === 0 ? <DetailsPanel draft={draft} takenSlug={takenSlug} onPatch={patch} onNext={() => go(1)} /> : null}
+          {step === 0 ? <DetailsPanel draft={draft} takenSlug={takenSlug} onPatch={patch} onCover={setCover} onNext={() => go(1)} /> : null}
           {step === 1 ? <IngredientsPanel draft={draft} onPatch={patch} onBack={() => go(0)} onNext={() => go(2)} /> : null}
-          {step === 2 ? <StepsPanel draft={draft} onPatch={patch} onBack={() => go(1)} onNext={() => go(3)} nextDisabled={!allComplete} /> : null}
+          {step === 2 ? <StepsPanel draft={draft} onPatch={patch} onStepImage={setStepImage} onBack={() => go(1)} onNext={() => go(3)} nextDisabled={!allComplete} /> : null}
           {step === 3 ? (
             <ReviewPanel
               draft={draft}
@@ -175,6 +222,8 @@ export default function RecipeWizard() {
               preview={preview}
               state={state}
               slugTaken={slugTaken}
+              uploading={uploading}
+              failedPhotos={failedPhotos}
               formAction={formAction}
               isPending={isPending}
               onPatch={patch}

@@ -13,6 +13,7 @@
     "db:pull": "supabase db pull",
     "db:push": "supabase db push",
     "db:diff": "supabase db diff --linked",
+    "db:diff:storage": "supabase db diff --linked --schema storage --use-migra",
     "db:types": "supabase gen types typescript --linked > types/database.ts && prettier --write types/database.ts && node scripts/gen-schema-doc.mjs && prettier --write docs/schema-current.html",
     "db:doc": "node scripts/gen-schema-doc.mjs && prettier --write docs/schema-current.html"
   },

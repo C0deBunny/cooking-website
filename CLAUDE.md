@@ -8,7 +8,7 @@ Rules and traps live here. The reasoning behind them lives in `docs/`, linked pe
 ## Commands
 
 `npm run` scripts: `dev` · `build` · `lint` · `typecheck` · `format` · `format:check` · `db:pull` ·
-`db:push` · `db:diff` · `db:types` · `db:doc`.
+`db:push` · `db:diff` · `db:diff:storage` · `db:types` · `db:doc`.
 
 - **Run `lint` + `typecheck` before declaring work done.** All four checks pass on a clean tree; keep
   it that way.
@@ -25,6 +25,11 @@ Rules and traps live here. The reasoning behind them lives in `docs/`, linked pe
 - **`db:diff` carries `--linked` on purpose — don't drop it.** Bare `supabase db diff` defaults to
   `--local` and dies with `ECONNREFUSED 127.0.0.1:54322` looking for a local stack this project never
   runs.
+- **`db:diff:storage` runs a different engine than the `db:diff` beside it, and that is the point.**
+  It is `--schema storage --use-migra`, because the default pg-delta engine prints
+  `No schema changes found` over storage policy drift rather than reporting it. Storage is the only
+  schema that needs it; don't "unify" the two commands. The bucket row itself is data, so no engine
+  covers it — see [docs/known-issues.md](docs/known-issues.md).
 - `npx supabase db query --linked "select …"` remains the way to inspect _rows_ — see
   [docs/database-workflow.md](docs/database-workflow.md).
 
@@ -69,11 +74,11 @@ components colocate under their route, leaving `components/` for genuinely cross
 
 ## Supabase clients — pick correctly
 
-| File                             | Use from                          | Notes                                                                                         |
-| -------------------------------- | --------------------------------- | --------------------------------------------------------------------------------------------- |
-| `lib/supabase/server-client.ts`  | server components, server actions | cookie-backed, `await createClient()` — this is the only one that knows who the user is       |
-| `lib/supabase/public-client.ts`  | cached/unauthenticated reads      | no cookies, so it's safe inside `"use cache"`                                                 |
-| `lib/supabase/browser-client.ts` | client components                 | **currently unused** — kept for realtime/uploads. Don't reach for it to fetch or mutate data. |
+| File                             | Use from                          | Notes                                                                                                    |
+| -------------------------------- | --------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `lib/supabase/server-client.ts`  | server components, server actions | cookie-backed, `await createClient()` — this is the only one that knows who the user is                  |
+| `lib/supabase/public-client.ts`  | cached/unauthenticated reads      | no cookies, so it's safe inside `"use cache"`                                                            |
+| `lib/supabase/browser-client.ts` | client components                 | used for **photo uploads only** (`recipe-wizard/upload.ts`). Don't reach for it to fetch or mutate data. |
 
 **Never use `server-client.ts` inside a `"use cache"` function** — reading cookies there is illegal
 in Next 16. That's why `lib/recipes/queries.ts` uses the public client.
@@ -84,7 +89,9 @@ any new client.
 ## Database
 
 Four tables — `recipes` (`slug` unique, `published`, …), plus `recipe_steps`, `recipe_ingredients`
-and `recipe_images`, each keyed on `recipe_id`. Live schema:
+and `recipe_images`, each keyed on `recipe_id`. **`recipe_images` has no `alt` column** — it was
+dropped deliberately, and both image placements pass `alt=""` because the accessible name is always
+adjacent; see [docs/image-storage.md](docs/image-storage.md). Live schema:
 [docs/schema-current.html](docs/schema-current.html) — **generated, don't hand-edit** (`npm run db:doc`,
 also run by `db:types`).
 
@@ -92,8 +99,16 @@ also run by `db:types`).
   reading another key off the payload, never by adding parameters.
 - **Never change structure in the Supabase Table Editor.** There is no drift detection — a clicked
   column is invisible to the migration history. The Table Editor is for _rows_ only.
-- **Don't write cleanup code for child rows** — `on delete cascade` handles them. It does not delete
-  the storage files those rows name; see [docs/image-storage.md](docs/image-storage.md).
+- **Storage needs its own version of that warning, and it is worse.** The `recipe-images` bucket's
+  policies are covered only by `db:diff:storage`; the default engine reports _clean_ over drift it
+  cannot see, and the bucket row is data that no engine diffs at all. Never touch the bucket or its
+  policies in the dashboard — [docs/image-storage.md](docs/image-storage.md) carries the by-hand
+  check.
+- **Don't write cleanup code for child rows** — `on delete cascade` handles them. **Files are the
+  exception and `deleteRecipe` does exactly that**, on purpose: cascade removes the `recipe_images`
+  and `recipe_steps` rows and leaves the photos they name in the bucket forever. Read the paths
+  _before_ the row delete, remove the files _after_ it, and never fail the action on a storage error
+  — [docs/image-storage.md](docs/image-storage.md) explains which way each half-failure has to fall.
 - **Don't reintroduce hand-written row types.** `types/recipes.ts` derives from the generated types.
 
 Migration loop, the `db query` escape hatch, destructive-migration gating, and why `save_recipe`
@@ -119,10 +134,27 @@ Four things are load-bearing and easy to undo by accident:
   `recipe-wizard/draft.ts`. Add a field with a validation rule and no sanitiser and the tick goes
   green over a value the server rejects. **Nothing enforces this.** Where an invalid state can't be
   sanitised away (a title that slugifies to nothing), the wizard explains it on the panel instead.
+  The rule is about _typed_ input: `ImageField` has no sanitiser because it has no text input — it
+  yields either `null` or a path its own pipeline just built, so the invalid state is unreachable by
+  construction. Don't bolt a meaningless sanitiser onto a field with no keystrokes, and don't read
+  that carve-out as the rule being optional.
 
 The slug is derived from the title, never editable, and follows it forever — including on edit, where
 a rename changes a live URL and `updateTag("recipes")` 404s the old one immediately. A collision asks
 for a different title.
+
+**Photos** — one cover on Details, one per step on Method, each cropped to a square in the browser
+and uploaded the moment the crop is confirmed. Two things are load-bearing here too:
+
+- **The draft holds a path, never a `File`.** Uploading eagerly is what keeps the submit one JSON
+  blob and one transaction; the alternative — hold the file, upload after the recipe exists — turns
+  one atomic write into three independently-failing phases. The cost accepted is orphaned files,
+  logged in [docs/known-issues.md](docs/known-issues.md).
+- **Upload write-backs go through `replaceById`, never `replaceAt`.** An upload resolves seconds
+  after it starts, and a positional write lands the finished path on whichever step now sits at that
+  index — leaving the real one busy forever with Publish disabled and nothing on screen saying why.
+  Keystroke handlers stay positional, which is correct for them. That is the whole reason
+  `StepDraft` carries an `id`, and why `EMPTY_STEP`/`EMPTY_DRAFT` are `newStep()`/`emptyDraft()`.
 
 ## Caching & rendering
 

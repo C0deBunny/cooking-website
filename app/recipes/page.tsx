@@ -19,7 +19,9 @@ export default async function Recipes() {
       <div className="w-full max-w-7xl mx-auto px-6 py-12">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {recipes.length > 0 ? (
-            recipes.map((recipe) => <RecipeCard key={recipe.id} title={recipe.title} description={recipe.description} />)
+            // The embed is filtered to the primary in the query, so this list holds at most one
+            // entry per recipe and the card never has to pick (decision 36).
+            recipes.map((recipe) => <RecipeCard key={recipe.id} slug={recipe.slug} title={recipe.title} description={recipe.description} cover={recipe.recipe_images[0]?.storage_path ?? null} />)
           ) : (
             <p className="text-muted-foreground">No recipes found.</p>
           )}

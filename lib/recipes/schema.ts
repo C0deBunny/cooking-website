@@ -1,5 +1,6 @@
 // import lib
 import { z } from "zod";
+import { IMAGE_PATH_PATTERN } from "@/lib/supabase/storage";
 
 // import types
 import type { RecipeDifficulty } from "@/types/recipes";
@@ -39,6 +40,20 @@ function optionalNumber({ integer, label }: { integer: boolean; label: string })
 // renamed in the database, `satisfies` fails here instead of at runtime.
 const DIFFICULTIES = ["easy", "medium", "hard"] as const satisfies readonly RecipeDifficulty[];
 
+/**
+ * A path inside the `recipe-images` bucket, or nothing.
+ *
+ * Validated against the convention rather than accepted as any string, for the reason
+ * `recipeIdSchema` below gives about itself: a server action compiles to a public HTTP endpoint,
+ * so a posted path is no more trustworthy than a posted id. Without this, anything at all could be
+ * written into `storage_path` and `image_path` — including a path into another bucket, or a string
+ * the article would render as a broken image forever.
+ *
+ * The pattern is read from `lib/supabase/storage.ts`, never restated, so the builder and the check
+ * cannot drift (decision 44).
+ */
+const optionalImagePath = optionalText.refine((value) => value === null || IMAGE_PATH_PATTERN.test(value), { message: "That photo was not stored by this site." });
+
 const ingredientSchema = z.object({
   name: z.string().trim().min(1, "Every ingredient needs a name."),
   amount: optionalNumber({ integer: false, label: "Amount" }),
@@ -48,6 +63,20 @@ const ingredientSchema = z.object({
 const stepSchema = z.object({
   instruction: z.string().trim().min(1, "Every step needs an instruction."),
   note: optionalText,
+
+  // Nullable, so a step with no photo parses exactly as it did before this field existed — which
+  // is why adding it changes no ✓ in the stepper.
+  image_path: optionalImagePath,
+});
+
+/**
+ * One row of `recipe_images`. There is no `alt` — both placements render `alt=""` because the
+ * accessible name is already adjacent, and the column was dropped rather than left carrying null
+ * forever (decision 27). Do not add it back here for symmetry with the table.
+ */
+const recipeImageSchema = z.object({
+  storage_path: z.string().regex(IMAGE_PATH_PATTERN, "That photo was not stored by this site."),
+  is_primary: z.boolean().default(false),
 });
 
 /**
@@ -84,6 +113,12 @@ export const detailsSchema = z.object({
 
   prep_minutes: optionalNumber({ integer: true, label: "Prep time" }),
   cook_minutes: optionalNumber({ integer: true, label: "Cook time" }),
+
+  // Here because the cover field sits on the Details panel, which is a layout decision — the same
+  // one the comment above records for `servings`. A list rather than a single path even though the
+  // wizard writes at most one: `save_recipe()` reads it as an array, so a gallery later is a UI
+  // change and not a payload change (decision 1).
+  images: z.array(recipeImageSchema).default([]),
 });
 
 export const ingredientsSchema = z.object({
