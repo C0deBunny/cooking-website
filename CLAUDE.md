@@ -167,6 +167,10 @@ and uploaded the moment the crop is confirmed. Two things are load-bearing here 
   a server action bound to `<form action={…}>`, and `usePathname()` on a dynamic route all throw
   `StaticGenBailoutError`. Wrap them in `Suspense` — existing boundaries are load-bearing, not
   decoration.
+- **So does `crypto.randomUUID()`, and it isn't request data.** Next patches the non-deterministic
+  platform APIs — `randomUUID`, `getRandomValues`, `Math.random`, `Date.now` — and aborts a prerender
+  that reaches one without a `Suspense` frame above it. `recipe-wizard/draft.ts` calls it, which is
+  the second reason the `/admin/create` boundary must wrap the whole wizard.
 - **There is no route-level escape hatch.** `export const dynamic = "force-dynamic"` is rejected
   under `cacheComponents`. When a build fails this way, `next build --debug-prerender` names the
   component; the default trace usually doesn't.
@@ -193,8 +197,16 @@ policies are `using (true)` and no table has a `user_id` — recipes are not own
 Auth**, because account creation is the only admission control.
 
 Full model, including the rebuild path if personal accounts are ever added:
-[docs/permission-model.md](docs/permission-model.md). Storage has separate policies and currently has
-none — [docs/image-storage.md](docs/image-storage.md).
+[docs/permission-model.md](docs/permission-model.md).
+
+**Storage is a second policy surface, and it already has four policies** — since 2026-08-08, in
+`supabase/migrations/20260808140816_recipe_images_storage.sql`. Select, insert, update and delete on
+`storage.objects`, each `to authenticated` and each scoped by `bucket_id = 'recipe-images'`; `anon`
+gets nothing, because the public bucket serves bytes without touching that table. **Don't add a fifth
+migration granting what is already granted** — duplicate policies under fresh names show up as
+permanent drift in `npm run db:diff:storage` — and don't add them by clicking, per the Database rule
+above. The select policy is load-bearing for _deletes_, not decoration:
+[docs/image-storage.md](docs/image-storage.md).
 
 ## Conventions
 

@@ -72,6 +72,13 @@ export default function ReviewPanel({ draft, payload, preview, state, slugTaken,
   // yet. Both paths report it through the same helper so the wording cannot drift.
   const error = state.error ?? (slugTaken ? slugTakenMessage(slug) : null);
 
+  // Where the failed-photo alert's button goes, read off the draft rather than off `failedPhotos`'
+  // written labels — the cover field lives on Details and every step photo on Method, so one fixed
+  // destination is wrong for half the cases. A mixed failure goes to Details because it is the
+  // earlier panel: fix the cover there and the ordinary Next walks forward to Method.
+  const coverFailed = draft.cover?.status === "failed";
+  const backToPhoto = coverFailed ? { label: "Back to Details", onClick: onBackToDetails } : { label: "Back to Method", onClick: onBack };
+
   return (
     <>
       {error ? (
@@ -90,10 +97,14 @@ export default function ReviewPanel({ draft, payload, preview, state, slugTaken,
         </div>
       ) : null}
 
-      {/* Failed photos land in the same alert treatment, with a way back to where the field is —
-          mirroring the slug collision above rather than inventing a second reporting idiom
-          (decision 25). The checklist below is untouched and its green Check stays a constant:
-          each step genuinely parses, so the step *is* complete and only its photo failed.
+      {/* Failed photos land in the same alert treatment, with a way back to the panel that owns the
+          field that failed — mirroring the slug collision above rather than inventing a second
+          reporting idiom (decision 25). The button's destination and label are derived together
+          (see `backToPhoto`), so the label always names the panel the click actually opens: a fixed
+          "Back to Method" dropped a failed *cover* on the one panel with no cover field on it.
+
+          The checklist below is untouched and its green Check stays a constant: each step genuinely
+          parses, so the step *is* complete and only its photo failed.
 
           Saving is still allowed. A failed photo is a photo the recipe will not have, which is a
           state worth reporting and not one worth refusing — unlike an upload still in flight,
@@ -110,8 +121,8 @@ export default function ReviewPanel({ draft, payload, preview, state, slugTaken,
             <p className="text-destructive/80">Saving now publishes the recipe without them.</p>
           </div>
 
-          <Button type="button" variant="outline" size="sm" onClick={onBack}>
-            Back to Method
+          <Button type="button" variant="outline" size="sm" onClick={backToPhoto.onClick}>
+            {backToPhoto.label}
           </Button>
         </div>
       ) : null}

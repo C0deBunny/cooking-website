@@ -5,7 +5,7 @@ import { useId, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ImagePlus, RotateCw, TriangleAlert, X } from "lucide-react";
 import { publicImageUrl } from "@/lib/supabase/storage";
-import { decodeImage, removeImage, uploadCrop, uploadErrorMessage } from "./upload";
+import { decodeImage, removeImage, uploadCrop } from "./upload";
 
 // import components
 import CropDialog from "./CropDialog";
@@ -44,6 +44,12 @@ type Props = {
   label: string;
 };
 
+/**
+ * Answers a second photo offered to a field that is still uploading its first. One string, because
+ * both gates below refuse with the same sentence and a refused gesture must not be worded two ways.
+ */
+const STILL_UPLOADING = "That photo is still uploading. Wait for it to finish, then replace it.";
+
 export default function ImageField({ value, onChange, variant, label }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const inputId = useId();
@@ -55,7 +61,29 @@ export default function ImageField({ value, onChange, variant, label }: Props) {
   // from `value` at confirm time because the draft may have moved on.
   const replacing = useRef<string | undefined>(undefined);
 
+  // Derived, not stored — the union in the draft is still the whole of this field's state.
+  const busy = value?.status === "busy";
+
   async function pick(file: File) {
+    // ⚠ **One upload in flight per field, and this is the line that holds it.** Every way of
+    // attaching a photo funnels through here: the hidden input's change event and the drop handler
+    // below. Two uploads on one field is not a cosmetic race — the field keeps whichever upload
+    // *finishes* last, not the crop the user confirmed last. A big photo confirmed first can resolve
+    // after a small one confirmed second, and its write-back overwrites it: the field ends up holding
+    // the crop that was replaced, while the one the user meant to keep is orphaned in the bucket with
+    // nothing reporting it. The step thumbnail is 64px, so nothing looks wrong. `replaceById` keeps a
+    // finished path on the right *row*; nothing keeps it from being the wrong *photo*.
+    //
+    // Closing the entry point, rather than reconciling afterwards: picking a winner needs an upload
+    // id per field and still has to delete bytes already paid for. Drop is the only gesture that
+    // survives the busy state — ✕ and ↻ are unrendered and `AttachmentTrigger` only exists while
+    // `value === null` — but the guard sits here rather than in the drop handler so the sr-only file
+    // input, which stays focusable, is covered by the same check.
+    if (busy) {
+      toast.info(STILL_UPLOADING);
+      return;
+    }
+
     replacing.current = value?.status === "done" ? value.path : undefined;
 
     try {
@@ -73,6 +101,19 @@ export default function ImageField({ value, onChange, variant, label }: Props) {
     const bitmap = pending;
     if (!bitmap) return;
 
+    // The same rule as `pick`, at the gate that actually starts an upload. Unreachable while `pick`
+    // is the only way to open the cropper — confirming is what makes the field busy, and it clears
+    // `pending` on the way, so busy and a pending bitmap cannot coexist — but a second route into
+    // this handler must not be the thing that discovers that. Keeping both gates is what makes the
+    // one-upload rule a property of the component rather than of its current call graph.
+    if (busy) {
+      bitmap.close();
+      setPending(null);
+      replacing.current = undefined;
+      toast.info(STILL_UPLOADING);
+      return;
+    }
+
     setPending(null);
     onChange({ status: "busy" });
 
@@ -82,7 +123,13 @@ export default function ImageField({ value, onChange, variant, label }: Props) {
       const path = await uploadCrop(bitmap, rect, replacing.current);
       onChange({ status: "done", path });
     } catch (error) {
-      onChange({ status: "failed", reason: uploadErrorMessage(error) });
+      // ⚠ Not `uploadErrorMessage(error)` — `uploadCrop` has already mapped it, and mapping twice
+      // wraps the written sentence in the raw-message fallback: "The photo could not be uploaded:
+      // Your sign-in expired while the photo was uploading…". `AttachmentDescription` is `truncate`,
+      // so the useless prefix is what survives and the actionable half is what gets cut, which is
+      // the failure decision 30 sent the decode error to a toast to avoid. The mapping lives in
+      // exactly one place — `uploadCrop`'s catch — and this line passes its message through.
+      onChange({ status: "failed", reason: error instanceof Error ? error.message : String(error) });
     } finally {
       bitmap.close();
       replacing.current = undefined;
@@ -136,10 +183,23 @@ export default function ImageField({ value, onChange, variant, label }: Props) {
           // be 94% chrome around the media. The vertical variant is worse — it jumps 96→120px the
           // moment an error message appears and shoves the row sideways (decision 16).
           className="w-full max-w-80"
-          onDragOver={(event) => event.preventDefault()}
+          // `preventDefault` unconditionally, busy or not, and that is not the same thing as
+          // accepting the drop: cancelling `dragover` is what makes this card a drop target at all,
+          // and a card that is *not* one hands the file to the browser, which navigates to it and
+          // takes the whole unsaved draft with it. A refusal has to happen with the drop still ours
+          // to refuse. `dropEffect` is what makes the refusal visible — the cursor turns to "no"
+          // over a busy card, so it stops advertising a gesture `pick` will decline.
+          onDragOver={(event) => {
+            event.preventDefault();
+            event.dataTransfer.dropEffect = busy ? "none" : "copy";
+          }}
           onDrop={(event) => {
             event.preventDefault();
             const file = event.dataTransfer.files?.[0];
+
+            // Not guarded here — `pick` refuses while busy, and with a toast, because a swallowed
+            // gesture reads as a broken card. Browsers differ on whether `drop` even fires after a
+            // `dropEffect` of "none", so this path has to be safe rather than merely unlikely.
             if (file) void pick(file);
           }}
         >

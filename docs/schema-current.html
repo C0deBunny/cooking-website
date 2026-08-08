@@ -182,7 +182,10 @@
 
     <section class="table-card">
       <h3 id="recipe_images"><code>recipe_images</code></h3>
-      <p class="purpose">Gallery images for one recipe. Nothing writes this table yet — no Storage bucket exists.</p>
+      <p class="purpose">
+        Gallery images for one recipe. Rewritten wholesale by save_recipe() on every save, like the other two children — even though the wizard sends exactly one row, flagged primary. The many-row
+        shape is what makes a gallery a UI change later rather than a payload change.
+      </p>
 
       <table>
         <thead>
@@ -247,11 +250,23 @@
       <h4>Notes <span class="hand">hand-maintained</span></h4>
       <ul>
         <li>
-          The ONLY table save_recipe() does not write. Steps and ingredients are replaced as a whole set, so their positions never collide; images would be patched row by row, and unique (recipe_id,
-          sort_order) is not deferrable. See issue 1 in docs/known-issues.md.
+          save_recipe() writes this table as of 20260808140818_save_recipe_images.sql — delete-then-insert of the whole set with ordinality, the same treatment steps and ingredients get. That is what
+          retired the collision worry in issue 1 of docs/known-issues.md:13: positions come from array order and the old rows are gone before the new ones land, so the non-deferrable unique
+          (recipe_id, sort_order) never fires. Only a gallery editor that patched rows in place — which nothing does — would still hit it.
         </li>
-        <li>storage_path holds a path inside a bucket, not a URL.</li>
-        <li>on delete cascade removes these rows but NOT the files they name.</li>
+        <li>storage_path holds a path inside the recipe-images bucket, not a URL, so the project id and CDN host stay out of the database. docs/image-storage.md.</li>
+        <li>
+          on delete cascade removes these rows but NOT the files they name — Postgres has no idea the bucket exists. deleteRecipe reads the paths BEFORE the row delete for exactly that reason;
+          docs/image-storage.md:98 explains which way each half-failure has to fall.
+        </li>
+        <li>
+          There is no alt column — dropped in 20260808140817_recipe_images_drop_alt.sql because both placements pass alt=&quot;&quot; and a column carrying null forever reads like a bug. Do not add it
+          back for symmetry.
+        </li>
+        <li>
+          ⚠ A row with is_primary false renders nowhere: getRecipes() filters the embed on is_primary, so the file exists, the row exists, and no surface shows either. Nothing raises. Safe today
+          because save_recipe() is only ever handed one image and the wizard always flags it.
+        </li>
       </ul>
     </section>
     <section class="table-card">
@@ -397,7 +412,10 @@
       </div>
       <h4>Notes <span class="hand">hand-maintained</span></h4>
       <ul>
-        <li>image_path is unused — no Storage bucket exists. See docs/image-storage.md.</li>
+        <li>
+          image_path is live: one optional photo per step, written by save_recipe() from the steps array. It holds a path inside the recipe-images bucket, not a URL — the project id and CDN host stay
+          out of the database, so the rows survive a project move. See docs/image-storage.md.
+        </li>
       </ul>
     </section>
     <section class="table-card">
@@ -518,17 +536,32 @@
       <p><strong>Security:</strong> <code>security invoker · set search_path = '' · execute revoked from public and anon, granted to authenticated</code></p>
       <ul>
         <li>Exists because Supabase JS sends every statement as its own transaction, so a delete-then-insert of children could leave a recipe with no steps.</li>
-        <li>Writes recipe_steps and recipe_ingredients as whole sets, taking position from array order. Does not touch recipe_images.</li>
+        <li>
+          Writes all three children — recipe_steps, recipe_ingredients and recipe_images — as whole sets, taking position from array order via `with ordinality`. Delete-then-insert, which is also why
+          the non-deferrable unique constraints on the ordering columns never fire.
+        </li>
+        <li>
+          Deleting recipe_images rows does not delete the files they name, so replacing a cover through this function orphans the old object. Accepted, and recorded as issue 4 of
+          docs/known-issues.md:104.
+        </li>
         <li>Extend it by reading another key off the payload, never by adding parameters.</li>
       </ul>
     </section>
 
     <h2>Row-level security <span class="hand">hand-maintained</span></h2>
-    <p>Enabled on all four tables. Two roles: visitor (anon) and admin (authenticated) — every logged-in account is an admin. Full model: docs/permission-model.md.</p>
+    <p>
+      Enabled on all four public tables AND on storage.objects — Storage is a second policy surface, and the table model below stops at the table boundary. Two roles either way: visitor (anon) and
+      admin (authenticated), every logged-in account being an admin. anon is granted nothing on storage.objects because rendering never touches it: a public bucket serves object bytes over
+      /object/public/…. The select policy there is required rather than defensive, and this was probed rather than reasoned — storage-api runs the user-facing delete as the caller, with a where clause
+      and `returning`, so with no select policy the delete affects zero rows and still reports success (docs/image-storage.md:119). The recipe-images bucket ROW (public, file_size_limit 2097152,
+      allowed_mime_types {image/webp}, created by 20260808140816_recipe_images_storage.sql) is deliberately absent from the table below: it is data in storage.buckets, so no diff engine sees it and it
+      has to be checked by hand — issue 5 of docs/known-issues.md:138. Full model: docs/permission-model.md; the Storage half: docs/image-storage.md.
+    </p>
     <h4>Table grants</h4>
     <ul>
       <li>grant select on &lt;all four&gt; to anon, authenticated</li>
       <li>grant insert, update, delete on &lt;all four&gt; to authenticated</li>
+      <li>storage.objects carries no grant of ours — Supabase's own storage setup grants the API roles, so the four policies below are the whole of what this project controls there</li>
     </ul>
     <h4>Policies</h4>
     <div class="table-wrap">
@@ -613,6 +646,30 @@
             <td><code>authenticated</code></td>
             <td>all</td>
             <td><code>using (true) with check (true)</code></td>
+          </tr>
+          <tr>
+            <td><code>storage.objects</code></td>
+            <td><code>authenticated</code></td>
+            <td>select</td>
+            <td><code>using (bucket_id = 'recipe-images')</code></td>
+          </tr>
+          <tr>
+            <td><code>storage.objects</code></td>
+            <td><code>authenticated</code></td>
+            <td>insert</td>
+            <td><code>with check (bucket_id = 'recipe-images')</code></td>
+          </tr>
+          <tr>
+            <td><code>storage.objects</code></td>
+            <td><code>authenticated</code></td>
+            <td>update</td>
+            <td><code>using (bucket_id = 'recipe-images') with check (bucket_id = 'recipe-images')</code></td>
+          </tr>
+          <tr>
+            <td><code>storage.objects</code></td>
+            <td><code>authenticated</code></td>
+            <td>delete</td>
+            <td><code>using (bucket_id = 'recipe-images')</code></td>
           </tr>
         </tbody>
       </table>

@@ -40,22 +40,24 @@ Picking the wrong one of these is silent: the page just serves stale data.
   `revalidatePath` is what stops the manage-page row re-rendering its pre-click state.
 
 A tag and a path are not alternatives — a mutation that changes both a cached read and an uncached
-admin view needs both calls. See `lib/recipes/actions.ts:127`.
+admin view needs both calls. See the comment above `togglePublished` in `lib/recipes/actions.ts:136`.
 
 ## Request data fails the build, it doesn't merely degrade
 
 Under `cacheComponents`, reading request data in something that would otherwise be prerendered is a
-**build error** (`StaticGenBailoutError`), not a slow path. All four of these were hit while building
-the recipe pages:
+**build error** (`StaticGenBailoutError`), not a slow path. All of these were hit while building the
+recipe pages — the last one is not request data at all, but fails the same way and is fixed the same
+way:
 
-| What                                         | Where it bit                                                                                             |
-| -------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| Cookie reads                                 | a bare `await requireUser()` at the top of `app/admin/layout.tsx`                                        |
-| `await params` in a page body                | `app/recipes/[slug]/page.tsx` — deliberately **not** `async`; it passes the promise to a Suspended child |
-| A server action bound to `<form action={…}>` | `app/admin/create/page.tsx`                                                                              |
-| `usePathname()` in a client component        | `AdminSidebar`                                                                                           |
+| What                                         | Where it bit                                                                                                     |
+| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Cookie reads                                 | a bare `await requireUser()` at the top of `app/admin/layout.tsx`                                                |
+| `await params` in a page body                | `app/recipes/[slug]/page.tsx` — deliberately **not** `async`; it passes the promise to a Suspended child         |
+| A server action bound to `<form action={…}>` | `app/admin/create/page.tsx`                                                                                      |
+| `usePathname()` in a client component        | `AdminSidebar`                                                                                                   |
+| `crypto.randomUUID()` while rendering        | `recipe-wizard/draft.ts` — `newStep()`, reached from `RecipeWizard`'s `useState(() => emptyDraft())` initialiser |
 
-Two of those are worth expanding, because the cause is not where the symptom is:
+Three of those are worth expanding, because the cause is not where the symptom is:
 
 - **The create page's boundary has to wrap the whole wizard**, even though the `<form>` is four
   levels down in the Review panel. `useActionState` is called at the wizard's root, where the draft
@@ -63,6 +65,21 @@ Two of those are worth expanding, because the cause is not where the symptom is:
 - **`usePathname()` is harmless on a static route and request data on a dynamic one.**
   `AdminSidebar` only became a build blocker once `/admin` gained its first `[slug]` child — so a
   component that has always been fine can start failing because a _sibling route_ was added.
+- **`crypto.randomUUID()` is not request data and is treated as if it were.** Under `cacheComponents`
+  Next patches the whole class of non-deterministic platform APIs — `Math.random()`, `Date.now()` and
+  `new Date()`, `crypto.getRandomValues()`, and `crypto.randomUUID()` from both `node:crypto` and the
+  web crypto global — so a prerender cannot bake in a value that was never meant to be stable. The
+  patches live in `node_modules/next/dist/server/node-environment-extensions/`, and each routes
+  through one `io()` helper that aborts the in-flight prerender. On the client pass the abort is
+  phrased as "used `crypto.randomUUID()` inside a Client Component without a Suspense boundary above
+  it", and that sentence is the entire rule: **a `Suspense` frame above the caller is the only thing
+  that forgives the call.** There is no way to opt an individual call out.
+
+  This is the create page's _second_ reason for its boundary, independent of the server action.
+  `emptyDraft()` mints an id for the first step, so the wizard's root calls `randomUUID()` the moment
+  it renders. Narrowing the boundary down to the Review panel that actually submits — which looks
+  like the tidier place for it — fails the build on this instead, pointing at `RecipeWizard`, a file
+  with no request data in it at all.
 
 **There is no route-level escape hatch.** `export const dynamic = "force-dynamic"` is rejected
 outright with "not compatible with `nextConfig.cacheComponents`". `Suspense` is the mechanism.

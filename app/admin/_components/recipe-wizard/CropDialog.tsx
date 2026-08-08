@@ -13,8 +13,8 @@ import { Slider } from "@/components/ui/slider";
 import type { CropRect } from "./upload";
 
 /**
- * The 1:1 crop picker. Drag to position, wheel or slider to zoom, confirm to get a source
- * rectangle back.
+ * The 1:1 crop picker. Drag or arrow-key to position, wheel or slider to zoom, confirm to get a
+ * source rectangle back.
  *
  * **Cropping here is what makes every surface downstream simple.** Because the stored file is
  * already the final framing, nothing crops it again — which deletes the aspect check, the "this
@@ -40,6 +40,15 @@ import type { CropRect } from "./upload";
 
 /** How far past "just covering the square" the user may zoom in. */
 const MAX_ZOOM = 4;
+
+/**
+ * Keyboard pan distance in viewport pixels per key press, and the Shift-held version.
+ *
+ * Viewport pixels rather than source pixels, so a nudge moves the photo by what the user sees
+ * regardless of zoom — the same units a drag works in, since both add to `view.current.x/y`.
+ */
+const PAN_STEP = 10;
+const PAN_STEP_COARSE = 50;
 
 type Props = {
   bitmap: ImageBitmap | null;
@@ -83,8 +92,32 @@ export default function CropDialog({ bitmap, onConfirm, onCancel }: Props) {
   }, [bitmap]);
 
   /**
-   * Paint and fit, on the bitmap rather than on mount — the dialog is handed a new photo each time
-   * it opens.
+   * Zoom anchored on a point, so whatever is under the cursor stays under it.
+   *
+   * Declared up here, and memoised, because the setup effect below attaches the wheel listener and
+   * therefore depends on this. An identity that changed every render would re-run that effect every
+   * render — re-fitting the photo and resetting the zoom to 1 while the user is still working.
+   */
+  const zoomTo = useCallback(
+    (next: number, cx: number, cy: number) => {
+      const { min, scale } = view.current;
+      const bounded = Math.max(min, Math.min(min * MAX_ZOOM, next));
+      const ratio = bounded / scale;
+
+      view.current.x = cx - (cx - view.current.x) * ratio;
+      view.current.y = cy - (cy - view.current.y) * ratio;
+      view.current.scale = bounded;
+
+      clamp();
+      apply();
+      setZoom(bounded / min);
+    },
+    [clamp, apply]
+  );
+
+  /**
+   * Paint, fit, and attach the wheel listener — everything that needs the stage node to exist. Keyed
+   * on the bitmap rather than on mount, because the dialog is handed a new photo each time it opens.
    *
    * The bitmap goes onto a canvas rather than into an `<img>`, because an `ImageBitmap` has no URL
    * and making one with `createObjectURL` would reintroduce the raw-file path this component
@@ -94,6 +127,7 @@ export default function CropDialog({ bitmap, onConfirm, onCancel }: Props) {
     if (!bitmap) return;
 
     let frame = 0;
+    let detachWheel: (() => void) | undefined;
 
     /**
      * ⚠ Retried on the next frame until **both** the nodes and a non-zero width exist, and the
@@ -113,13 +147,16 @@ export default function CropDialog({ bitmap, onConfirm, onCancel }: Props) {
      *
      * The zero-width half of the condition is the same class of problem one step later: the dialog
      * animates in, so the first frame after mount can measure zero and `min` would come out 0.
+     *
+     * The wheel listener is attached down at the bottom of this same function for the same reason —
+     * see the comment there. Anything that needs the stage *node* has to wait here.
      */
     function setup() {
       const stage = stageRef.current;
       const canvas = imageRef.current;
       const viewport = stage?.clientWidth ?? 0;
 
-      if (!canvas || !viewport) {
+      if (!stage || !canvas || !viewport) {
         frame = requestAnimationFrame(setup);
         return;
       }
@@ -136,12 +173,46 @@ export default function CropDialog({ bitmap, onConfirm, onCancel }: Props) {
       view.current = { scale: min, min, x: (viewport - bitmap!.width * min) / 2, y: (viewport - bitmap!.height * min) / 2 };
       setZoom(1);
       apply();
+
+      /**
+       * ⚠ Wheel zoom is attached **here**, inside the retry loop, and not from an effect of its own.
+       * That is not tidiness — an effect of its own is how this was written and it never ran.
+       *
+       * It read `stageRef.current`, found the portal's null on the commit where `open` flips true
+       * (the hazard above), and attached nothing. With no dependency array it would re-attach on any
+       * later render — but the only state write left after that point is this function's
+       * `setZoom(1)`, and `zoom` is already 1, so React bails out eagerly, schedules no render, and
+       * fires no effect. Scroll-to-zoom silently did nothing until the slider had been dragged once,
+       * while `DialogDescription` promised it worked.
+       *
+       * Native and non-passive, because React's `onWheel` is passive: `preventDefault()` in it is
+       * ignored, so the page scrolls behind the dialog while you zoom.
+       */
+      function onWheel(event: WheelEvent) {
+        event.preventDefault();
+
+        // `stage!` in the spirit of `bitmap!` above: the guard narrowed it, but this is a hoisted
+        // function *declaration*, so TypeScript will not carry that narrowing in — the `() =>`
+        // detach below keeps it. The handler cannot fire before the guard passed either way.
+        const box = stage!.getBoundingClientRect();
+        zoomTo(view.current.scale * (event.deltaY < 0 ? 1.12 : 1 / 1.12), event.clientX - box.left, event.clientY - box.top);
+      }
+
+      stage.addEventListener("wheel", onWheel, { passive: false });
+      detachWheel = () => stage.removeEventListener("wheel", onWheel);
     }
 
     setup();
 
-    return () => cancelAnimationFrame(frame);
-  }, [bitmap, apply]);
+    // Closing sets `bitmap` to null, which re-runs this effect and so runs this: the pending frame is
+    // cancelled in case the dialog closed while still retrying, and the listener is detached from the
+    // node it was attached to — which the portal is about to discard anyway, but the pair stays
+    // symmetrical rather than relying on that.
+    return () => {
+      cancelAnimationFrame(frame);
+      detachWheel?.();
+    };
+  }, [bitmap, apply, zoomTo]);
 
   /** Viewport geometry → source-pixel rectangle. The whole point of the widget. */
   function sourceRect(): CropRect {
@@ -152,21 +223,6 @@ export default function CropDialog({ bitmap, onConfirm, onCancel }: Props) {
       sy: Math.round(-view.current.y / view.current.scale),
       size: Math.round(viewport / view.current.scale),
     };
-  }
-
-  /** Zoom anchored on a point, so whatever is under the cursor stays under it. */
-  function zoomTo(next: number, cx: number, cy: number) {
-    const { min, scale } = view.current;
-    const bounded = Math.max(min, Math.min(min * MAX_ZOOM, next));
-    const ratio = bounded / scale;
-
-    view.current.x = cx - (cx - view.current.x) * ratio;
-    view.current.y = cy - (cy - view.current.y) * ratio;
-    view.current.scale = bounded;
-
-    clamp();
-    apply();
-    setZoom(bounded / min);
   }
 
   // Pointer events rather than mouse events. /admin is desktop-only by route (decision 28), but
@@ -197,38 +253,63 @@ export default function CropDialog({ bitmap, onConfirm, onCancel }: Props) {
     event.currentTarget.releasePointerCapture(event.pointerId);
   }
 
-  // Attached as a native non-passive listener: React's onWheel is passive, so preventDefault() in
-  // it is ignored and the page scrolls behind the dialog while you zoom.
-  useEffect(() => {
-    const stage = stageRef.current;
-    if (!stage) return;
+  /**
+   * Arrow keys pan, Shift pans further. Without this there is **no keyboard route to a framing at
+   * all**: the `Slider` gives keyboard zoom, but zoom is anchored on the viewport centre, so a
+   * keyboard-only user can only ever confirm whatever the initial centred "cover" fit happened to
+   * catch — an off-centre subject is unreachable.
+   *
+   * It ends exactly as `onPointerMove` does — add to `view.current`, then `clamp()` and `apply()`.
+   * Sharing that one clamp is what makes it impossible for a key press to push the image off the
+   * square; a bounds check written again here would be a second thing to keep in step with the
+   * first. Writing to the ref rather than to state keeps the paint imperative, as everywhere else.
+   *
+   * The arrows move the *photo*, so a press does what dragging that direction does rather than the
+   * inverse. `preventDefault()` on the four handled keys only: arrows scroll the dialog otherwise,
+   * so the photo would move and the page would slide out from under it. Tab and Escape are
+   * untouched, which is what keeps the dialog escapable.
+   */
+  function onKeyDown(event: React.KeyboardEvent) {
+    const step = event.shiftKey ? PAN_STEP_COARSE : PAN_STEP;
+    const pan: Record<string, [number, number]> = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
 
-    function onWheel(event: WheelEvent) {
-      event.preventDefault();
+    const delta = pan[event.key];
+    if (!delta) return;
 
-      const box = stage!.getBoundingClientRect();
-      zoomTo(view.current.scale * (event.deltaY < 0 ? 1.12 : 1 / 1.12), event.clientX - box.left, event.clientY - box.top);
-    }
+    event.preventDefault();
 
-    stage.addEventListener("wheel", onWheel, { passive: false });
-    return () => stage.removeEventListener("wheel", onWheel);
-  });
+    view.current.x += delta[0];
+    view.current.y += delta[1];
+
+    clamp();
+    apply();
+  }
 
   return (
     <Dialog open={bitmap !== null} onOpenChange={(open) => (open ? null : onCancel())}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Frame the photo</DialogTitle>
-          <DialogDescription>Drag to move, scroll or use the slider to zoom. What you see is exactly what gets saved.</DialogDescription>
+          {/* Names the arrow keys, because a control nobody can see is a control nobody uses — and
+              because the wheel and the keys are the two things here that are not self-evident from
+              the photo sitting under a grab cursor. */}
+          <DialogDescription>Drag or use the arrow keys to move — hold Shift for bigger steps. Scroll or use the slider to zoom. What you see is exactly what gets saved.</DialogDescription>
         </DialogHeader>
 
+        {/* Focusable, with a role and a name, so the arrow-key pan is reachable: a bare `div` is
+            `role="generic"`, on which `aria-label` is not exposed, so `tabIndex` alone would give a
+            keyboard user a focus stop that announces nothing. */}
         <div
           ref={stageRef}
+          role="group"
+          aria-label="Photo framing — arrow keys move the photo, Shift for bigger steps"
+          tabIndex={0}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
           onPointerCancel={() => (dragging.current = false)}
-          className="relative aspect-square w-full cursor-grab overflow-hidden rounded-xl bg-foreground/5 select-none active:cursor-grabbing"
+          onKeyDown={onKeyDown}
+          className="relative aspect-square w-full cursor-grab overflow-hidden rounded-xl bg-foreground/5 ring-ring/50 select-none focus-visible:ring-3 focus-visible:outline-hidden active:cursor-grabbing"
         >
           {/* No `transform` in this style object on purpose — it is written imperatively by
               `apply()` above, which is what keeps a drag from re-rendering the dialog per frame. */}

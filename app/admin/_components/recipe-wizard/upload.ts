@@ -59,45 +59,59 @@ export async function decodeImage(file: File) {
  * one orphaned file. The intuitive order — remove, then upload — loses the user's photo when the
  * re-upload fails, and leaves the draft holding a path to nothing. Every failure here falls
  * toward wasted bytes and never toward a broken reference. Decision 24.
+ *
+ * **Everything this function throws is already a user-facing message.** `Error.message` is the
+ * field's `reason` verbatim — the caller renders it and must not run it through
+ * `uploadErrorMessage` a second time. See the note on that function for what the second pass does.
  */
 export async function uploadCrop(bitmap: ImageBitmap, rect: CropRect, previousPath?: string) {
   const output = Math.min(MAX_OUTPUT, rect.size);
   const canvas = new OffscreenCanvas(output, output);
   const context = canvas.getContext("2d");
 
+  // Written here rather than mapped, so it stays outside the try below — routing an
+  // already-worded message through the mapper is the double-wrap this file exists to avoid.
   if (!context) throw new Error("This browser could not prepare the photo for upload.");
 
-  // The 9-argument form: source rectangle in, destination rectangle out. The 5-argument form
-  // would scale the whole image into the square and squash it.
-  context.drawImage(bitmap, rect.sx, rect.sy, rect.size, rect.size, 0, 0, output, output);
+  try {
+    // The 9-argument form: source rectangle in, destination rectangle out. The 5-argument form
+    // would scale the whole image into the square and squash it.
+    context.drawImage(bitmap, rect.sx, rect.sy, rect.size, rect.size, 0, 0, output, output);
 
-  // ⚠ `type` here is what the bucket's MIME allowlist checks, and this is not obvious. For a Blob
-  // body supabase-js wraps it in FormData and never sets a content-type header at all, so the
-  // `contentType` upload option below is silently ignored — the MIME the bucket sees comes from
-  // the multipart part, which is `blob.type`. Passing `contentType: "image/webp"` looks like a
-  // guard and is a no-op; dropping this argument (or switching to `canvas.toBlob` with a typo)
-  // produces a blob the bucket rejects with an opaque 400 that reads exactly like a missing
-  // policy. Decision 32.
-  //
-  // `convertToBlob` is an OffscreenCanvas method — `HTMLCanvasElement.toBlob` is the other API
-  // and is callback-based.
-  const blob = await canvas.convertToBlob({ type: "image/webp", quality: 0.82 });
+    // ⚠ `type` here is what the bucket's MIME allowlist checks, and this is not obvious. For a Blob
+    // body supabase-js wraps it in FormData and never sets a content-type header at all, so the
+    // `contentType` upload option below is silently ignored — the MIME the bucket sees comes from
+    // the multipart part, which is `blob.type`. Passing `contentType: "image/webp"` looks like a
+    // guard and is a no-op; dropping this argument (or switching to `canvas.toBlob` with a typo)
+    // produces a blob the bucket rejects with an opaque 400 that reads exactly like a missing
+    // policy. Decision 32.
+    //
+    // `convertToBlob` is an OffscreenCanvas method — `HTMLCanvasElement.toBlob` is the other API
+    // and is callback-based.
+    const blob = await canvas.convertToBlob({ type: "image/webp", quality: 0.82 });
 
-  const path = buildImagePath();
-  const supabase = createClient();
+    const path = buildImagePath();
+    const supabase = createClient();
 
-  const { error } = await supabase.storage.from(IMAGE_BUCKET).upload(path, blob, {
-    // A year, not the library's one-hour default. Paths are uuids and a replace mints a new one,
-    // so the object at a path is immutable — an hour is not the CDN caching a public bucket was
-    // chosen to get. Decision 32.
-    cacheControl: "31536000",
-  });
+    const { error } = await supabase.storage.from(IMAGE_BUCKET).upload(path, blob, {
+      // A year, not the library's one-hour default. Paths are uuids and a replace mints a new one,
+      // so the object at a path is immutable — an hour is not the CDN caching a public bucket was
+      // chosen to get. Decision 32.
+      cacheControl: "31536000",
+    });
 
-  if (error) throw new Error(uploadErrorMessage(error));
+    // Raw, so the one mapping happens in the catch. `removeImage` never throws, so nothing after
+    // this line can reach it.
+    if (error) throw error;
 
-  if (previousPath) await removeImage(previousPath);
+    if (previousPath) await removeImage(previousPath);
 
-  return path;
+    return path;
+  } catch (error) {
+    // The one mapping point. Covering the whole body rather than the upload alone means a
+    // `convertToBlob` DOMException reaches the field as a sentence too, instead of raw.
+    throw new Error(uploadErrorMessage(error));
+  }
 }
 
 /**
@@ -132,6 +146,13 @@ export async function removeImage(path: string) {
  * Review panel of a recipe site. The fallback carries the raw message, so a mapping that goes
  * stale against Supabase's wording degrades to a wordy message rather than to silence.
  * Decision 46.
+ *
+ * ⚠ **Call this exactly once per failure — `uploadCrop`'s catch is the only place that does.** It is
+ * not idempotent: a mapped message matches none of the branches below, so a second pass drops
+ * through to the fallback and wraps the written sentence in "The photo could not be uploaded: …".
+ * The field renders `reason` in `AttachmentDescription`, which is `truncate`, so the prefix is what
+ * survives and the actionable half — "Sign in again, then attach it once more" — is what gets cut.
+ * That is the exact failure decision 30 routed the decode error to a toast to avoid.
  */
 export function uploadErrorMessage(error: unknown) {
   const message = error instanceof Error ? error.message : String(error);

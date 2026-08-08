@@ -26,10 +26,18 @@ import type { RecipeView, RecipeWithChildren } from "@/types/recipes";
  *
  * ⚠ This component may never gain a server-only import. The wizard is a client component, so
  * importing it there compiles this file into the client bundle as well as leaving it a server
- * component for the two pages that render it from the server. It imports only Badge, Separator
- * and types today. `next/headers`, `cookies()` and any Supabase server client are therefore
- * off-limits here — nothing warns, and the failure arrives as a build error pointing at the
- * wizard rather than at the import that caused it. Decision 8 exists so that error is findable.
+ * component for the two pages that render it from the server. `next/headers`, `cookies()` and any
+ * Supabase server client are therefore off-limits here — nothing warns, and the failure arrives as
+ * a build error pointing at RecipeWizard rather than at the import that caused it. Decision 8
+ * exists so that error is findable.
+ *
+ * The whole import list, so an addition is something you can check against this paragraph:
+ * `next/image`, `cn`, `publicImageUrl`, DifficultyBadge, Separator, and types. `publicImageUrl` is
+ * the one that could break the rule from outside this file — it is string concatenation over a
+ * `NEXT_PUBLIC_*` env var precisely so it needs no client, and `lib/supabase/storage.ts` records in
+ * its own header that `getPublicUrl()` off a Supabase client was turned down to keep that file
+ * client-free. "Simplifying" it back to that call, or parking a `cookies()`-reading helper beside
+ * it in the same file, pulls a server-only dependency in through an import that mentions neither.
  */
 
 /**
@@ -156,11 +164,21 @@ export default function RecipeArticle({ recipe, placeholders = false, align = "c
   // saved recipe that records prep but not cooking.
   const meta = filled.length > 0 ? filled : placeholders ? PLACEHOLDER_META : [];
 
-  const heading = (
-    <h1 className={cn("text-4xl font-bold mb-4", placeholders && !title && "font-semibold text-muted-foreground italic")}>{placeholders && !title ? "Untitled recipe" : recipe.title}</h1>
-  );
+  // The header renders on one of two surfaces and the same two values have to be legible on both.
+  // Over a cover the text sits on the scrim in `text-white`, where `text-muted-foreground` is a
+  // dark grey on a dark photo — so "quieter than the real thing" is dimmed white there and the
+  // muted token here. Nothing below the header has a second surface, so it keeps PLACEHOLDER_TEXT.
+  const onCover = recipe.cover !== null;
+  const bodyText = onCover ? "text-white/80" : "text-muted-foreground";
+  const mutedText = onCover ? "text-white/70" : "text-muted-foreground";
 
-  const description = recipe.description ? <p className="text-lg text-muted-foreground">{recipe.description}</p> : placeholders ? <p className={PLACEHOLDER_TEXT}>No description yet.</p> : null;
+  const heading = <h1 className={cn("text-4xl font-bold mb-4", placeholders && !title && cn("font-semibold italic", mutedText))}>{placeholders && !title ? "Untitled recipe" : recipe.title}</h1>;
+
+  const description = recipe.description ? (
+    <p className={cn("text-lg", bodyText)}>{recipe.description}</p>
+  ) : placeholders ? (
+    <p className={cn("text-sm italic", mutedText)}>No description yet.</p>
+  ) : null;
 
   const metaRow =
     meta.length > 0 ? (
@@ -214,8 +232,12 @@ export default function RecipeArticle({ recipe, placeholders = false, align = "c
                 <DifficultyBadge difficulty={recipe.difficulty} />
               </div>
 
-              <h1 className="text-4xl font-bold mb-4">{recipe.title}</h1>
-              {recipe.description ? <p className="text-lg text-white/80">{recipe.description}</p> : null}
+              {/* The same two elements the cover-less branch renders, placeholders and all: a
+                  cover can be attached before the title is typed, which is the natural order of
+                  work (decision 26), and rendering `recipe.title` raw here put an empty <h1> over
+                  the photo instead of "Untitled recipe". Their colours follow the surface. */}
+              {heading}
+              {description}
 
               {meta.length > 0 ? (
                 <dl className="flex flex-wrap gap-x-8 gap-y-2 mt-8">
