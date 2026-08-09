@@ -34,6 +34,10 @@ yarn-error.log*
 .env*
 !.env.example
 
+# local admin login, read only by scripts/dev-login.mjs so a browser pass can sign itself in.
+# Plaintext on disk — never commit it, and never print it.
+.credentials.local
+
 # claude code (local machine-specific overrides)
 .claude/settings.local.json
 

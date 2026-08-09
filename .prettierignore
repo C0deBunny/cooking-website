@@ -2,6 +2,11 @@
 # so letting prettier touch it just creates churn.
 package-lock.json
 
+# Not a module — Playwright MCP wraps the file's contents in parentheses and calls the result, so it
+# must end in a bare function expression with no trailing semicolon. Prettier would add one back and
+# turn every run into "Unexpected token ';'".
+scripts/dev-login.mjs
+
 # Build output and generated types
 .next/
 out/
