@@ -7,6 +7,33 @@
      - Next: <what remains> / Blocked: <on what>
 -->
 
+## 2026-08-09 — three fixes off the first real use of the Details panel
+
+- **Did:** ported the prototype's rule-of-thirds guides into `CropDialog`, stopped the Details row
+  resizing when a cover photo lands, and dropped the "Cropped to a square. Optional." caption.
+- **The guides** fade in while the photo moves and out when it stops, toggled by a `data-moving`
+  attribute written straight to the stage — state would re-render the dialog on every frame of a
+  drag, which is the same reason `apply()` writes the transform imperatively. The arrow keys get
+  them too, on a 700 ms linger, since a key press has no `pointerup` to hide on. **They carry a 1px
+  dark drop shadow, which the prototype does not need and this does:** the prototype's stage is
+  always dark, while a real cover photo is often bright, and plain white hairlines vanished into it
+  — visible in the first pass, fixed in the second.
+- **The row was resizing because the cover column was an `auto` track.** An `auto` track is sized by
+  its content, and the attachment's content grows the moment a photo lands (dashed placeholder → 64px
+  thumbnail, longer description, two action buttons), so the title and description shrank sideways
+  under the cursor. Now a fixed `18rem`, with the description moved into its own full-width row
+  beneath both columns. Decision 19 revised in `decisions.md` rather than left as silent drift.
+- **Verified over Playwright MCP, signed in through the new `scripts/dev-login.mjs`:** `#title`,
+  `#description` and the attachment measured **identical to the pixel** across empty, `busy` and
+  `done` (x 264/264/693, w 409/717/288) — nothing moves when a photo attaches. `data-moving` read
+  `true` mid-drag and `false` after `pointerup`; `true` on ArrowRight and `false` a second later.
+  Grid legibility confirmed by screenshot against a bright photo. Below 640px the panel still stacks.
+- **Cleaned up after the pass:** the test upload was removed through the field's own ✕, and its
+  object went 200 → 400, so nothing was left for the sweep to collect. The only console error in the
+  session is that deliberate 400.
+- **Next:** unchanged from below — EXIF-portrait orientation, HEIC and a non-webp blob against the
+  bucket allowlist are still unrun, as are reorder and delete mid-upload.
+
 ## 2026-08-08 — end-to-end pass
 
 - **Did:** built a real recipe through the wizard over CDP — cover from a photo, four ingredients

@@ -50,6 +50,15 @@ const MAX_ZOOM = 4;
 const PAN_STEP = 10;
 const PAN_STEP_COARSE = 50;
 
+/**
+ * How long the rule-of-thirds guides linger after an arrow-key nudge.
+ *
+ * A drag has a pointerup to hide on; a key press is discrete and has nothing equivalent, so a nudge
+ * schedules its own fade. Long enough to survive the gap between two deliberate presses, so holding
+ * a direction does not strobe the grid.
+ */
+const GUIDE_LINGER_MS = 700;
+
 type Props = {
   bitmap: ImageBitmap | null;
   onConfirm: (rect: CropRect) => void;
@@ -72,6 +81,26 @@ export default function CropDialog({ bitmap, onConfirm, onCancel }: Props) {
    */
   const view = useRef({ scale: 1, min: 1, x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
+
+  /**
+   * The rule-of-thirds guides, shown only while the photo is actually moving — the trick every
+   * camera app uses, and the prototype's behaviour: composition help exactly when you are composing,
+   * and four lines out of the way the rest of the time.
+   *
+   * Toggled by writing `data-moving` on the stage rather than by holding it in state, for the same
+   * reason `apply()` writes the transform imperatively: this is set from `onPointerDown`/`Up`, which
+   * bracket a handler firing at the display's refresh rate. The fade itself is CSS.
+   */
+  const guideTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  const showGuides = useCallback((moving: boolean, linger = 0) => {
+    clearTimeout(guideTimer.current);
+
+    const write = () => stageRef.current?.setAttribute("data-moving", String(moving));
+
+    if (linger) guideTimer.current = setTimeout(write, linger);
+    else write();
+  }, []);
 
   const apply = useCallback(() => {
     const canvas = imageRef.current;
@@ -211,6 +240,7 @@ export default function CropDialog({ bitmap, onConfirm, onCancel }: Props) {
     return () => {
       cancelAnimationFrame(frame);
       detachWheel?.();
+      clearTimeout(guideTimer.current);
     };
   }, [bitmap, apply, zoomTo]);
 
@@ -235,6 +265,7 @@ export default function CropDialog({ bitmap, onConfirm, onCancel }: Props) {
     dragging.current = true;
     last.current = { x: event.clientX, y: event.clientY };
     event.currentTarget.setPointerCapture(event.pointerId);
+    showGuides(true);
   }
 
   function onPointerMove(event: React.PointerEvent) {
@@ -251,6 +282,7 @@ export default function CropDialog({ bitmap, onConfirm, onCancel }: Props) {
   function onPointerUp(event: React.PointerEvent) {
     dragging.current = false;
     event.currentTarget.releasePointerCapture(event.pointerId);
+    showGuides(false);
   }
 
   /**
@@ -283,6 +315,12 @@ export default function CropDialog({ bitmap, onConfirm, onCancel }: Props) {
 
     clamp();
     apply();
+
+    // Same grid a drag gets, on its own timer — see GUIDE_LINGER_MS. Without this the keyboard route
+    // to a framing would be the one route with no composition help, which is the gap this handler
+    // exists to close in the first place.
+    showGuides(true);
+    showGuides(false, GUIDE_LINGER_MS);
   }
 
   return (
@@ -307,13 +345,36 @@ export default function CropDialog({ bitmap, onConfirm, onCancel }: Props) {
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
-          onPointerCancel={() => (dragging.current = false)}
+          onPointerCancel={() => {
+            dragging.current = false;
+            showGuides(false);
+          }}
           onKeyDown={onKeyDown}
-          className="relative aspect-square w-full cursor-grab overflow-hidden rounded-xl bg-foreground/5 ring-ring/50 select-none focus-visible:ring-3 focus-visible:outline-hidden active:cursor-grabbing"
+          className="group relative aspect-square w-full cursor-grab overflow-hidden rounded-xl bg-foreground/5 ring-ring/50 select-none focus-visible:ring-3 focus-visible:outline-hidden active:cursor-grabbing"
         >
           {/* No `transform` in this style object on purpose — it is written imperatively by
               `apply()` above, which is what keeps a drag from re-rendering the dialog per frame. */}
           <canvas ref={imageRef} style={{ transformOrigin: "top left" }} className="pointer-events-none absolute top-0 left-0 max-w-none" />
+
+          {/* The rule-of-thirds grid, after the canvas so it paints over it. White rather than a
+              semantic token, and this is the one place that is right: it sits on a photograph, not
+              on the page, so it has to read against whatever the user uploaded rather than against
+              the theme.
+
+              The drop shadow is what makes that true rather than nearly true. White alone is what
+              the prototype used, against a dark stage — over a bright photo, which half of these
+              are, it disappears exactly where the subject is. A 1px dark shadow under each line
+              gives every one of them something to sit against, at both ends of the range, without
+              the lines needing to be opaque enough to fence in the photo they are helping frame.
+
+              `aria-hidden` because it says nothing a screen reader can act on; the framing itself is
+              announced by the group. */}
+          <div aria-hidden className="pointer-events-none absolute inset-0 opacity-0 drop-shadow-[0_0_1px_rgb(0_0_0/0.7)] transition-opacity duration-150 group-data-[moving=true]:opacity-100">
+            <span className="absolute inset-y-0 left-1/3 w-px bg-white/70" />
+            <span className="absolute inset-y-0 left-2/3 w-px bg-white/70" />
+            <span className="absolute inset-x-0 top-1/3 h-px bg-white/70" />
+            <span className="absolute inset-x-0 top-2/3 h-px bg-white/70" />
+          </div>
         </div>
 
         <div className="flex items-center gap-3">

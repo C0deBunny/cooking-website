@@ -81,51 +81,60 @@ export default function DetailsPanel({ draft, takenSlug, onPatch, onCover, onNex
 
       <CardContent>
         <div className="space-y-5">
-          {/* The cover sits in a second column spanning both text rows, so it costs no vertical
-              space at all. Above the title would put an optional field ahead of the only required
-              one; below the description pushes difficulty and both times off a laptop screen
-              (decision 19). The stacking rule below 640px is the cost that buys that. */}
-          <div className="grid gap-5 sm:grid-cols-[minmax(0,1fr)_auto]">
-            <div className="space-y-5">
-              <div className="space-y-2">
-                <Label htmlFor="title">
-                  Title <span className="text-destructive">*</span>
-                </Label>
+          {/* The cover sits in a second column beside the title, not above or below it: above would
+              put an optional field ahead of the only required one, and below the description pushes
+              difficulty and both times off a laptop screen (decision 19). The stacking rule below
+              640px is the cost that buys that.
 
-                <div className="relative">
-                  <Input id="title" value={draft.title} maxLength={TITLE_MAX} onChange={(event) => onPatch({ title: event.target.value })} placeholder="Gestoofde bakbanaan" className="pr-16" />
-                  <span className="pointer-events-none absolute right-3 bottom-2 text-xs text-muted-foreground tabular-nums">
-                    {draft.title.length}/{TITLE_MAX}
-                  </span>
-                </div>
+              Two things here are load-bearing and easy to undo. **That column is a fixed width, not
+              `auto`** — an `auto` track is sized by its content, and the attachment's content grows
+              the moment a photo lands in it ("Click or drop a photo" → a 64px thumbnail, a longer
+              description and two action buttons). The whole row then resizes mid-interaction and
+              every field beside it slides sideways. A fixed track is wide enough for the filled
+              state before there is anything in it, so attaching a photo moves nothing.
 
-                <AddressLine title={draft.title} takenSlug={takenSlug} />
+              **And the description spans both columns rather than sharing the left one.** It is the
+              full width of the panel like every other field, and it runs on under the cover — which
+              is also what leaves the fixed track free to be generous, since nothing but the title
+              is competing with it for the row. */}
+          <div className="grid gap-5 sm:grid-cols-[minmax(0,1fr)_18rem]">
+            <div className="space-y-2">
+              <Label htmlFor="title">
+                Title <span className="text-destructive">*</span>
+              </Label>
+
+              <div className="relative">
+                <Input id="title" value={draft.title} maxLength={TITLE_MAX} onChange={(event) => onPatch({ title: event.target.value })} placeholder="Gestoofde bakbanaan" className="pr-16" />
+                <span className="pointer-events-none absolute right-3 bottom-2 text-xs text-muted-foreground tabular-nums">
+                  {draft.title.length}/{TITLE_MAX}
+                </span>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="description">Short description</Label>
-
-                <div className="relative">
-                  <Textarea
-                    id="description"
-                    rows={2}
-                    maxLength={DESCRIPTION_MAX}
-                    value={draft.description}
-                    onChange={(event) => onPatch({ description: event.target.value })}
-                    placeholder="One or two lines that show under the title."
-                    className="pr-16"
-                  />
-                  <span className="pointer-events-none absolute right-3 bottom-2 text-xs text-muted-foreground tabular-nums">
-                    {draft.description.length}/{DESCRIPTION_MAX}
-                  </span>
-                </div>
-              </div>
+              <AddressLine title={draft.title} takenSlug={takenSlug} />
             </div>
 
             <div className="space-y-2">
               <Label>Cover photo</Label>
               <ImageField value={draft.cover} onChange={onCover} variant="cover" label="Cover photo" />
-              <p className="text-xs text-muted-foreground">Cropped to a square. Optional.</p>
+            </div>
+
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="description">Short description</Label>
+
+              <div className="relative">
+                <Textarea
+                  id="description"
+                  rows={2}
+                  maxLength={DESCRIPTION_MAX}
+                  value={draft.description}
+                  onChange={(event) => onPatch({ description: event.target.value })}
+                  placeholder="One or two lines that show under the title."
+                  className="pr-16"
+                />
+                <span className="pointer-events-none absolute right-3 bottom-2 text-xs text-muted-foreground tabular-nums">
+                  {draft.description.length}/{DESCRIPTION_MAX}
+                </span>
+              </div>
             </div>
           </div>
 

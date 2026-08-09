@@ -344,6 +344,17 @@ except where a supersession note says so.
 - **Why not below the description:** a square field there pushes difficulty and both times off a laptop
   screen, so a step that used to fit now needs a scroll.
 - **Trade-off:** needs a stacking rule below roughly 640px, which `DetailsPanel` does not have today.
+- **Revised 2026-08-09 — the column is fixed-width and no longer spans both rows.** Shipped as an
+  `auto` track, so the column was sized by the attachment's _current_ content: attaching a photo grew
+  the card from "Click or drop a photo" to a thumbnail with two action buttons, the track grew with it,
+  and the title and description shrank sideways underneath the user's cursor. The track is now `18rem`,
+  wide enough for the filled state before there is anything in it, so a photo landing moves nothing.
+  The description moves out from under the cover into a row of its own spanning both columns — it is
+  full-width like every other field, and it is what leaves the fixed track free to be generous. The
+  cost is the vertical space this decision originally set out to save: one description-height row.
+  The caption under the field ("Cropped to a square. Optional.") went at the same time — the crop
+  dialog says what it does at the moment it does it, and no other optional field on the panel is
+  labelled optional.
 
 ## 20. An overlaid square hero at column width, not full-bleed
 

@@ -303,6 +303,11 @@ Three files, in any order — see the note under the third.
   fourth field state holding a `File` that `toPayload()` cannot resolve, which is the shape decision 4
   rejected and which the union in `draft.ts` has no `status` for. Decision 29.
 
+  **Rule-of-thirds guides while the photo is moving**, as in the prototype — four white hairlines that
+  fade in on `pointerdown` and out on `pointerup`, plus a lingering version on the arrow keys, which
+  have no "up" to hide on. Toggled by a `data-moving` attribute written straight to the stage rather
+  than by state, because the same handlers run at the display's refresh rate.
+
   A working prototype of the whole interaction, including the maths, is
   [assets/crop-prototype.html](assets/crop-prototype.html).
 
@@ -419,11 +424,15 @@ Three files, in any order — see the note under the third.
   Panels unmounting on step change is handled for free, because the draft outlives the panel — which is
   the second reason the state belongs on the row rather than in the component that renders it.
 
-- **`DetailsPanel.tsx`** — the cover field sits **to the right of the title and description**, in a
-  two-column grid spanning both rows, so it costs no vertical space at all. Above the title would put
-  an optional field before the only required one; below the description pushes difficulty and the times
-  off a laptop screen. Needs a stacking rule below roughly 640px, which this panel does not have today.
-  Decision 19.
+- **`DetailsPanel.tsx`** — the cover field sits **to the right of the title**, in a two-column grid.
+  Above the title would put an optional field before the only required one; below the description
+  pushes difficulty and the times off a laptop screen. Needs a stacking rule below roughly 640px, which
+  this panel does not have today. Decision 19.
+
+  **The cover column is a fixed `18rem` track, and the description spans both columns.** An `auto`
+  track is sized by its content, and the attachment's content grows the moment a photo lands in it —
+  so the row resized mid-interaction and every field beside it slid sideways. Sized for the filled
+  state up front, attaching a photo moves nothing. Decision 19, revised.
 
 - **`StepsPanel.tsx`** — a `＋ photo` button under the note input in each row's existing
   `flex-1 space-y-2` column, expanding into the attachment once a file exists. Placing it inside that
