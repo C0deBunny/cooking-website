@@ -101,14 +101,28 @@ inserting several images without setting it explicitly was the easy path into ex
 All three child tables are now unique on their ordering column, so that is the correct wording for
 `CLAUDE.md` and [database-workflow.md](database-workflow.md).
 
-## 4. Orphaned files accumulate in the `recipe-images` bucket
+## 4. ~~Orphaned files accumulate in the `recipe-images` bucket~~ — RESOLVED
 
 - **Found:** 2026-08-06, designing the recipe-images work — an accepted cost, not a discovery
-- **Status:** accepted. Decision 8 of `docs/plans/recipe-images/decisions.md`
-- **Where:** `app/admin/_components/recipe-wizard/upload.ts`, `lib/recipes/actions.ts`
+- **Resolved:** 2026-08-09, by `docs/plans/orphan-image-sweep/`
+- **Status:** **collected automatically.** `lib/images/sweep.ts` runs from `after()` at the end of
+  `saveRecipe` and `deleteRecipe` — the two events that can have caused a leak — lists the bucket,
+  asks `unreferenced_image_paths()` which paths nothing references, and removes up to 25 of them
+  oldest-first. It needs no new credential and no new endpoint because `after()` runs inside the
+  request's own auth context.
+- **Where:** `lib/images/sweep.ts`,
+  `supabase/migrations/20260809202910_unreferenced_image_paths.sql`, `lib/recipes/actions.ts`
+
+> **The residual cost does not vanish with this entry.** An orphan lives for at least seven days
+> (the age floor, which exists so a second open wizard tab's photos are never deleted out from
+> under it), nothing is collected at all if the owner never writes again, and a broken sweep looks
+> exactly like a working one — there is no page and no heartbeat. That caveat, and the probe that
+> is the only way to check it, live in [image-storage.md](image-storage.md) under question 7.
+
+Kept as a record of what the problem was, and of which fixes were rejected on the way to this one.
 
 Photos are uploaded the moment they are cropped, so the file exists before the recipe does. Nothing
-reconciles the bucket against the rows, and there are three ways a file ends up referenced by
+reconciled the bucket against the rows, and there are three ways a file ends up referenced by
 nothing:
 
 - **An abandoned wizard session.** Upload a photo, close the tab, and the object stays. The ✕
@@ -121,19 +135,27 @@ nothing:
   Nothing surfaces the leak.
 
 `beforeunload` cleanup was rejected — browsers do not guarantee the request lands, and it would fire
-on a deliberate refresh too, deleting files from a session the user was about to resume.
+on a deliberate refresh too, deleting files from a session the user was about to resume. It stayed
+rejected; so did an admin page with a sweep button, and every scheduled variant (Vercel Cron, an
+Edge Function, `pg_cron`) — all three run with nobody signed in, so all three need a service-role
+key. Decisions 1 and 5 of `docs/plans/orphan-image-sweep/decisions.md`.
 
-**The wanted fix** is an admin-side sweep: list the bucket, diff against
-`recipe_images.storage_path ∪ recipe_steps.image_path`, delete what nothing references.
+**The fix that shipped** is the sweep this entry described: list the bucket, diff against
+`recipe_images.storage_path ∪ recipe_steps.image_path`, delete what nothing references — triggered
+by the writes that create the leak rather than by a screen.
 
-> ⚠ **Only objects older than roughly 24 hours are candidates.** A file uploaded thirty seconds ago
-> by a wizard that is still open is unreferenced but _not_ orphaned, and a naive diff would delete a
-> photo out from under a live editing session. The age floor only has to exceed the longest
-> plausible wizard session; 24 hours is a guess with room in it.
+> ⚠ **Only objects older than the age floor are candidates.** A file uploaded thirty seconds ago by
+> a wizard that is still open is unreferenced but _not_ orphaned, and a naive diff would delete a
+> photo out from under a live editing session. The 24 hours guessed here became **seven days** in
+> `MIN_AGE_MS`: the floor's only cost is how long an orphan lingers, which nothing observes, and its
+> benefit is never breaking a live recipe.
 
 The sweep's `.list()` needs the `select` policy on `storage.objects` that
 `20260808140816_recipe_images_storage.sql` already grants — see
-[image-storage.md](image-storage.md).
+[image-storage.md](image-storage.md). Its anti-join has a second dependency, recorded in the
+migration itself: it is `security invoker`, so it is only correct while `authenticated` can read
+**every** row of `recipe_images` and `recipe_steps`. Narrow either SELECT policy and unreadable rows
+start reporting as unreferenced.
 
 ## 5. Storage drift is invisible to the default diff engine, and the bucket row to every engine
 

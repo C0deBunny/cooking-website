@@ -2,9 +2,11 @@
 
 // import lib
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { revalidatePath, updateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server-client";
 import { IMAGE_BUCKET } from "@/lib/supabase/storage";
+import { sweepOrphans } from "@/lib/images/sweep";
 import { getCurrentUser, requireUser } from "@/lib/auth/queries";
 import { isSlugTaken } from "@/lib/recipes/queries";
 import { detailsSchema, publishToggleSchema, recipeIdSchema, recipeSchema, slugTakenMessage, type RecipeFormState, type RecipeMutationState } from "@/lib/recipes/schema";
@@ -121,6 +123,15 @@ export async function saveRecipe(_prevState: RecipeFormState, formData: FormData
   // this same response for the preview below to show what was just written.
   updateTag("recipes");
 
+  // ⚠ Registered **before** the redirect, and that is not a style choice: redirect() throws, so a
+  // line below it never runs and there is no error anywhere to say the sweep was never scheduled.
+  //
+  // A save is one of the two events that can have leaked a file — an abandoned wizard tab in
+  // another window, and later a replaced image — so it is the event that collects. after() runs
+  // this once the response is flushed, in this request's auth context, which is why no
+  // service-role key is involved. It never throws and never blocks; see lib/images/sweep.ts.
+  after(sweepOrphans);
+
   // The preview route rather than the public one, because it reads with the authenticated
   // client and therefore works whether or not the recipe was published.
   redirect(`/admin/preview/${parsed.data.slug}`);
@@ -233,6 +244,12 @@ export async function deleteRecipe(id: number): Promise<RecipeMutationState> {
     // and more plainly than a count check here could.
     await supabase.storage.from(IMAGE_BUCKET).remove(paths);
   }
+
+  // Immediately after the call above, because that call is the one whose silent failure is one of
+  // the three leak sources known issue 4 listed: it reports nothing, so this is the only moment
+  // that knows a leak may just have happened. The sweep's own age floor means it will not collect
+  // *these* files today — it is the earlier strays it picks up now, and these in a week.
+  after(sweepOrphans);
 
   updateTag("recipes");
   revalidatePath("/admin/manage");

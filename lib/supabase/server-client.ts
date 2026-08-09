@@ -17,6 +17,11 @@ export async function createClient() {
         return cookieStore.getAll();
       },
       setAll(cookiesToSet) {
+        // The empty catch is the standard SSR pattern — a server component cannot set a cookie,
+        // and proxy.ts refreshes the session anyway — but it is now also load-bearing for
+        // lib/images/sweep.ts. That runs inside after(), i.e. after the response has been
+        // flushed, and a client created there throws on any attempt to write a cookie. Swallowing
+        // it is what lets the sweep authenticate as the signed-in owner at all.
         try {
           cookiesToSet.forEach(({ name, value, options }) => {
             cookieStore.set(name, value, options);

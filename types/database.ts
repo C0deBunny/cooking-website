@@ -186,6 +186,7 @@ export type Database = {
     };
     Functions: {
       save_recipe: { Args: { payload: Json }; Returns: number };
+      unreferenced_image_paths: { Args: { paths: string[] }; Returns: string[] };
     };
     Enums: {
       recipe_difficulty: "easy" | "medium" | "hard";

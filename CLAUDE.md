@@ -54,7 +54,10 @@ lib/<domain>/actions.ts   writes — "use server". Only async functions may be e
 lib/<domain>/schema.ts    zod schemas + the useActionState state type.
 ```
 
-`lib/auth/` and `lib/recipes/` both follow it in full; follow the same shape for new domains.
+`lib/auth/` and `lib/recipes/` both follow it in full; follow the same shape for new domains. The one
+exception is `lib/images/`, which holds a single plain module — the shape has no slot for an internal
+server-side write that must not become an endpoint. See the storage rule under Auth & permissions
+before adding a second one.
 Route-specific **components** colocate under their route in `_components/`, but domain logic does
 not — recipes are read from three routes.
 
@@ -109,6 +112,10 @@ also run by `db:types`).
   and `recipe_steps` rows and leaves the photos they name in the bucket forever. Read the paths
   _before_ the row delete, remove the files _after_ it, and never fail the action on a storage error
   — [docs/image-storage.md](docs/image-storage.md) explains which way each half-failure has to fall.
+  **The second file-cleanup path is `lib/images/sweep.ts`**, scheduled with `after()` by `saveRecipe`
+  and `deleteRecipe`: it collects files nothing references, through the `unreferenced_image_paths()`
+  anti-join. That function is `security invoker` — **narrow the SELECT policy on `recipe_images` or
+  `recipe_steps` and it starts reporting live photos as garbage.** The warning is in the migration.
 - **Don't reintroduce hand-written row types.** `types/recipes.ts` derives from the generated types.
 
 Migration loop, the `db query` escape hatch, destructive-migration gating, and why `save_recipe`
@@ -148,8 +155,10 @@ and uploaded the moment the crop is confirmed. Two things are load-bearing here 
 
 - **The draft holds a path, never a `File`.** Uploading eagerly is what keeps the submit one JSON
   blob and one transaction; the alternative — hold the file, upload after the recipe exists — turns
-  one atomic write into three independently-failing phases. The cost accepted is orphaned files,
-  logged in [docs/known-issues.md](docs/known-issues.md).
+  one atomic write into three independently-failing phases. The cost is orphaned files, which
+  `lib/images/sweep.ts` now collects — not instantly, though: an orphan survives a seven-day age
+  floor, and nothing is collected at all if the owner stops writing. See
+  [docs/image-storage.md](docs/image-storage.md) question 7.
 - **Upload write-backs go through `replaceById`, never `replaceAt`.** An upload resolves seconds
   after it starts, and a positional write lands the finished path on whichever step now sits at that
   index — leaving the real one busy forever with Publish disabled and nothing on screen saying why.
@@ -205,8 +214,15 @@ Full model, including the rebuild path if personal accounts are ever added:
 gets nothing, because the public bucket serves bytes without touching that table. **Don't add a fifth
 migration granting what is already granted** — duplicate policies under fresh names show up as
 permanent drift in `npm run db:diff:storage` — and don't add them by clicking, per the Database rule
-above. The select policy is load-bearing for _deletes_, not decoration:
-[docs/image-storage.md](docs/image-storage.md).
+above. The select policy is load-bearing for _deletes_ and for the orphan sweep's `.list()`, not
+decoration: [docs/image-storage.md](docs/image-storage.md).
+
+**`lib/images/sweep.ts` must never become a server action**, and nothing in it may be re-exported
+from a `"use server"` file. Every export from one compiles to a public HTTP endpoint, and this one
+deletes files — not creating the endpoint beats defending it. It is why `lib/images/` is the single
+folder under `lib/` without the queries/actions/schema trio; that is deliberate, not an omission.
+Its `after()` in `saveRecipe` also has to stay **above** the `redirect()`, which throws: below that
+line it never registers, and nothing reports it.
 
 ## Conventions
 

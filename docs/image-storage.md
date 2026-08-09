@@ -33,7 +33,10 @@ shape can change without a data migration. Preserve it.
   `publicImageUrl(path)`.
 - `app/admin/_components/recipe-wizard/upload.ts` — decode, crop, compress, upload, remove.
 - `app/admin/_components/recipe-wizard/CropDialog.tsx` — the 1:1 crop picker.
-- `lib/recipes/actions.ts` — `deleteRecipe` removes a recipe's files.
+- `lib/recipes/actions.ts` — `deleteRecipe` removes a recipe's files; `saveRecipe` and
+  `deleteRecipe` each schedule the orphan sweep in `after()`.
+- `lib/images/sweep.ts` — the orphan sweep. **Deliberately not a server action**, and the only
+  folder under `lib/` without CLAUDE.md's queries/actions/schema trio; see question 7.
 
 **In `supabase/config.toml`** — `[storage] enabled = true`, and a commented-out
 `[storage.buckets.images]` example.
@@ -91,9 +94,35 @@ pipeline — and nothing else enforces that pipeline, which lives in one client-
 `[storage.image_transformation]` is Pro-plan only, so server-side resizing was never an option;
 `next/image` handles the rest at render time.
 
-**7. Orphan cleanup.** Not built, deliberately, and recorded as
-[known issue 4](known-issues.md). The ✕ control deletes its file immediately, which narrows the leak
-to "closed the tab".
+**7. Orphan cleanup.** Built on 2026-08-09, in `lib/images/sweep.ts` — the ✕ control deletes its
+file immediately, which narrowed the leak to "closed the tab", and this collects what is left.
+[Known issue 4](known-issues.md) is closed; the reasoning is `docs/plans/orphan-image-sweep/`.
+
+`sweepOrphans()` is scheduled with `after()` at the end of `saveRecipe` and `deleteRecipe` — the two
+events that can have caused a leak. Running after the response is flushed means the owner waits for
+nothing; running **inside the request's auth context** is what lets it use the ordinary cookie-backed
+client, which is the whole reason this needed no service-role key and no scheduled job. Four filters
+stand between the bucket and a delete, and each fails toward keeping a file: full enumeration → the
+`IMAGE_PATH_PATTERN` gate → a seven-day age floor → a `security invoker` anti-join in Postgres. What
+survives is capped at 25 per run, oldest first.
+
+Three things are load-bearing and easy to undo:
+
+- **It must never become a server action.** Every export from a `"use server"` file compiles to a
+  public HTTP endpoint, and this one deletes files. That is why it sits in a plain module rather
+  than in an `actions.ts`.
+- **The `after()` in `saveRecipe` must be registered before `redirect()`,** which throws. Below that
+  line it never registers, and nothing anywhere reports it.
+- **The anti-join is only correct while `authenticated` reads every row** of `recipe_images` and
+  `recipe_steps`. A row the caller cannot see is a reference the function does not find, and it
+  answers "unreferenced" — so a narrowed SELECT policy turns the sweep on live photos. The warning
+  is in the migration, where whoever narrows a policy will be.
+
+**The residual cost**, which is why `CLAUDE.md` no longer calls orphaned files an accepted permanent
+cost but does not call them solved either: an orphan lives at least seven days; nothing is collected
+at all if the owner stops writing; and there is no page and no heartbeat, so a sweep that throws on
+its first line looks exactly like one that had nothing to do. The probe below is the whole of the
+evidence.
 
 ## The trap: cascade deletes rows, not files
 
@@ -135,6 +164,24 @@ silent, nothing would ever say so. The future sweep's `.list()` needs the same g
 **How to check it end to end:** signed in on `/admin`, upload a small webp through the wizard, then
 delete the recipe and confirm the object is gone from the bucket. A remove that reports success while
 the file survives is this policy having regressed.
+
+**The sweep's probe, same shape and same failure mode.** It is the only evidence the sweep works at
+all, so run it before trusting a change to it — and re-run it whenever a regression is suspected:
+
+1. Upload a photo through the wizard and close the tab, leaving one file nothing references.
+2. Temporarily set `MIN_AGE_MS` to `0` in `lib/images/sweep.ts`. Without this there is nothing to
+   see for a week, which is most of why the floor is a named constant.
+3. Save any recipe, and read the `[orphan-sweep]` line in the server log.
+4. Confirm the object is gone from the bucket, the log line names it — **and that the referenced
+   files are still there.** The second half is the point; the first half only proves it ran.
+5. Restore the constant.
+
+A line reading `removed 0/1` is the `select` policy on `storage.objects` having regressed: same
+cause as the ✕ control's probe above, which is why the sweep logs the returned count against the
+requested one rather than just announcing what it asked for.
+
+> ⚠ **There is no local stack — `npm run dev` sweeps the production bucket.** True of all storage
+> work in this repo, and worth remembering the one time the floor is deliberately set to `0`.
 
 ## Alt text: `alt=""`, and the column is gone
 

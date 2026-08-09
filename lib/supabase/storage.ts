@@ -21,8 +21,11 @@ export const IMAGE_BUCKET = "recipe-images";
  * parts nobody touches. Stating the prefix once and building the regex from it is what stops the
  * builder and the validator from disagreeing: a change to one that silently breaks saves is
  * exactly the footgun a brand-new file has no excuse to ship with. Decision 44.
+ *
+ * Exported for `lib/images/sweep.ts`, which needs the folder to enumerate and needs to rejoin the
+ * names `.list()` returns relative to it. Same reason as the regex: one definition, not three.
  */
-const PATH_PREFIX = "recipes/";
+export const PATH_PREFIX = "recipes/";
 
 /** `recipes/<uuid>.webp`. Flat, and the uuid claims nothing about which recipe owns the file. */
 export function buildImagePath() {
