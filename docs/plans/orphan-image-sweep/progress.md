@@ -9,7 +9,7 @@
 
 ## 2026-08-09
 
-- Did: built the whole plan. `20260809202910_unreferenced_image_paths.sql` (pushed to the linked
+- Did: built the whole plan (88022a8). `20260809202910_unreferenced_image_paths.sql` (pushed to the linked
   project), regenerated `types/database.ts` + `docs/schema-current.html`, `lib/images/sweep.ts`, the
   two `after()` calls in `lib/recipes/actions.ts`, and the doc edits — known issue 4 closed,
   `image-storage.md` question 7 rewritten with the probe, three `CLAUDE.md` rules.
