@@ -225,3 +225,24 @@ than like a gap.
 The draft shape the wizard uses is the shape an edit would hydrate into, so a real edit path is
 wiring rather than a rewrite — including for images, where a saved `recipe_steps.id` drops into the
 same `StepDraft.id` field the uploads already write back through.
+
+## 8. `Separator` renders 0px unless the caller supplies a border
+
+- **Found:** 2026-08-10, measuring the publish bar's divider during the review-and-publish revamp
+- **Status:** open, unfixed. One-line fix in a generated file, so it needs a decision first
+- **Where:** `components/ui/separator.tsx`; visible consequence in `components/shared/RecipeArticle.tsx`
+
+The component's classes are `data-horizontal:h-px data-horizontal:w-full data-vertical:w-px
+data-vertical:self-stretch`, and **radix sets `data-orientation`, never `data-horizontal`.** Tailwind
+reads `data-horizontal:` as the bare attribute selector `[data-horizontal]`, so none of those four
+utilities ever match: every `<Separator>` gets `height: 0` (horizontal) or `width: 0` (vertical) and
+paints nothing. Measured in the browser — `RecipeArticle`'s two `<Separator className="my-12" />`
+rules are 720px × **0px**, so the Ingredients/Method/Notes dividers are invisible on the public
+recipe page, the draft preview and the wizard's preview alike. The navbar's dividers look fine only
+because they add `border-l border-border` themselves, which is the workaround the publish bar copies.
+
+The fix is `data-[orientation=horizontal]:` / `data-[orientation=vertical]:`, which is what current
+shadcn ships. It is held back for two reasons: `components/ui/` is regenerated rather than
+hand-edited (see `CLAUDE.md`), so the durable fix is a `shadcn` re-add rather than a patch; and it
+changes the **public** recipe page's appearance — three horizontal rules appear where there are none
+today — which is a design call, not a bug fix to be slipped into an unrelated diff.

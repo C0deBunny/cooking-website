@@ -209,7 +209,13 @@ export default function RecipeWizard() {
       ) : null}
 
       {/* The preview rail is a grid column on steps 1–3 and gone entirely on Review, where the
-          article is rendered full width underneath the checklist instead. */}
+          article is the panel: the whole width, on the page's own background, under a sticky
+          publish bar. A rail there would mean the same slot showing a preview for three steps and
+          then controls on the fourth (decision 2).
+
+          This single-column div is also the publish bar's containing block, which is what gives the
+          bar its travel — it is as tall as the whole article. Adding `overflow` or a transform
+          anywhere from here up kills the sticky silently. */}
       <div className={step === 3 ? "grid grid-cols-1 gap-5" : "grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1.85fr)_minmax(19rem,0.95fr)]"}>
         <div className="min-w-0">
           {step === 0 ? <DetailsPanel draft={draft} takenSlug={takenSlug} onPatch={patch} onCover={setCover} onNext={() => go(1)} /> : null}

@@ -150,3 +150,10 @@ Four of them exist because the grilling falsified something in the first proposa
   an endorsement. It is also the most reversible thing in the plan: keeping the `Switch` costs nothing
   else in the design, since decision 3's swapping address line works either way. Revisit it first if
   any of this needs trimming.
+- **Amended on implementation, 2026-08-10 — kept, but not stock.** `ToggleGroupItem`'s built-in
+  `data-[state=on]:bg-muted` is a tint that disappears on a `bg-card` bar: on screen both items read
+  identically, which is the exact failure this decision exists to fix. The control is a `bg-muted`
+  track with the selected item lifted onto `bg-card` with a shadow — the shape the prototype drew.
+  The empty-value guard is verified: pressing the selected item leaves it selected. So is the other
+  half — `type="button"` is on both items in the DOM, and neither a click nor <kbd>Enter</kbd> on one
+  submits the form.

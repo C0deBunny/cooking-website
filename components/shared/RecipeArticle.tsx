@@ -136,14 +136,14 @@ const PLACEHOLDER_META = [
  * It changes nothing about a *filled* article, so the preview and the published page still can't
  * drift — the flag only decides what stands in for what is missing.
  *
- * `align` moves the 3xl reading column, and nothing inside it. On a recipe page the column is
- * centred in the viewport, which is where a body of text belongs; on Review it sits inside a card
- * that is already part of a left-aligned wizard, and centring a narrower column inside a wider
- * panel just makes it float away from the checklist above it. Both stay one layout — the column
- * width, the type scale and the spacing are untouched.
+ * The 3xl reading column is always centred, on all four call sites. There used to be an `align`
+ * prop that could pin it left, for the wizard's Review panel alone: a narrower column centred
+ * inside the wider panel floated away from the completeness checklist above it. That checklist is
+ * gone, and with it the prop's only caller — so the prop went too rather than lingering as a
+ * setting nothing sets.
  */
-export default function RecipeArticle({ recipe, placeholders = false, align = "center" }: { recipe: RecipeView; placeholders?: boolean; align?: "center" | "start" }) {
-  const column = cn("w-full max-w-3xl", align === "center" && "mx-auto");
+export default function RecipeArticle({ recipe, placeholders = false }: { recipe: RecipeView; placeholders?: boolean }) {
+  const column = "w-full max-w-3xl mx-auto";
 
   // Computed here rather than stored: a generated total column would have had to decide whether
   // a recipe with no times recorded means 0 or unknown. See decision 9.
