@@ -26,6 +26,14 @@ import type { RecipeView } from "@/types/recipes";
  * focused, and doing it would mean either giving the shared article a wizard-shaped prop or
  * styling its internals from out here. Scrolling to the section says the same thing and costs
  * neither.
+ *
+ * `top-16` is the navbar's height, not a taste: `Navbar` is `sticky top-0 z-40 h-16` on every route
+ * and its own comment says *"Change it and grep top-16."* This stuck at `top-6` for a while and
+ * nobody saw it, because on a short draft the rail does not stick at all — `items-start` sizes the
+ * grid container to its tallest child and the rail *is* that child, so it has zero travel. Around
+ * seven steps in, `roomToStick` becomes ~680px, sticky engages, and 40px of the rail — the whole
+ * "Live preview" line — disappears behind the navbar. Verify this with a long draft or you are
+ * verifying nothing.
  */
 export default function PreviewRail({ recipe, step }: { recipe: RecipeView; step: number }) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -42,7 +50,7 @@ export default function PreviewRail({ recipe, step }: { recipe: RecipeView; step
   }, [step]);
 
   return (
-    <Card className="sticky top-6 hidden gap-0 py-0 lg:block">
+    <Card className="sticky top-16 hidden gap-0 py-0 lg:block">
       <div className="border-b border-border px-4 py-3">
         <p className="text-sm font-semibold">Live preview</p>
         <p className="text-xs text-muted-foreground">This updates as you fill in the form.</p>
