@@ -1,0 +1,1516 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Review &amp; Publish — three revamp options</title>
+    <style>
+      /* ------------------------------------------------------------------ *
+ * Page chrome: dark. The mockups inside are the real app, which is
+ * light — fidelity to what you actually see beats theme consistency.
+ * ------------------------------------------------------------------ */
+      :root {
+        --ink: #0d0b0a;
+        --ink-2: #17130f;
+        --ink-3: #221c17;
+        --line: #352c24;
+        --text: #f2ebe4;
+        --text-dim: #a89a8c;
+        --orange: #f59e5b;
+        --green: #6bbf7a;
+        --red: #e8705f;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        background: var(--ink);
+        color: var(--text);
+        font-family:
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          sans-serif;
+        font-size: 15px;
+        line-height: 1.55;
+        padding: 40px 32px 80px;
+      }
+      .wrap {
+        max-width: 1180px;
+        margin: 0 auto;
+      }
+
+      h1 {
+        font-size: 28px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        margin: 0 0 8px;
+      }
+      .sub {
+        color: var(--text-dim);
+        margin: 0 0 28px;
+        max-width: 78ch;
+      }
+      .sub b {
+        color: var(--text);
+        font-weight: 600;
+      }
+
+      /* ---- tabs ---- */
+      .tabs {
+        display: flex;
+        gap: 6px;
+        background: var(--ink-2);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 6px;
+        margin-bottom: 6px;
+        flex-wrap: wrap;
+      }
+      .tab {
+        flex: 1 1 0;
+        min-width: 150px;
+        appearance: none;
+        border: 0;
+        cursor: pointer;
+        background: transparent;
+        color: var(--text-dim);
+        font: inherit;
+        font-weight: 600;
+        padding: 10px 14px;
+        border-radius: 9px;
+        text-align: left;
+        transition:
+          background 0.12s,
+          color 0.12s;
+      }
+      .tab small {
+        display: block;
+        font-weight: 400;
+        font-size: 12px;
+        opacity: 0.8;
+      }
+      .tab:hover {
+        background: var(--ink-3);
+        color: var(--text);
+      }
+      .tab[aria-selected="true"] {
+        background: var(--orange);
+        color: #2a1607;
+      }
+      .tab[aria-selected="true"] small {
+        opacity: 0.75;
+      }
+
+      .hint {
+        color: var(--text-dim);
+        font-size: 13px;
+        margin: 0 0 22px;
+      }
+      .hint kbd {
+        background: var(--ink-3);
+        border: 1px solid var(--line);
+        border-radius: 5px;
+        padding: 1px 6px;
+        font-size: 12px;
+        font-family: inherit;
+      }
+
+      /* ---- panes ---- */
+      .pane {
+        display: none;
+      }
+      .pane.on {
+        display: block;
+      }
+
+      /* ---- the scaled app frame ---- */
+      .frame {
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        overflow: hidden;
+        background: #100d0b;
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+      }
+      .frame-bar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 9px 14px;
+        background: var(--ink-3);
+        border-bottom: 1px solid var(--line);
+      }
+      .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #4a3d33;
+      }
+      .frame-url {
+        margin-left: 10px;
+        font-size: 12px;
+        color: var(--text-dim);
+        font-family: ui-monospace, Consolas, monospace;
+      }
+
+      /* The app is authored at real pixel sizes (1536 wide) and scaled down, so
+   every proportion below — the 768px article column inside a 1232px card —
+   is the real one. */
+      .scaler {
+        height: 660px;
+        overflow: hidden;
+        position: relative;
+      }
+      .scroll {
+        width: 1536px;
+        height: 1257px;
+        transform: scale(0.5254);
+        transform-origin: top left;
+        overflow-y: auto;
+        overflow-x: hidden;
+      }
+
+      /* ------------------------------------------------------------------ *
+ * The app itself — tokens lifted from app/globals.css
+ * ------------------------------------------------------------------ */
+      .app {
+        --background: oklch(0.98 0.016 73.684);
+        --foreground: oklch(0.147 0.004 49.25);
+        --card: oklch(1 0 0);
+        --primary: oklch(0.75 0.183 55.934);
+        --primary-foreground: oklch(0.9851 0 0);
+        --muted: oklch(0.9702 0 0);
+        --muted-foreground: oklch(0.5555 0 0);
+        --border: oklch(0.9219 0 0);
+        --sidebar: oklch(0.965 0.014 73.684);
+        --easy: oklch(0.45 0.13 150);
+        --easy-bg: oklch(0.93 0.06 150);
+        --radius: 16px;
+
+        display: flex;
+        min-height: 1257px;
+        width: 1536px;
+        background: var(--background);
+        color: var(--foreground);
+        font-family: ui-sans-serif, system-ui, sans-serif;
+      }
+
+      .rail {
+        width: 256px;
+        flex: 0 0 256px;
+        background: var(--sidebar);
+        border-right: 1px solid var(--border);
+        padding: 20px 16px;
+      }
+      .rail-brand {
+        font-weight: 700;
+        font-size: 15px;
+        margin-bottom: 22px;
+      }
+      .rail-item {
+        font-size: 14px;
+        color: var(--muted-foreground);
+        padding: 9px 12px;
+        border-radius: 10px;
+        margin-bottom: 3px;
+      }
+      .rail-item.active {
+        background: oklch(0.945 0.012 73.684);
+        color: var(--foreground);
+        font-weight: 600;
+        box-shadow: inset 3px 0 0 var(--primary);
+      }
+
+      .main {
+        flex: 1;
+        min-width: 0;
+        padding: 32px 24px;
+      }
+      .mainInner {
+        max-width: 1280px;
+        margin: 0 auto;
+      }
+
+      .h1 {
+        font-size: 24px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        margin: 0 0 2px;
+      }
+      .h1sub {
+        font-size: 14px;
+        color: var(--muted-foreground);
+        margin: 0 0 24px;
+      }
+
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      }
+
+      /* ---- stepper ---- */
+      .stepper {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        padding: 20px 24px;
+        margin-bottom: 24px;
+      }
+      .stepitem {
+        display: flex;
+        align-items: flex-start;
+      }
+      .stepbtn {
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+        padding: 4px;
+      }
+      .stepicon {
+        width: 36px;
+        height: 36px;
+        flex: 0 0 36px;
+        border-radius: 50%;
+        background: var(--muted);
+        color: var(--muted-foreground);
+        display: grid;
+        place-items: center;
+        font-size: 15px;
+      }
+      .stepicon.done {
+        background: var(--easy-bg);
+        color: var(--easy);
+        border: 1px solid oklch(0.45 0.13 150 / 0.35);
+      }
+      .stepicon.cur {
+        background: var(--primary);
+        color: var(--primary-foreground);
+      }
+      .steptitle {
+        font-size: 14px;
+        font-weight: 700;
+        display: flex;
+        gap: 6px;
+        align-items: center;
+      }
+      .stepstatus {
+        font-size: 12px;
+        color: var(--muted-foreground);
+      }
+      .stepstatus.done {
+        color: var(--easy);
+      }
+      .tick {
+        color: var(--easy);
+        font-weight: 700;
+      }
+      .connector {
+        flex: 1;
+        height: 2px;
+        background: var(--border);
+        border-radius: 2px;
+        margin: 22px 12px 0;
+        max-width: 96px;
+      }
+      .connector.done {
+        background: oklch(0.45 0.13 150 / 0.55);
+      }
+
+      /* ---- review card bits ---- */
+      .pad {
+        padding: 24px;
+      }
+      .cardtitle {
+        font-size: 18px;
+        font-weight: 700;
+        margin: 0 0 4px;
+      }
+      .carddesc {
+        font-size: 14px;
+        color: var(--muted-foreground);
+        margin: 0;
+      }
+
+      .checklist {
+        display: grid;
+        gap: 10px;
+        margin: 20px 0 0;
+        padding: 0;
+        list-style: none;
+      }
+      .checkrow {
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 12px 14px;
+      }
+      .checkrow .tick {
+        margin-top: 1px;
+      }
+      .checkrow-l {
+        font-size: 14px;
+        font-weight: 600;
+      }
+      .checkrow-v {
+        font-size: 12px;
+        color: var(--muted-foreground);
+      }
+
+      .switchrow {
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+        border: 1px solid var(--border);
+        background: oklch(0.147 0.004 49.25 / 0.05);
+        border-radius: 12px;
+        padding: 16px;
+        margin-top: 20px;
+      }
+      .switch {
+        width: 34px;
+        height: 20px;
+        flex: 0 0 34px;
+        border-radius: 999px;
+        background: oklch(0.147 0.004 49.25 / 0.18);
+        position: relative;
+        margin-top: 2px;
+      }
+      .switch::after {
+        content: "";
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: #fff;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+      }
+      .switch.on {
+        background: var(--primary);
+      }
+      .switch.on::after {
+        left: 16px;
+      }
+      .switchlabel {
+        font-size: 14px;
+        font-weight: 600;
+      }
+      .switchhelp {
+        font-size: 12px;
+        color: var(--muted-foreground);
+      }
+
+      .nav {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-top: 1px solid var(--border);
+        margin-top: 24px;
+        padding-top: 20px;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        border-radius: 999px;
+        padding: 9px 18px;
+        border: 1px solid transparent;
+      }
+      .btn-primary {
+        background: var(--primary);
+        color: var(--primary-foreground);
+      }
+      .btn-outline {
+        background: var(--card);
+        border-color: var(--border);
+        color: var(--foreground);
+      }
+      .btn-ghost {
+        color: var(--muted-foreground);
+      }
+
+      /* ---- the article (RecipeArticle, unchanged in every option) ---- */
+      .article {
+        width: 100%;
+      }
+      .column {
+        width: 100%;
+        max-width: 768px;
+      }
+      .column.center {
+        margin-left: auto;
+        margin-right: auto;
+      }
+      .hdr {
+        background: oklch(0.147 0.004 49.25 / 0.05);
+        width: 100%;
+      }
+      .cover {
+        position: relative;
+        aspect-ratio: 1 / 1;
+        overflow: hidden;
+      }
+      /* Stand-in for the photo — a lattice pie on a dark table, drawn in CSS so
+   the file stays self-contained. */
+      .photo {
+        position: absolute;
+        inset: 0;
+        background: repeating-linear-gradient(96deg, #4a3524 0 26px, #3d2b1d 26px 54px), #43301f;
+      }
+      .pie {
+        position: absolute;
+        left: 8%;
+        right: 8%;
+        top: 16%;
+        height: 62%;
+        border-radius: 50% / 34%;
+        background: radial-gradient(ellipse at 50% 34%, #f3cd8a 0%, #e5b264 42%, #cf9445 68%, #b87c34 100%);
+        box-shadow:
+          0 26px 46px rgba(0, 0, 0, 0.45),
+          inset 0 -18px 26px rgba(140, 86, 30, 0.5);
+      }
+      .pie::after {
+        content: "";
+        position: absolute;
+        inset: 4% 5% 22%;
+        border-radius: 50% / 44%;
+        background:
+          repeating-linear-gradient(48deg, rgba(247, 214, 150, 0.95) 0 14px, rgba(196, 132, 58, 0.35) 14px 30px),
+          repeating-linear-gradient(-48deg, rgba(247, 214, 150, 0.9) 0 14px, rgba(196, 132, 58, 0.3) 14px 30px);
+        background-blend-mode: lighten;
+        opacity: 0.85;
+      }
+      .plate {
+        position: absolute;
+        left: 6%;
+        right: 6%;
+        top: 68%;
+        height: 9%;
+        border-radius: 50%;
+        background: linear-gradient(#e6e6e4, #b9b9b6);
+        opacity: 0.9;
+      }
+      .scrim {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(to top, rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.25) 45%, transparent);
+      }
+      .coverText {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        padding: 32px 24px;
+        color: #fff;
+      }
+      .badge {
+        display: inline-block;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 3px 10px;
+        border-radius: 999px;
+        background: var(--easy-bg);
+        color: var(--easy);
+      }
+      .artTitle {
+        font-size: 36px;
+        font-weight: 700;
+        margin: 16px 0;
+        letter-spacing: -0.02em;
+      }
+      .artDesc {
+        font-size: 18px;
+        color: rgba(255, 255, 255, 0.8);
+        margin: 0;
+      }
+      .meta {
+        display: flex;
+        gap: 32px;
+        margin-top: 32px;
+      }
+      .meta dt {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: rgba(255, 255, 255, 0.7);
+      }
+      .meta dd {
+        font-size: 16px;
+        font-weight: 500;
+        margin: 0;
+      }
+      .body {
+        padding: 48px 24px;
+      }
+      .h2 {
+        font-size: 24px;
+        font-weight: 600;
+        margin: 0 0 24px;
+      }
+      .ing {
+        display: flex;
+        gap: 16px;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 8px;
+        margin-bottom: 8px;
+      }
+      .ing b {
+        font-variant-numeric: tabular-nums;
+      }
+      .ing span {
+        color: var(--muted-foreground);
+      }
+      .sep {
+        height: 1px;
+        background: var(--border);
+        margin: 48px 0;
+      }
+      .stepli {
+        display: flex;
+        gap: 16px;
+        margin-bottom: 32px;
+      }
+      .stepnum {
+        width: 32px;
+        height: 32px;
+        flex: 0 0 32px;
+        border-radius: 50%;
+        background: oklch(0.147 0.004 49.25 / 0.05);
+        display: grid;
+        place-items: center;
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      /* ---- option-specific ---- */
+      .publishbar {
+        position: sticky;
+        top: 0;
+        z-index: 5;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 14px 18px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.07);
+      }
+      .addr {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        flex: 1;
+      }
+      .addr-l {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--muted-foreground);
+      }
+      .addr-v {
+        font-family: ui-monospace, Consolas, monospace;
+        font-size: 14px;
+        font-weight: 600;
+      }
+      .seg {
+        display: flex;
+        background: var(--muted);
+        border-radius: 999px;
+        padding: 3px;
+      }
+      .seg span {
+        font-size: 13px;
+        font-weight: 600;
+        padding: 6px 16px;
+        border-radius: 999px;
+        color: var(--muted-foreground);
+      }
+      .seg span.on {
+        background: var(--card);
+        color: var(--foreground);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+      }
+      .vr {
+        width: 1px;
+        height: 30px;
+        background: var(--border);
+      }
+
+      .pagesurface {
+        background: oklch(0.98 0.016 73.684);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        overflow: hidden;
+      }
+
+      .railcol {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 304px;
+        gap: 20px;
+        align-items: start;
+      }
+      .sticky {
+        position: sticky;
+        top: 0;
+      }
+
+      /* ---- annotation overlay ---- */
+      .note {
+        position: absolute;
+        z-index: 40;
+        font-size: 12px;
+        font-weight: 600;
+        line-height: 1.35;
+        background: var(--red);
+        color: #2a0d08;
+        padding: 6px 10px;
+        border-radius: 8px;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+        max-width: 230px;
+      }
+      .note.good {
+        background: var(--green);
+        color: #06240d;
+      }
+      .note::after {
+        content: "";
+        position: absolute;
+        width: 0;
+        height: 0;
+      }
+      .ann {
+        position: absolute;
+        z-index: 39;
+        border: 2px dashed var(--red);
+        border-radius: 10px;
+        pointer-events: none;
+      }
+      .ann.good {
+        border-color: var(--green);
+      }
+
+      /* ---- caption under each frame ---- */
+      .caption {
+        margin-top: 18px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+      }
+      .box {
+        background: var(--ink-2);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 14px 16px;
+      }
+      .box h3 {
+        margin: 0 0 8px;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--text-dim);
+        font-weight: 700;
+      }
+      .box ul {
+        margin: 0;
+        padding-left: 18px;
+      }
+      .box li {
+        margin-bottom: 6px;
+        font-size: 13.5px;
+      }
+      .box li:last-child {
+        margin-bottom: 0;
+      }
+      .box code {
+        font-family: ui-monospace, Consolas, monospace;
+        font-size: 12.5px;
+        background: var(--ink-3);
+        padding: 1px 5px;
+        border-radius: 4px;
+      }
+      .box.win h3 {
+        color: var(--green);
+      }
+      .box.cost h3 {
+        color: var(--red);
+      }
+      @media (max-width: 860px) {
+        .caption {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>Review &amp; Publish — three ways out</h1>
+      <p class="sub">
+        Each frame is the real admin shell at real proportions (the article column really is 768px inside a 1232px card).
+        <b>Scroll inside a frame</b> — the square hero's height and the sticky bar only make their case in motion. <code>RecipeArticle</code> is byte-identical in all four; the public recipe page
+        never changes.
+      </p>
+
+      <div class="tabs" role="tablist">
+        <button class="tab" role="tab" aria-selected="true" data-pane="today">Today <small>what the screenshots show</small></button>
+        <button class="tab" role="tab" aria-selected="false" data-pane="a">A · Publish bar <small>sticky bar, centred preview</small></button>
+        <button class="tab" role="tab" aria-selected="false" data-pane="b">B · Right rail <small>controls beside the preview</small></button>
+        <button class="tab" role="tab" aria-selected="false" data-pane="c">C · Minimal edit <small>checklist deleted, card kept</small></button>
+      </div>
+      <p class="hint">Annotations toggle with <kbd>A</kbd> · tabs with <kbd>1</kbd>–<kbd>4</kbd></p>
+
+      <!-- =============================== TODAY =============================== -->
+      <section class="pane on" id="pane-today">
+        <div class="frame">
+          <div class="frame-bar"><i class="dot"></i><i class="dot"></i><i class="dot"></i><span class="frame-url">localhost:3000/admin/create</span></div>
+          <div class="scaler">
+            <div class="scroll">
+              <div class="app">
+                <aside class="rail">
+                  <div class="rail-brand">Chique's Swiet Mofo</div>
+                  <div class="rail-item">Dashboard</div>
+                  <div class="rail-item">Manage recipes</div>
+                  <div class="rail-item active">Create recipe</div>
+                </aside>
+                <main class="main">
+                  <div class="mainInner">
+                    <h2 class="h1">Recipe Creator</h2>
+                    <p class="h1sub">Add a recipe to the site.</p>
+
+                    <div class="card stepper" id="today-stepper">
+                      <div class="stepitem">
+                        <div class="stepbtn">
+                          <div class="stepicon done">i</div>
+                          <div>
+                            <div class="steptitle">Details <span class="tick">✓</span></div>
+                            <div class="stepstatus done">Complete</div>
+                          </div>
+                        </div>
+                        <div class="connector done"></div>
+                      </div>
+                      <div class="stepitem">
+                        <div class="stepbtn">
+                          <div class="stepicon done">🍴</div>
+                          <div>
+                            <div class="steptitle">Ingredients <span class="tick">✓</span></div>
+                            <div class="stepstatus done">Complete</div>
+                          </div>
+                        </div>
+                        <div class="connector done"></div>
+                      </div>
+                      <div class="stepitem">
+                        <div class="stepbtn">
+                          <div class="stepicon done">☰</div>
+                          <div>
+                            <div class="steptitle">Steps <span class="tick">✓</span></div>
+                            <div class="stepstatus done">Complete</div>
+                          </div>
+                        </div>
+                        <div class="connector done"></div>
+                      </div>
+                      <div class="stepitem">
+                        <div class="stepbtn">
+                          <div class="stepicon cur">👨‍🍳</div>
+                          <div>
+                            <div class="steptitle">Review &amp; Publish</div>
+                            <div class="stepstatus">Ready</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="card">
+                      <div class="pad">
+                        <p class="cardtitle">Review &amp; publish</p>
+                        <p class="carddesc">Everything below is written in one save.</p>
+
+                        <ul class="checklist" id="today-checklist">
+                          <li class="checkrow">
+                            <span class="tick">✓</span>
+                            <div>
+                              <div class="checkrow-l">Details</div>
+                              <div class="checkrow-v">Appel taart · easy · 30 min prep + 40 min cooking</div>
+                            </div>
+                          </li>
+                          <li class="checkrow">
+                            <span class="tick">✓</span>
+                            <div>
+                              <div class="checkrow-l">Ingredients</div>
+                              <div class="checkrow-v">3 ingredients, serves 8</div>
+                            </div>
+                          </li>
+                          <li class="checkrow">
+                            <span class="tick">✓</span>
+                            <div>
+                              <div class="checkrow-l">Steps</div>
+                              <div class="checkrow-v">3 steps</div>
+                            </div>
+                          </li>
+                        </ul>
+
+                        <div class="switchrow" id="today-switch">
+                          <span class="switch"></span>
+                          <div>
+                            <div class="switchlabel">Publish immediately</div>
+                            <div class="switchhelp">Off saves it as a draft, visible only to you at /admin/preview/appel-taart.</div>
+                          </div>
+                        </div>
+
+                        <div class="nav">
+                          <span class="btn btn-outline">← Back</span>
+                          <span class="btn btn-primary">Save recipe</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="card" style="margin-top: 20px; padding: 0; overflow: hidden" id="today-article">
+                      <div class="article">
+                        <div class="hdr">
+                          <div class="column">
+                            <div class="cover">
+                              <div class="photo"></div>
+                              <div class="pie"></div>
+                              <div class="plate"></div>
+                              <div class="scrim"></div>
+                              <div class="coverText">
+                                <span class="badge">Easy</span>
+                                <h1 class="artTitle">Appel taart</h1>
+                                <p class="artDesc">Lekker appel taart voor het gezin</p>
+                                <dl class="meta">
+                                  <div>
+                                    <dt>Prep</dt>
+                                    <dd>30 min</dd>
+                                  </div>
+                                  <div>
+                                    <dt>Cooking</dt>
+                                    <dd>40 min</dd>
+                                  </div>
+                                  <div>
+                                    <dt>Total</dt>
+                                    <dd>1 h 10</dd>
+                                  </div>
+                                  <div>
+                                    <dt>Serves</dt>
+                                    <dd>8</dd>
+                                  </div>
+                                </dl>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="column body">
+                          <h2 class="h2">Ingredients</h2>
+                          <div class="ing"><b>8 stk</b><span>appels</span></div>
+                          <div class="ing"><b>5 ml</b><span>slagroom</span></div>
+                          <div class="ing"><b>4 kg</b><span>meel</span></div>
+                          <div class="sep"></div>
+                          <h2 class="h2">Method</h2>
+                          <div class="stepli">
+                            <span class="stepnum">1</span>
+                            <p style="margin: 4px 0">Schil de appels en snijd ze in blokjes.</p>
+                          </div>
+                          <div class="stepli">
+                            <span class="stepnum">2</span>
+                            <p style="margin: 4px 0">Meng het meel met de boter tot een deeg.</p>
+                          </div>
+                          <div class="stepli">
+                            <span class="stepnum">3</span>
+                            <p style="margin: 4px 0">Bak 40 minuten op 180 graden.</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </main>
+              </div>
+            </div>
+            <!-- annotations, positioned over the scaled frame -->
+            <div class="anns">
+              <div class="ann" style="left: 150px; top: 99px; width: 490px; height: 44px"></div>
+              <div class="note" style="left: 648px; top: 96px">The stepper already says Details ✓ · Ingredients ✓ · Steps ✓</div>
+              <div class="ann" style="left: 150px; top: 212px; width: 640px; height: 98px"></div>
+              <div class="note" style="left: 150px; top: 318px">…and the checklist says it a second time, three rows later.</div>
+              <div class="ann" style="left: 552px; top: 492px; width: 238px; height: 160px"></div>
+              <div class="note" style="left: 800px; top: 498px">Dead space: <code>align="start"</code> pins a 768px column to the left of a 1232px card.</div>
+            </div>
+          </div>
+        </div>
+        <div class="caption">
+          <div class="box cost">
+            <h3>What's wrong</h3>
+            <ul>
+              <li>Three ✓ marks in the stepper, three ✓ rows below it, then the article that shows the actual content — the same fact stated three times.</li>
+              <li>The one thing only this panel knows — the permanent URL — is 12px grey text at the end of a sentence.</li>
+              <li>Scroll down and <b>Save recipe</b> is gone off the top by the time you've read what you're saving.</li>
+            </ul>
+          </div>
+          <div class="box">
+            <h3>What's actually fine</h3>
+            <ul>
+              <li>The preview being the real <code>RecipeArticle</code>. No option below touches it.</li>
+              <li>The square hero on the live recipe page — you've ruled that in scope-free.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================================= A ================================= -->
+      <section class="pane" id="pane-a">
+        <div class="frame">
+          <div class="frame-bar"><i class="dot"></i><i class="dot"></i><i class="dot"></i><span class="frame-url">localhost:3000/admin/create — option A</span></div>
+          <div class="scaler">
+            <div class="scroll">
+              <div class="app">
+                <aside class="rail">
+                  <div class="rail-brand">Chique's Swiet Mofo</div>
+                  <div class="rail-item">Dashboard</div>
+                  <div class="rail-item">Manage recipes</div>
+                  <div class="rail-item active">Create recipe</div>
+                </aside>
+                <main class="main">
+                  <div class="mainInner">
+                    <h2 class="h1">Recipe Creator</h2>
+                    <p class="h1sub">Add a recipe to the site.</p>
+
+                    <div class="card stepper">
+                      <div class="stepitem">
+                        <div class="stepbtn">
+                          <div class="stepicon done">i</div>
+                          <div>
+                            <div class="steptitle">Details <span class="tick">✓</span></div>
+                            <div class="stepstatus done">Complete</div>
+                          </div>
+                        </div>
+                        <div class="connector done"></div>
+                      </div>
+                      <div class="stepitem">
+                        <div class="stepbtn">
+                          <div class="stepicon done">🍴</div>
+                          <div>
+                            <div class="steptitle">Ingredients <span class="tick">✓</span></div>
+                            <div class="stepstatus done">Complete</div>
+                          </div>
+                        </div>
+                        <div class="connector done"></div>
+                      </div>
+                      <div class="stepitem">
+                        <div class="stepbtn">
+                          <div class="stepicon done">☰</div>
+                          <div>
+                            <div class="steptitle">Steps <span class="tick">✓</span></div>
+                            <div class="stepstatus done">Complete</div>
+                          </div>
+                        </div>
+                        <div class="connector done"></div>
+                      </div>
+                      <div class="stepitem">
+                        <div class="stepbtn">
+                          <div class="stepicon cur">👨‍🍳</div>
+                          <div>
+                            <div class="steptitle">Review &amp; Publish</div>
+                            <div class="stepstatus">Ready</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="publishbar">
+                      <span class="btn btn-ghost">← Back</span>
+                      <div class="vr"></div>
+                      <div class="addr">
+                        <span class="addr-l">Permanent address</span>
+                        <span class="addr-v">/recipes/appel-taart</span>
+                      </div>
+                      <div class="seg"><span>Draft</span><span class="on">Publish now</span></div>
+                      <span class="btn btn-primary">Save recipe</span>
+                    </div>
+
+                    <div class="pagesurface">
+                      <div class="article" style="padding: 32px 0 0">
+                        <div class="hdr" style="background: transparent">
+                          <div class="column center">
+                            <div class="cover" style="border-radius: 16px">
+                              <div class="photo"></div>
+                              <div class="pie"></div>
+                              <div class="plate"></div>
+                              <div class="scrim"></div>
+                              <div class="coverText">
+                                <span class="badge">Easy</span>
+                                <h1 class="artTitle">Appel taart</h1>
+                                <p class="artDesc">Lekker appel taart voor het gezin</p>
+                                <dl class="meta">
+                                  <div>
+                                    <dt>Prep</dt>
+                                    <dd>30 min</dd>
+                                  </div>
+                                  <div>
+                                    <dt>Cooking</dt>
+                                    <dd>40 min</dd>
+                                  </div>
+                                  <div>
+                                    <dt>Total</dt>
+                                    <dd>1 h 10</dd>
+                                  </div>
+                                  <div>
+                                    <dt>Serves</dt>
+                                    <dd>8</dd>
+                                  </div>
+                                </dl>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="column center body">
+                          <h2 class="h2">Ingredients</h2>
+                          <div class="ing"><b>8 stk</b><span>appels</span></div>
+                          <div class="ing"><b>5 ml</b><span>slagroom</span></div>
+                          <div class="ing"><b>4 kg</b><span>meel</span></div>
+                          <div class="sep"></div>
+                          <h2 class="h2">Method</h2>
+                          <div class="stepli">
+                            <span class="stepnum">1</span>
+                            <p style="margin: 4px 0">Schil de appels en snijd ze in blokjes.</p>
+                          </div>
+                          <div class="stepli">
+                            <span class="stepnum">2</span>
+                            <p style="margin: 4px 0">Meng het meel met de boter tot een deeg.</p>
+                          </div>
+                          <div class="stepli">
+                            <span class="stepnum">3</span>
+                            <p style="margin: 4px 0">Bak 40 minuten op 180 graden.</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </main>
+              </div>
+            </div>
+            <div class="anns">
+              <div class="ann good" style="left: 150px; top: 200px; width: 640px; height: 38px"></div>
+              <div class="note good" style="left: 800px; top: 196px">One bar. The URL is promoted out of fine print — it's the only permanent consequence of this save.</div>
+              <div class="note good" style="left: 800px; top: 300px">Scroll: the bar stays. Save is reachable from anywhere in the recipe.</div>
+              <div class="ann good" style="left: 280px; top: 252px; width: 380px; height: 390px"></div>
+              <div class="note good" style="left: 150px; top: 600px">Centred on the page-coloured surface — this is what the visitor sees.</div>
+            </div>
+          </div>
+        </div>
+        <div class="caption">
+          <div class="box win">
+            <h3>Wins</h3>
+            <ul>
+              <li>Kills the duplicate <i>and</i> the dead space in one move: no checklist means no reason for <code>align="start"</code>.</li>
+              <li>Save follows you down a long recipe — the thing you're deciding about is on screen when you decide.</li>
+              <li>Draft/Publish as a segmented control reads at a glance; a lone switch's state does not.</li>
+            </ul>
+          </div>
+          <div class="box cost">
+            <h3>Costs &amp; traps</h3>
+            <ul>
+              <li>Loses the "3 ingredients, serves 8" counts. They're in the article, three inches down.</li>
+              <li>The slug-collision and failed-photo alerts need a home — inside the bar or directly under it, and the bar must not cover them when sticky.</li>
+              <li><code>position:sticky</code> has to clear the admin shell; the <code>&lt;form&gt;</code> still has to wrap switch + payload + Save and nothing else.</li>
+              <li>Biggest diff of the three.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================================= B ================================= -->
+      <section class="pane" id="pane-b">
+        <div class="frame">
+          <div class="frame-bar"><i class="dot"></i><i class="dot"></i><i class="dot"></i><span class="frame-url">localhost:3000/admin/create — option B</span></div>
+          <div class="scaler">
+            <div class="scroll">
+              <div class="app">
+                <aside class="rail">
+                  <div class="rail-brand">Chique's Swiet Mofo</div>
+                  <div class="rail-item">Dashboard</div>
+                  <div class="rail-item">Manage recipes</div>
+                  <div class="rail-item active">Create recipe</div>
+                </aside>
+                <main class="main">
+                  <div class="mainInner">
+                    <h2 class="h1">Recipe Creator</h2>
+                    <p class="h1sub">Add a recipe to the site.</p>
+
+                    <div class="card stepper">
+                      <div class="stepitem">
+                        <div class="stepbtn">
+                          <div class="stepicon done">i</div>
+                          <div>
+                            <div class="steptitle">Details <span class="tick">✓</span></div>
+                            <div class="stepstatus done">Complete</div>
+                          </div>
+                        </div>
+                        <div class="connector done"></div>
+                      </div>
+                      <div class="stepitem">
+                        <div class="stepbtn">
+                          <div class="stepicon done">🍴</div>
+                          <div>
+                            <div class="steptitle">Ingredients <span class="tick">✓</span></div>
+                            <div class="stepstatus done">Complete</div>
+                          </div>
+                        </div>
+                        <div class="connector done"></div>
+                      </div>
+                      <div class="stepitem">
+                        <div class="stepbtn">
+                          <div class="stepicon done">☰</div>
+                          <div>
+                            <div class="steptitle">Steps <span class="tick">✓</span></div>
+                            <div class="stepstatus done">Complete</div>
+                          </div>
+                        </div>
+                        <div class="connector done"></div>
+                      </div>
+                      <div class="stepitem">
+                        <div class="stepbtn">
+                          <div class="stepicon cur">👨‍🍳</div>
+                          <div>
+                            <div class="steptitle">Review &amp; Publish</div>
+                            <div class="stepstatus">Ready</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="railcol">
+                      <div class="card" style="padding: 0; overflow: hidden">
+                        <div class="article">
+                          <div class="hdr">
+                            <div class="column center">
+                              <div class="cover">
+                                <div class="photo"></div>
+                                <div class="pie"></div>
+                                <div class="plate"></div>
+                                <div class="scrim"></div>
+                                <div class="coverText">
+                                  <span class="badge">Easy</span>
+                                  <h1 class="artTitle">Appel taart</h1>
+                                  <p class="artDesc">Lekker appel taart voor het gezin</p>
+                                  <dl class="meta">
+                                    <div>
+                                      <dt>Prep</dt>
+                                      <dd>30 min</dd>
+                                    </div>
+                                    <div>
+                                      <dt>Cooking</dt>
+                                      <dd>40 min</dd>
+                                    </div>
+                                    <div>
+                                      <dt>Total</dt>
+                                      <dd>1 h 10</dd>
+                                    </div>
+                                    <div>
+                                      <dt>Serves</dt>
+                                      <dd>8</dd>
+                                    </div>
+                                  </dl>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          <div class="column center body">
+                            <h2 class="h2">Ingredients</h2>
+                            <div class="ing"><b>8 stk</b><span>appels</span></div>
+                            <div class="ing"><b>5 ml</b><span>slagroom</span></div>
+                            <div class="ing"><b>4 kg</b><span>meel</span></div>
+                            <div class="sep"></div>
+                            <h2 class="h2">Method</h2>
+                            <div class="stepli">
+                              <span class="stepnum">1</span>
+                              <p style="margin: 4px 0">Schil de appels en snijd ze in blokjes.</p>
+                            </div>
+                            <div class="stepli">
+                              <span class="stepnum">2</span>
+                              <p style="margin: 4px 0">Meng het meel met de boter tot een deeg.</p>
+                            </div>
+                            <div class="stepli">
+                              <span class="stepnum">3</span>
+                              <p style="margin: 4px 0">Bak 40 minuten op 180 graden.</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="card sticky" style="padding: 20px">
+                        <p class="cardtitle" style="font-size: 16px">Publish</p>
+                        <p class="carddesc" style="font-size: 13px">Written in one save.</p>
+
+                        <div style="margin-top: 18px">
+                          <div class="addr-l">Permanent address</div>
+                          <div class="addr-v" style="margin-top: 2px">/recipes/appel-taart</div>
+                        </div>
+
+                        <div class="switchrow" style="margin-top: 18px">
+                          <span class="switch on"></span>
+                          <div>
+                            <div class="switchlabel">Publish immediately</div>
+                            <div class="switchhelp">Off saves it as a draft.</div>
+                          </div>
+                        </div>
+
+                        <div style="display: grid; gap: 10px; margin-top: 18px">
+                          <span class="btn btn-primary" style="justify-content: center">Save recipe</span>
+                          <span class="btn btn-outline" style="justify-content: center">← Back</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </main>
+              </div>
+            </div>
+            <div class="anns">
+              <div class="ann" style="left: 646px; top: 198px; width: 146px; height: 250px"></div>
+              <div class="note" style="left: 800px; top: 196px">This slot is the <b>preview</b> on steps 1–3. Here it's the controls — the same place doing the opposite job.</div>
+              <div class="ann good" style="left: 158px; top: 200px; width: 480px; height: 300px"></div>
+              <div class="note good" style="left: 150px; top: 560px">No layout jump between step 3 and step 4.</div>
+            </div>
+          </div>
+        </div>
+        <div class="caption">
+          <div class="box win">
+            <h3>Wins</h3>
+            <ul>
+              <li>Layout is continuous — reaching Review doesn't reshuffle the screen.</li>
+              <li>Controls are permanently visible without any sticky-positioning work; the rail is already sticky on steps 1–3.</li>
+              <li>Also kills both complaints: no checklist, no dead space.</li>
+            </ul>
+          </div>
+          <div class="box cost">
+            <h3>Costs &amp; traps</h3>
+            <ul>
+              <li>The right rail means "preview" for three steps and then abruptly means "controls". Arguably a worse surprise than the layout jump it avoids.</li>
+              <li>Back and Save end up far right, away from where <code>PanelNav</code> puts them on every other step.</li>
+              <li>The article column narrows to ~620px inside the left column, so the preview is no longer the width the visitor gets.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================================= C ================================= -->
+      <section class="pane" id="pane-c">
+        <div class="frame">
+          <div class="frame-bar"><i class="dot"></i><i class="dot"></i><i class="dot"></i><span class="frame-url">localhost:3000/admin/create — option C</span></div>
+          <div class="scaler">
+            <div class="scroll">
+              <div class="app">
+                <aside class="rail">
+                  <div class="rail-brand">Chique's Swiet Mofo</div>
+                  <div class="rail-item">Dashboard</div>
+                  <div class="rail-item">Manage recipes</div>
+                  <div class="rail-item active">Create recipe</div>
+                </aside>
+                <main class="main">
+                  <div class="mainInner">
+                    <h2 class="h1">Recipe Creator</h2>
+                    <p class="h1sub">Add a recipe to the site.</p>
+
+                    <div class="card stepper">
+                      <div class="stepitem">
+                        <div class="stepbtn">
+                          <div class="stepicon done">i</div>
+                          <div>
+                            <div class="steptitle">Details <span class="tick">✓</span></div>
+                            <div class="stepstatus done">Complete</div>
+                          </div>
+                        </div>
+                        <div class="connector done"></div>
+                      </div>
+                      <div class="stepitem">
+                        <div class="stepbtn">
+                          <div class="stepicon done">🍴</div>
+                          <div>
+                            <div class="steptitle">Ingredients <span class="tick">✓</span></div>
+                            <div class="stepstatus done">Complete</div>
+                          </div>
+                        </div>
+                        <div class="connector done"></div>
+                      </div>
+                      <div class="stepitem">
+                        <div class="stepbtn">
+                          <div class="stepicon done">☰</div>
+                          <div>
+                            <div class="steptitle">Steps <span class="tick">✓</span></div>
+                            <div class="stepstatus done">Complete</div>
+                          </div>
+                        </div>
+                        <div class="connector done"></div>
+                      </div>
+                      <div class="stepitem">
+                        <div class="stepbtn">
+                          <div class="stepicon cur">👨‍🍳</div>
+                          <div>
+                            <div class="steptitle">Review &amp; Publish</div>
+                            <div class="stepstatus">Ready</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="card">
+                      <div class="pad">
+                        <p class="cardtitle">Review &amp; publish</p>
+                        <p class="carddesc">Everything below is written in one save.</p>
+
+                        <div style="margin-top: 20px; display: flex; gap: 10px; align-items: baseline; border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px">
+                          <span class="addr-l">Permanent address</span>
+                          <span class="addr-v">/recipes/appel-taart</span>
+                        </div>
+
+                        <div class="switchrow">
+                          <span class="switch on"></span>
+                          <div>
+                            <div class="switchlabel">Publish immediately</div>
+                            <div class="switchhelp">Off saves it as a draft, visible only to you at /admin/preview/appel-taart.</div>
+                          </div>
+                        </div>
+
+                        <div class="nav">
+                          <span class="btn btn-outline">← Back</span>
+                          <span class="btn btn-primary">Save recipe</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="card" style="margin-top: 20px; padding: 0; overflow: hidden">
+                      <div class="article">
+                        <div class="hdr">
+                          <div class="column center">
+                            <div class="cover">
+                              <div class="photo"></div>
+                              <div class="pie"></div>
+                              <div class="plate"></div>
+                              <div class="scrim"></div>
+                              <div class="coverText">
+                                <span class="badge">Easy</span>
+                                <h1 class="artTitle">Appel taart</h1>
+                                <p class="artDesc">Lekker appel taart voor het gezin</p>
+                                <dl class="meta">
+                                  <div>
+                                    <dt>Prep</dt>
+                                    <dd>30 min</dd>
+                                  </div>
+                                  <div>
+                                    <dt>Cooking</dt>
+                                    <dd>40 min</dd>
+                                  </div>
+                                  <div>
+                                    <dt>Total</dt>
+                                    <dd>1 h 10</dd>
+                                  </div>
+                                  <div>
+                                    <dt>Serves</dt>
+                                    <dd>8</dd>
+                                  </div>
+                                </dl>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="column center body">
+                          <h2 class="h2">Ingredients</h2>
+                          <div class="ing"><b>8 stk</b><span>appels</span></div>
+                          <div class="ing"><b>5 ml</b><span>slagroom</span></div>
+                          <div class="ing"><b>4 kg</b><span>meel</span></div>
+                          <div class="sep"></div>
+                          <h2 class="h2">Method</h2>
+                          <div class="stepli">
+                            <span class="stepnum">1</span>
+                            <p style="margin: 4px 0">Schil de appels en snijd ze in blokjes.</p>
+                          </div>
+                          <div class="stepli">
+                            <span class="stepnum">2</span>
+                            <p style="margin: 4px 0">Meng het meel met de boter tot een deeg.</p>
+                          </div>
+                          <div class="stepli">
+                            <span class="stepnum">3</span>
+                            <p style="margin: 4px 0">Bak 40 minuten op 180 graden.</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </main>
+              </div>
+            </div>
+            <div class="anns">
+              <div class="ann good" style="left: 150px; top: 198px; width: 640px; height: 170px"></div>
+              <div class="note good" style="left: 800px; top: 196px">Checklist gone, address promoted to a real row. ~30-line diff.</div>
+              <div class="note" style="left: 800px; top: 280px">But the card is now mostly whitespace, and Save still scrolls away.</div>
+              <div class="ann good" style="left: 280px; top: 400px; width: 380px; height: 240px"></div>
+            </div>
+          </div>
+        </div>
+        <div class="caption">
+          <div class="box win">
+            <h3>Wins</h3>
+            <ul>
+              <li>Smallest, safest diff. No new layout primitives, no sticky positioning, no <code>&lt;form&gt;</code> restructuring.</li>
+              <li>Every existing decision comment in <code>ReviewPanel.tsx</code> stays true.</li>
+              <li>Still fixes both complaints as literally stated.</li>
+            </ul>
+          </div>
+          <div class="box cost">
+            <h3>Costs &amp; traps</h3>
+            <ul>
+              <li>Two stacked cards where the top one is now three-quarters empty — it reads as something was deleted, because something was.</li>
+              <li>Save is still gone off the top by the time you've read the recipe.</li>
+              <li>You'll probably want A in three months anyway.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      (function () {
+        var tabs = Array.prototype.slice.call(document.querySelectorAll(".tab"));
+        var panes = { today: "pane-today", a: "pane-a", b: "pane-b", c: "pane-c" };
+
+        function show(key) {
+          tabs.forEach(function (t) {
+            t.setAttribute("aria-selected", String(t.dataset.pane === key));
+          });
+          Object.keys(panes).forEach(function (k) {
+            document.getElementById(panes[k]).classList.toggle("on", k === key);
+          });
+        }
+
+        tabs.forEach(function (t) {
+          t.addEventListener("click", function () {
+            show(t.dataset.pane);
+          });
+        });
+
+        var annsOn = true;
+        document.addEventListener("keydown", function (e) {
+          var k = e.key.toLowerCase();
+          if (k === "a") {
+            annsOn = !annsOn;
+            document.querySelectorAll(".anns").forEach(function (n) {
+              n.style.display = annsOn ? "" : "none";
+            });
+          }
+          var order = ["today", "a", "b", "c"];
+          if (["1", "2", "3", "4"].indexOf(k) > -1) show(order[Number(k) - 1]);
+        });
+      })();
+    </script>
+  </body>
+</html>
