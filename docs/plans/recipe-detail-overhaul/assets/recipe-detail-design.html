@@ -1,0 +1,1007 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Recipe detail page — settled design</title>
+    <style>
+      .surface {
+        --background: oklch(0.98 0.016 73.684);
+        --foreground: oklch(0.147 0.004 49.25);
+        --card: oklch(1 0 0);
+        --primary: oklch(0.75 0.183 55.934);
+        --accent: oklch(0.901 0.076 70.697);
+        --muted-fg: oklch(0.5555 0 0);
+        --border: oklch(0.92 0.006 75);
+        --easy-fg: oklch(0.42 0.14 150);
+        --easy-bg: oklch(0.94 0.05 150);
+      }
+
+      :root {
+        --chrome-bg: oklch(0.17 0.008 75);
+        --chrome-panel: oklch(0.215 0.01 75);
+        --chrome-line: oklch(0.3 0.008 75);
+        --chrome-fg: oklch(0.96 0.01 75);
+        --chrome-dim: oklch(0.72 0.012 75);
+        --brand: oklch(0.75 0.183 55.934);
+        --sans: "Alan Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--chrome-bg);
+        color: var(--chrome-fg);
+        font-family: var(--sans);
+        line-height: 1.55;
+        padding: 44px 28px 100px;
+      }
+      .wrap {
+        max-width: 1500px;
+        margin: 0 auto;
+      }
+
+      .doc-eyebrow {
+        font-size: 11px;
+        letter-spacing: 0.25em;
+        text-transform: uppercase;
+        color: var(--brand);
+        font-weight: 600;
+        margin: 0 0 10px;
+      }
+      h1.doc-title {
+        font-size: clamp(26px, 3.2vw, 38px);
+        line-height: 1.1;
+        margin: 0 0 14px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+      }
+      .doc-sub {
+        color: var(--chrome-dim);
+        max-width: 100ch;
+        margin: 0 0 22px;
+        font-size: 15px;
+      }
+      .doc-sub strong {
+        color: var(--chrome-fg);
+      }
+      code {
+        font-family: ui-monospace, Consolas, monospace;
+        font-size: 0.88em;
+        background: oklch(0.13 0.006 75);
+        padding: 1px 6px;
+        border-radius: 4px;
+        color: oklch(0.86 0.08 60);
+      }
+
+      .scope {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 9px;
+        margin: 0 0 40px;
+      }
+      .sc {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: var(--chrome-panel);
+        border: 1px solid var(--chrome-line);
+        border-radius: 999px;
+        padding: 6px 15px 6px 11px;
+        font-size: 13px;
+      }
+      .sc .dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 999px;
+        flex: none;
+      }
+      .sc .dot.in {
+        background: oklch(0.75 0.16 150);
+      }
+      .sc .dot.out {
+        background: oklch(0.62 0.2 25);
+      }
+
+      h2.section {
+        font-size: 12px;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: var(--chrome-dim);
+        font-weight: 700;
+        border-top: 1px solid var(--chrome-line);
+        padding-top: 15px;
+        margin: 66px 0 8px;
+      }
+      .sec-lede {
+        color: var(--chrome-dim);
+        font-size: 14.5px;
+        margin: 0 0 24px;
+        max-width: 100ch;
+      }
+
+      .frame {
+        border: 1px solid var(--chrome-line);
+        border-radius: 12px;
+        overflow: hidden;
+        background: var(--chrome-panel);
+        box-shadow: 0 24px 60px -24px rgba(0, 0, 0, 0.75);
+      }
+      .frame-bar {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 10px 14px;
+        border-bottom: 1px solid var(--chrome-line);
+      }
+      .frame-bar i {
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background: var(--chrome-line);
+        display: block;
+      }
+      .frame-bar .url {
+        margin-left: 10px;
+        font-family: ui-monospace, Consolas, monospace;
+        font-size: 11px;
+        color: var(--chrome-dim);
+        background: oklch(0.13 0.006 75);
+        border-radius: 6px;
+        padding: 4px 12px;
+      }
+      .frame-bar .dims {
+        margin-left: auto;
+        font-size: 11px;
+        color: var(--chrome-dim);
+      }
+      .viewport {
+        height: 940px;
+        overflow-y: auto;
+        background: var(--background);
+        color: var(--foreground);
+        position: relative;
+      }
+      .viewport::-webkit-scrollbar {
+        width: 11px;
+      }
+      .viewport::-webkit-scrollbar-thumb {
+        background: oklch(0.86 0.01 75);
+        border-radius: 9px;
+      }
+
+      .nav {
+        height: 64px;
+        border-bottom: 1px solid var(--border);
+        background: var(--background);
+        display: flex;
+        align-items: center;
+        position: sticky;
+        top: 0;
+        z-index: 20;
+      }
+      .nav-inner {
+        max-width: 1280px;
+        margin: 0 auto;
+        width: 100%;
+        padding: 0 40px;
+        display: flex;
+        align-items: center;
+        gap: 32px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 700;
+        font-size: 15px;
+      }
+      .brand .mark {
+        width: 30px;
+        height: 30px;
+        border-radius: 999px;
+        background: var(--foreground);
+        color: var(--background);
+        display: grid;
+        place-items: center;
+        font-size: 10px;
+        font-weight: 800;
+      }
+      .nav a {
+        font-size: 14px;
+        color: var(--muted-fg);
+        text-decoration: none;
+      }
+      .nav .spacer {
+        margin-left: auto;
+      }
+      .nav .btn {
+        background: var(--primary);
+        color: oklch(0.99 0 0);
+        border-radius: 10px;
+        padding: 7px 16px;
+        font-size: 13.5px;
+        font-weight: 600;
+      }
+
+      /* ============ the page ============ */
+      .page {
+        font-family: var(--sans);
+        padding-bottom: 90px;
+      }
+      .col {
+        max-width: 768px;
+        margin: 0 auto;
+        padding: 0 24px;
+      }
+
+      .band {
+        background: linear-gradient(180deg, color-mix(in oklab, var(--accent) 34%, var(--background)), var(--background));
+        border-bottom: 1px solid var(--border);
+        padding: 52px 0 40px;
+      }
+      .band h1 {
+        font-size: 46px;
+        line-height: 1.08;
+        letter-spacing: -0.025em;
+        font-weight: 800;
+        margin: 0 0 14px;
+      }
+      .band .desc {
+        font-size: 17.5px;
+        line-height: 1.6;
+        color: var(--muted-fg);
+        margin: 0 0 20px;
+        max-width: 60ch;
+      }
+
+      .badge-easy {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12.5px;
+        font-weight: 600;
+        padding: 4px 12px;
+        border-radius: 999px;
+        background: var(--easy-bg);
+        color: var(--easy-fg);
+      }
+      .tnum {
+        font-variant-numeric: tabular-nums;
+      }
+      .muted {
+        color: var(--muted-fg);
+      }
+
+      .photo {
+        aspect-ratio: 1/1;
+        width: 100%;
+        position: relative;
+        overflow: hidden;
+        background: linear-gradient(150deg, oklch(0.62 0.022 80), oklch(0.48 0.018 70));
+      }
+      .photo::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: repeating-linear-gradient(96deg, transparent 0 13px, oklch(0.4 0.015 70 / 0.28) 13px 15px);
+      }
+      .photo .dish {
+        position: absolute;
+        left: 12%;
+        top: 12%;
+        width: 76%;
+        height: 76%;
+        border-radius: 999px;
+        background: radial-gradient(circle at 42% 34%, oklch(0.6 0.16 42), oklch(0.44 0.14 34) 62%, oklch(0.34 0.1 30));
+        box-shadow:
+          0 0 0 9px oklch(0.95 0.01 80),
+          0 0 0 11px oklch(0.3 0.01 70),
+          0 18px 34px -10px rgba(0, 0, 0, 0.55);
+      }
+      .photo .dish::after {
+        content: "";
+        position: absolute;
+        inset: 9%;
+        border-radius: 999px;
+        background:
+          radial-gradient(circle at 33% 28%, oklch(0.86 0.1 78) 0 12%, transparent 13%), radial-gradient(circle at 68% 30%, oklch(0.84 0.1 76) 0 11%, transparent 12%),
+          radial-gradient(circle at 30% 68%, oklch(0.85 0.1 77) 0 11%, transparent 12%), radial-gradient(circle at 70% 70%, oklch(0.83 0.09 75) 0 11%, transparent 12%),
+          radial-gradient(circle at 50% 50%, oklch(0.87 0.1 79) 0 10%, transparent 11%);
+      }
+      .photo .cloth {
+        position: absolute;
+        left: 6%;
+        bottom: 4%;
+        width: 60%;
+        height: 24%;
+        transform: rotate(-6deg);
+        border-radius: 6px;
+        background: repeating-linear-gradient(74deg, oklch(0.96 0.01 80) 0 16px, oklch(0.62 0.19 27) 16px 32px);
+        opacity: 0.85;
+      }
+
+      /* the hero object: photo + welded stat bar */
+      .hero {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        overflow: hidden;
+        box-shadow:
+          0 1px 3px rgba(0, 0, 0, 0.06),
+          0 16px 34px -20px rgba(0, 0, 0, 0.35);
+      }
+      .statbar {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        border-top: 1px solid var(--border);
+      }
+      .statbar > div {
+        padding: 16px 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+      }
+      .statbar > div + div {
+        border-left: 1px solid var(--border);
+      }
+      .statbar .v {
+        font-size: 15px;
+        font-weight: 800;
+      }
+      .statbar .l {
+        font-size: 9px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--muted-fg);
+        font-weight: 700;
+        margin-top: 1px;
+      }
+
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow:
+          0 1px 3px rgba(0, 0, 0, 0.06),
+          0 8px 20px -14px rgba(0, 0, 0, 0.16);
+      }
+      .card + .card {
+        margin-top: 24px;
+      }
+      .card > .card-head {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        padding: 18px 26px 15px;
+        border-bottom: 1px solid var(--border);
+      }
+      .card > .card-head h2 {
+        margin: 0;
+        font-size: 19px;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+      }
+      .card > .card-head .count {
+        font-size: 13px;
+        color: var(--muted-fg);
+        margin-left: auto;
+      }
+      .card > .card-body {
+        padding: 22px 26px 24px;
+      }
+
+      .ticklist {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+      .ticklist li {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        padding: 11px 0;
+        font-size: 15.5px;
+      }
+      .ticklist li + li {
+        border-top: 1px solid var(--border);
+      }
+      .box {
+        width: 20px;
+        height: 20px;
+        border-radius: 6px;
+        border: 2px solid color-mix(in oklab, var(--foreground) 24%, transparent);
+        flex: none;
+      }
+      .box.on {
+        background: var(--primary);
+        border-color: var(--primary);
+        display: grid;
+        place-items: center;
+        color: oklch(0.99 0 0);
+        font-size: 12px;
+        font-weight: 900;
+      }
+      .ticklist .amt {
+        font-weight: 700;
+        min-width: 66px;
+      }
+      .ticklist li.done {
+        opacity: 0.42;
+      }
+      .ticklist li.done .amt,
+      .ticklist li.done .nm {
+        text-decoration: line-through;
+      }
+
+      .steps {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+      .steps > li {
+        display: flex;
+        gap: 20px;
+        padding: 20px 0;
+      }
+      .steps > li:first-child {
+        padding-top: 2px;
+      }
+      .steps > li:last-child {
+        padding-bottom: 2px;
+      }
+      .steps > li + li {
+        border-top: 1px solid var(--border);
+      }
+      .stepdot {
+        width: 36px;
+        height: 36px;
+        border-radius: 999px;
+        background: var(--primary);
+        color: oklch(0.99 0 0);
+        display: grid;
+        place-items: center;
+        font-weight: 800;
+        font-size: 14.5px;
+        flex: none;
+      }
+      .steps p {
+        margin: 0;
+        font-size: 16px;
+        line-height: 1.65;
+      }
+      .step-photo {
+        width: 100%;
+        max-width: 300px;
+        border-radius: 14px;
+        overflow: hidden;
+        margin-top: 14px;
+      }
+      .stepnote {
+        font-size: 14px;
+        font-style: italic;
+        color: var(--muted-fg);
+        margin-top: 10px;
+        background: color-mix(in oklab, var(--accent) 26%, transparent);
+        border-radius: 10px;
+        padding: 10px 13px;
+      }
+
+      .pillnav {
+        position: sticky;
+        bottom: 20px;
+        display: flex;
+        justify-content: center;
+        margin-top: -56px;
+        z-index: 15;
+      }
+      .pillnav .inner {
+        display: inline-flex;
+        gap: 3px;
+        background: color-mix(in oklab, var(--card) 90%, transparent);
+        backdrop-filter: blur(14px);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 5px;
+        box-shadow: 0 12px 34px -12px rgba(0, 0, 0, 0.45);
+      }
+      .pillnav a {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 9px 16px;
+        border-radius: 999px;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--muted-fg);
+        text-decoration: none;
+      }
+      .pillnav a.on {
+        background: var(--primary);
+        color: oklch(0.99 0 0);
+      }
+
+      .ic {
+        width: 18px;
+        height: 18px;
+        flex: none;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .ic.s14 {
+        width: 14px;
+        height: 14px;
+      }
+      .ic.s15 {
+        width: 15px;
+        height: 15px;
+      }
+      .ic.s19 {
+        width: 19px;
+        height: 19px;
+      }
+
+      .skel {
+        background: color-mix(in oklab, var(--foreground) 8%, transparent);
+        border-radius: 8px;
+      }
+
+      /* ============ anatomy ============ */
+      .anatomy {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
+        gap: 20px;
+      }
+      .spec {
+        background: var(--chrome-panel);
+        border: 1px solid var(--chrome-line);
+        border-radius: 12px;
+        padding: 18px 20px;
+      }
+      .spec h3 {
+        margin: 0 0 4px;
+        font-size: 15px;
+        font-weight: 700;
+      }
+      .spec .where {
+        margin: 0 0 12px;
+        font-size: 12px;
+        color: var(--chrome-dim);
+      }
+      .spec dl {
+        margin: 0;
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 6px 14px;
+        font-size: 13px;
+      }
+      .spec dt {
+        color: var(--chrome-dim);
+        white-space: nowrap;
+      }
+      .spec dd {
+        margin: 0;
+      }
+      .spec .why {
+        margin: 13px 0 0;
+        padding-top: 12px;
+        border-top: 1px solid var(--chrome-line);
+        font-size: 13px;
+        color: var(--chrome-dim);
+      }
+      .spec .why b {
+        color: oklch(0.84 0.12 60);
+        font-weight: 600;
+      }
+
+      .closing {
+        margin-top: 56px;
+        background: var(--chrome-panel);
+        border: 1px solid var(--chrome-line);
+        border-left: 3px solid var(--brand);
+        border-radius: 12px;
+        padding: 22px 26px;
+      }
+      .closing h3 {
+        margin: 0 0 12px;
+        font-size: 17px;
+      }
+      .closing ul {
+        margin: 0;
+        padding-left: 18px;
+        font-size: 14px;
+      }
+      .closing li {
+        margin-bottom: 8px;
+      }
+      .closing li:last-child {
+        margin-bottom: 0;
+      }
+      .closing b {
+        color: oklch(0.84 0.12 60);
+      }
+    </style>
+  </head>
+  <body>
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+      <symbol id="i-clock" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="10" />
+        <polyline points="12 6 12 12 16 14" />
+      </symbol>
+      <symbol id="i-timer" viewBox="0 0 24 24">
+        <line x1="10" y1="2" x2="14" y2="2" />
+        <line x1="12" y1="14" x2="15" y2="11" />
+        <circle cx="12" cy="14" r="8" />
+      </symbol>
+      <symbol id="i-flame" viewBox="0 0 24 24">
+        <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" />
+      </symbol>
+      <symbol id="i-users" viewBox="0 0 24 24">
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      </symbol>
+      <symbol id="i-chef" viewBox="0 0 24 24">
+        <path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6Z" />
+        <line x1="6" y1="17" x2="18" y2="17" />
+      </symbol>
+      <symbol id="i-list" viewBox="0 0 24 24">
+        <line x1="8" y1="6" x2="21" y2="6" />
+        <line x1="8" y1="12" x2="21" y2="12" />
+        <line x1="8" y1="18" x2="21" y2="18" />
+        <line x1="3" y1="6" x2="3.01" y2="6" />
+        <line x1="3" y1="12" x2="3.01" y2="12" />
+        <line x1="3" y1="18" x2="3.01" y2="18" />
+      </symbol>
+      <symbol id="i-top" viewBox="0 0 24 24">
+        <line x1="12" y1="19" x2="12" y2="5" />
+        <polyline points="5 12 12 5 19 12" />
+      </symbol>
+      <symbol id="i-leaf" viewBox="0 0 24 24">
+        <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z" />
+        <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12" />
+      </symbol>
+    </svg>
+
+    <div class="wrap">
+      <p class="doc-eyebrow">docs/plans/recipe-detail-overhaul</p>
+      <h1 class="doc-title">Recipe detail page — the settled design</h1>
+      <p class="doc-sub">
+        The agreed presentation for <code>RecipeArticle</code>. Same content and same data as today — this is a look-and-feel change only. Rendered against the project's real oklch tokens at desktop
+        width. <strong>The anatomy section below carries the numbers an implementer needs;</strong> the mockup is the reference for how they fit together.
+      </p>
+
+      <div class="scope">
+        <span class="sc"><span class="dot in"></span><code>/recipes/[slug]</code></span>
+        <span class="sc"><span class="dot in"></span><code>/admin/preview/[slug]</code></span>
+        <span class="sc"><span class="dot in"></span>Review &amp; Publish preview</span>
+        <span class="sc"><span class="dot out"></span>Live rail on wizard steps 1–3 — keeps today's look</span>
+      </div>
+
+      <!-- ================= THE PAGE ================= -->
+      <div class="frame">
+        <div class="frame-bar"><i></i><i></i><i></i><span class="url">chiques-swiet-mofo.app/recipes/pom-met-kip</span><span class="dims">1440 × 940</span></div>
+        <div class="viewport surface">
+          <div class="nav">
+            <div class="nav-inner">
+              <span class="brand"><span class="mark">CSM</span> Chique's Swiet Mofo</span>
+              <a href="#">Home</a><a href="#">Recipes</a><a href="#">About</a> <span class="spacer"></span><span class="btn">Log in</span>
+            </div>
+          </div>
+
+          <div class="page" style="padding-bottom: 40px">
+            <!-- 1 · tinted header band -->
+            <div class="band">
+              <div class="col">
+                <h1>Pom met Kip</h1>
+                <p class="desc">The Sunday centrepiece — pomtajer, citrus and slow-roasted chicken, baked until the top catches.</p>
+                <span class="badge-easy"
+                  ><svg class="ic s14"><use href="#i-leaf" /></svg>Easy</span
+                >
+              </div>
+            </div>
+
+            <div class="col" style="padding-top: 32px">
+              <!-- 2 · hero object: photo + welded stat bar -->
+              <div class="hero">
+                <div class="photo">
+                  <div class="dish"></div>
+                  <div class="cloth"></div>
+                </div>
+                <div class="statbar">
+                  <div>
+                    <svg class="ic"><use href="#i-clock" /></svg>
+                    <div>
+                      <div class="v tnum">2 h 15</div>
+                      <div class="l">Total</div>
+                    </div>
+                  </div>
+                  <div>
+                    <svg class="ic"><use href="#i-timer" /></svg>
+                    <div>
+                      <div class="v tnum">30 min</div>
+                      <div class="l">Prep</div>
+                    </div>
+                  </div>
+                  <div>
+                    <svg class="ic"><use href="#i-flame" /></svg>
+                    <div>
+                      <div class="v tnum">1 h 45</div>
+                      <div class="l">Cooking</div>
+                    </div>
+                  </div>
+                  <div>
+                    <svg class="ic"><use href="#i-users" /></svg>
+                    <div>
+                      <div class="v tnum">8</div>
+                      <div class="l">Serves</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 3 · ingredients, tickable -->
+              <div class="card" style="margin-top: 24px">
+                <div class="card-head">
+                  <svg class="ic s19"><use href="#i-list" /></svg>
+                  <h2 id="ingredients-heading">Ingredients</h2>
+                  <span class="count">2 of 6</span>
+                </div>
+                <div class="card-body">
+                  <ul class="ticklist">
+                    <li class="done"><span class="box on">✓</span><span class="amt tnum">1 kg</span><span class="nm">pomtajer</span></li>
+                    <li><span class="box"></span><span class="amt tnum">500 g</span><span class="nm">kipfilet</span></li>
+                    <li class="done"><span class="box on">✓</span><span class="amt tnum">2</span><span class="nm">uien</span></li>
+                    <li><span class="box"></span><span class="amt tnum">1</span><span class="nm">sinaasappel</span></li>
+                    <li><span class="box"></span><span class="amt tnum">½ tl</span><span class="nm">zout</span></li>
+                    <li><span class="box"></span><span class="amt tnum">3 el</span><span class="nm">olie</span></li>
+                  </ul>
+                </div>
+              </div>
+
+              <!-- 4 · method -->
+              <div class="card">
+                <div class="card-head">
+                  <svg class="ic s19"><use href="#i-chef" /></svg>
+                  <h2 id="steps-heading">Method</h2>
+                  <span class="count">3 steps</span>
+                </div>
+                <div class="card-body">
+                  <ol class="steps">
+                    <li>
+                      <span class="stepdot tnum">1</span>
+                      <div><p>Rasp de pomtajer fijn en meng met het sap van de sinaasappel.</p></div>
+                    </li>
+                    <li>
+                      <span class="stepdot tnum">2</span>
+                      <div>
+                        <p>Bak de kip goudbruin met de uien, tot de randen donker beginnen te kleuren.</p>
+                        <div class="step-photo">
+                          <div class="photo"><div class="dish"></div></div>
+                        </div>
+                      </div>
+                    </li>
+                    <li>
+                      <span class="stepdot tnum">3</span>
+                      <div>
+                        <p>Laag alles in de schaal en zet 1 uur in de oven.</p>
+                        <p class="stepnote">Afdekken met folie voor de laatste twintig minuten.</p>
+                      </div>
+                    </li>
+                  </ol>
+                </div>
+              </div>
+            </div>
+
+            <!-- 5 · floating navigator -->
+            <div class="pillnav">
+              <div class="inner">
+                <a href="#ingredients-heading" class="on"
+                  ><svg class="ic s15"><use href="#i-list" /></svg>Ingredients</a
+                >
+                <a href="#steps-heading"
+                  ><svg class="ic s15"><use href="#i-chef" /></svg>Method</a
+                >
+                <a href="#"
+                  ><svg class="ic s15"><use href="#i-top" /></svg
+                ></a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= ANATOMY ================= -->
+      <h2 class="section">Anatomy — the five parts, top to bottom</h2>
+      <p class="sec-lede">Values are the ones drawn above. Colours are Tailwind semantic tokens, never raw hex.</p>
+
+      <div class="anatomy">
+        <div class="spec">
+          <h3>1 · Tinted header band</h3>
+          <p class="where">Full-bleed, content at <code>max-w-3xl</code></p>
+          <dl>
+            <dt>Background</dt>
+            <dd>gradient, <code>accent</code> at 34% → <code>background</code></dd>
+            <dt>Padding</dt>
+            <dd><code>py-13</code> top / <code>py-10</code> bottom</dd>
+            <dt>Title</dt>
+            <dd>46px, weight 800, tracking <code>-0.025em</code></dd>
+            <dt>Description</dt>
+            <dd>17.5px, <code>text-muted-foreground</code>, <code>max-w-[60ch]</code></dd>
+            <dt>Badge</dt>
+            <dd>existing <code>DifficultyBadge</code>, leaf icon added</dd>
+            <dt>Border</dt>
+            <dd>1px <code>border</code>, bottom only</dd>
+          </dl>
+          <p class="why">
+            <b>Why a band:</b> every other page on the site opens with one — this is the established page-shell pattern, not a new idea. It also gives the title its own surface so nothing is overlaid
+            on a photo.
+          </p>
+        </div>
+
+        <div class="spec">
+          <h3>2 · Hero object — photo + stat bar</h3>
+          <p class="where">One bordered element, not two</p>
+          <dl>
+            <dt>Container</dt>
+            <dd><code>bg-card</code>, 1px <code>border</code>, <code>rounded-[18px]</code>, <code>overflow-hidden</code></dd>
+            <dt>Photo</dt>
+            <dd>square, <code>aspect-square</code>, full width, never re-cropped</dd>
+            <dt>Stat bar</dt>
+            <dd>4 equal columns, <code>border-t</code>, hairline between cells</dd>
+            <dt>Cell</dt>
+            <dd>icon 18px + stacked value / label, centred</dd>
+            <dt>Value</dt>
+            <dd>15px, weight 800, <code>tabular-nums</code></dd>
+            <dt>Label</dt>
+            <dd>9px, <code>tracking-[0.18em]</code>, uppercase, muted</dd>
+          </dl>
+          <p class="why"><b>Why welded:</b> a separate facts card read as a third floating box. Sharing one border makes the photo and its numbers one object — and it removes a card from the page.</p>
+        </div>
+
+        <div class="spec">
+          <h3>3 · Ingredients card</h3>
+          <p class="where">Tickable — the one interactive part</p>
+          <dl>
+            <dt>Card</dt>
+            <dd><code>bg-card</code>, 1px <code>border</code>, <code>rounded-2xl</code></dd>
+            <dt>Header</dt>
+            <dd>icon + heading, count right, <code>border-b</code></dd>
+            <dt>Heading id</dt>
+            <dd><code>#ingredients-heading</code> — <b>keep it</b></dd>
+            <dt>Checkbox</dt>
+            <dd>20px, <code>rounded-md</code>, fills <code>primary</code> when ticked</dd>
+            <dt>Ticked row</dt>
+            <dd>42% opacity + line-through</dd>
+            <dt>Amount</dt>
+            <dd>weight 700, <code>min-w-[66px]</code>, <code>tabular-nums</code></dd>
+            <dt>Count</dt>
+            <dd>live — “2 of 6”, not a static total</dd>
+          </dl>
+          <p class="why">
+            <b>Why a child component:</b> <code>RecipeArticle</code> is a server component on two routes <em>and</em> compiled into the wizard's client bundle. The tick state lives in a small
+            <code>"use client"</code> list; the article itself must not gain <code>useState</code>.
+          </p>
+        </div>
+
+        <div class="spec">
+          <h3>4 · Method card</h3>
+          <p class="where">Same card idiom as ingredients</p>
+          <dl>
+            <dt>Heading id</dt>
+            <dd><code>#steps-heading</code> — <b>keep it</b></dd>
+            <dt>Numeral</dt>
+            <dd>36px circle, filled <code>primary</code>, white text, weight 800</dd>
+            <dt>Connector</dt>
+            <dd>none — the hairline between steps separates</dd>
+            <dt>Instruction</dt>
+            <dd>16px, <code>leading-[1.65]</code></dd>
+            <dt>Step photo</dt>
+            <dd>square, <code>max-w-[300px]</code>, <code>rounded-xl</code>, below the text</dd>
+            <dt>Step note</dt>
+            <dd>italic on an <code>accent</code>/26% callout, <code>rounded-[10px]</code></dd>
+          </dl>
+          <p class="why">
+            <b>Why filled and not outlined:</b> outlined circles read as empty checkboxes next to the real ones in the card above. Filled removes the collision. The note becoming a tinted callout
+            stops it reading as an afterthought.
+          </p>
+        </div>
+
+        <div class="spec">
+          <h3>5 · Floating pill navigator</h3>
+          <p class="where">Bottom-centre, sticky the whole scroll</p>
+          <dl>
+            <dt>Position</dt>
+            <dd><code>sticky bottom-5</code>, centred</dd>
+            <dt>Surface</dt>
+            <dd><code>card</code>/90% + <code>backdrop-blur</code>, 1px <code>border</code></dd>
+            <dt>Shape</dt>
+            <dd><code>rounded-full</code>, 5px padding around the items</dd>
+            <dt>Active</dt>
+            <dd><code>bg-primary</code>, white text</dd>
+            <dt>Targets</dt>
+            <dd>plain <code>&lt;a href="#…"&gt;</code> — no JavaScript</dd>
+          </dl>
+          <p class="why">
+            <b>Free anchors:</b> the two heading ids already exist and <code>PreviewRail</code> scrolls to them, calling them “part of its markup contract”. Only <em>highlighting</em> the current
+            section would need a client component — deferred.
+          </p>
+        </div>
+
+        <div class="spec">
+          <h3>6 · Loading skeleton</h3>
+          <p class="where"><code>RecipeFallback</code>, same file as the page</p>
+          <dl>
+            <dt>Band</dt>
+            <dd>same tint, 34px title bar + two description lines + a pill</dd>
+            <dt>Hero</dt>
+            <dd>square block inside the bordered container</dd>
+            <dt>Stat bar</dt>
+            <dd>four cells, one bar each, borders kept</dd>
+            <dt>Fill</dt>
+            <dd><code>foreground</code>/8%</dd>
+          </dl>
+          <p class="why">
+            <b>Must ship together.</b> The fallback still draws the pre-overhaul layout. Leave it and every cold load flashes the old shape before snapping to the new one — the easiest thing here to
+            forget.
+          </p>
+        </div>
+      </div>
+
+      <!-- ================= SKELETON ================= -->
+      <h2 class="section">The skeleton, drawn</h2>
+      <p class="sec-lede">What <code>RecipeFallback</code> must become. Same geometry as the page above, so the swap is invisible.</p>
+
+      <div class="frame" style="max-width: 840px">
+        <div class="viewport surface" style="height: 520px">
+          <div class="page" style="padding: 0">
+            <div class="band" style="padding: 34px 0 28px">
+              <div class="col">
+                <div class="skel" style="height: 40px; width: 58%; margin-bottom: 14px"></div>
+                <div class="skel" style="height: 17px; width: 86%; margin-bottom: 7px"></div>
+                <div class="skel" style="height: 17px; width: 52%; margin-bottom: 18px"></div>
+                <div class="skel" style="height: 24px; width: 78px; border-radius: 999px"></div>
+              </div>
+            </div>
+            <div class="col" style="padding-top: 26px">
+              <div class="hero">
+                <div class="skel" style="aspect-ratio: 1/1; border-radius: 0"></div>
+                <div class="statbar">
+                  <div style="padding: 18px 8px"><div class="skel" style="height: 28px; width: 60px"></div></div>
+                  <div style="padding: 18px 8px"><div class="skel" style="height: 28px; width: 60px"></div></div>
+                  <div style="padding: 18px 8px"><div class="skel" style="height: 28px; width: 60px"></div></div>
+                  <div style="padding: 18px 8px"><div class="skel" style="height: 28px; width: 44px"></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="closing">
+        <h3>Load-bearing details, easy to undo by accident</h3>
+        <ul>
+          <li>
+            <b>The two heading ids stay.</b> <code>#ingredients-heading</code> and <code>#steps-heading</code> are the navigator's targets <em>and</em> the wizard rail's scroll targets. Rename either
+            and one breaks silently.
+          </li>
+          <li>
+            <b><code>RecipeArticle</code> gains no <code>useState</code> and no server-only import.</b> It renders as a server component on two routes and is compiled into the wizard's client bundle.
+            Ticking lives in a child.
+          </li>
+          <li><b>The square is never re-cropped.</b> No full-bleed hero, no <code>object-cover</code> into a band — the stored file is the framing its author chose.</li>
+          <li><b>The wizard's live rail keeps today's look.</b> Only the Review &amp; Publish preview follows this design.</li>
+          <li><b>The skeleton ships with it</b>, or the page flashes the old layout on every cold load.</li>
+        </ul>
+      </div>
+    </div>
+  </body>
+</html>
