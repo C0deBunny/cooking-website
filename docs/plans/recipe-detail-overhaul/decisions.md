@@ -159,3 +159,14 @@
 - **Trade-off:** the site has a working theme toggle, so dark mode is reachable today and will be
   slightly off — the tinted band nearly vanishes at the 34% `accent` mix that works in light. Known,
   and cheap to fix when it is picked up.
+
+## 15. Leave the step note untinted
+
+- **Date:** 2026-08-16
+- **Considered:** an `accent`/26% callout with padding and a radius, as drawn in the mockups · plain
+  italic `text-muted-foreground` directly under the instruction, which is what ships today
+- **Chosen:** plain italic, unchanged from today. A coloured callout gave an optional aside more
+  visual weight than the instruction it hangs off, and it was the only tinted surface inside a card.
+- **Trade-off:** `accent` now appears exactly once on the page — the header band — which makes the tan
+  token even closer to unused than decision 6 already noted. Accepted: a colour spent on one thing is
+  not a problem, a colour spent on the wrong thing is.

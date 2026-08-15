@@ -485,10 +485,7 @@
         font-size: 14px;
         font-style: italic;
         color: var(--muted-fg);
-        margin-top: 10px;
-        background: color-mix(in oklab, var(--accent) 26%, transparent);
-        border-radius: 10px;
-        padding: 10px 13px;
+        margin-top: 8px;
       }
 
       .pillnav {
@@ -907,11 +904,11 @@
             <dt>Step photo</dt>
             <dd>square, <code>max-w-[300px]</code>, <code>rounded-xl</code>, below the text</dd>
             <dt>Step note</dt>
-            <dd>italic on an <code>accent</code>/26% callout, <code>rounded-[10px]</code></dd>
+            <dd>plain italic <code>text-muted-foreground</code>, no tint, no padding — unchanged from today</dd>
           </dl>
           <p class="why">
-            <b>Why filled and not outlined:</b> outlined circles read as empty checkboxes next to the real ones in the card above. Filled removes the collision. The note becoming a tinted callout
-            stops it reading as an afterthought.
+            <b>Why filled and not outlined:</b> outlined circles read as empty checkboxes next to the real ones in the card above. Filled removes the collision. <b>The note stays untinted:</b> a
+            coloured callout gave an optional aside more weight than the instruction it hangs off.
           </p>
         </div>
 
