@@ -14,6 +14,11 @@
   it is wrapped in a `Card`, clipped at `max-h-152` and squeezed into a narrow grid column. So this
   needs a real mechanism, and every option carries the drift risk `PreviewRail`'s own comment warns
   about. Left open in `plan.md` rather than decided blind.
+- **Revised 2026-08-16 — the mechanism is chosen, and the stated reason for the exclusion was
+  wrong.** "It looks different anyway" is false: the rail is the same component, and left alone it
+  would have inherited the redesign in full — including `bg-card` cards nested inside `PreviewRail`'s
+  own `bg-card` wrapper, which is white on white with borders as the only separation. The exclusion
+  is real work, not the absence of work. See decision 20 for how it is done and what it costs.
 
 ## 2. Put the title before the photo
 
@@ -80,6 +85,15 @@
   the list across the server/client boundary. `RecipeArticle` cannot hold the state — it is a server
   component on two routes _and_ is compiled into the wizard's client bundle — so the state lives in a
   small `"use client"` child. Ticks also reset on reload unless persisted; left open in `plan.md`.
+- **Revised 2026-08-16 — deferred to its own change. Still wanted, not dropped.** Three things
+  surfaced under grilling. The live "2 of 6" sits in the card _header_, so the `"use client"` child is
+  not "a small list" — it is the entire Ingredients card, carrying `#ingredients-heading` across the
+  boundary with it, and that id is a documented markup contract. Persistence, the count and
+  meaningless-in-wizard ticks were three of this plan's four open questions, all downstream of one
+  feature in an otherwise presentation-only change. And the row shape it needs — amount, name,
+  hairline — ships either way, so nothing is thrown out: a later change adds a checkbox to the left of
+  the amount and a count to the header. The stated goal is "replace how a recipe looks, not what it
+  says"; ticking is the only thing in the plan that was neither.
 
 ## 8. Filled step numerals, no connector line
 
@@ -101,6 +115,19 @@
 - **Trade-off:** it overlaps the end of the page, so the article needs bottom padding. The side rail
   was the only option that put the unused horizontal space to work, but it is desktop-only and would
   have needed a second form anyway.
+- **Revised 2026-08-16 — not rendered when `placeholders` is on, and the anchors need
+  `scroll-mt-24`.** Two defects the mockup could not show. **First:** `ReviewPanel` wraps the article
+  in `overflow-hidden rounded-xl`, which makes that div the nearest scroll container — a
+  `sticky bottom-5` element sticks to _that_, and since the box has no height cap it never scrolls, so
+  the pill renders at its static flow position and the design's `-56px` pull lands it on top of the
+  last method card. Removing the wrapper was rejected: its border is what frames the preview as a
+  preview rather than as a published page, which `ReviewPanel`'s own comment calls deliberate, and a
+  floating navigator inside a preview box competes with the pinned publish bar directly above it.
+  **Second:** `Navbar` is `sticky top-0 h-16`, so a bare `#id` jump parks the target behind it —
+  `/dev` already carries `scroll-mt-20` for exactly this and `Navbar`'s comment says _"Change it and
+  grep top-16."_ 24 rather than 20 because the headings now sit inside a card header, and 20 would
+  slice the card's top edge off. The cost of the first half: `placeholders` now decides one thing
+  beyond "what stands in for what is missing", so its docstring has to say so.
 
 ## 10. Keep the square uncropped — no full-bleed hero
 
@@ -149,6 +176,11 @@
   no field for it and `draft.ts` hardcodes `notes: null`, so nothing in the app can add more. Those
   three lines stop being shown. Accepted on the basis that they are test data. The `notes` column
   itself is untouched, so this is reversible.
+- **Revised 2026-08-16 — `notes` also comes off `RecipeView`, and `toRecipeView` stops mapping it.**
+  `RecipeArticle` was its only reader; the manage table reads `recipe.notes` off the row, not the
+  view. Left in place it would be a field on a view type with no consumer, which is the dead code this
+  repo normally deletes. Reversibility is unchanged — the _column_ is what makes this reversible, and
+  restoring the section means adding one line back to a `Pick`.
 
 ## 14. Defer dark mode and the phone layout
 
@@ -159,6 +191,18 @@
 - **Trade-off:** the site has a working theme toggle, so dark mode is reachable today and will be
   slightly off — the tinted band nearly vanishes at the 34% `accent` mix that works in light. Known,
   and cheap to fix when it is picked up.
+- **Revised 2026-08-16 — dark mode is back in scope, and the reason recorded above was backwards.**
+  The band does not nearly vanish in dark; it is roughly **7.5× louder** than in light. Dark `--accent`
+  is `oklch(0.78 …)` — a _light_ tan — against a `oklch(0.18 …)` page, so the same 34% mix that moves
+  lightness by 0.027 in light moves it by 0.204 in dark: a slab, not a tint. Rendered against the real
+  tokens in [assets/dark-band-check.html](assets/dark-band-check.html). The fix is one `dark:` variant
+  on the band's mix percentage, at **10%** (ΔL 0.060 — clearly a band, clearly quieter than the cards
+  above it); 4.5% matches light's ΔL exactly but reads as no band at all. Nothing else needed a dark
+  pass, which is what the original mock-up had actually established. **The phone layout stays
+  deferred** — but on effort, not on design: it is about four responsive prefixes
+  (`grid-cols-2 sm:grid-cols-4` on the stat bar, a smaller title, tighter padding, the pill hidden),
+  so the honest cost of deferring it is that every phone visitor meanwhile gets four stat cells at
+  ~90px each where "1 h 45" beside an 18px icon does not fit.
 
 ## 15. Leave the step note untinted
 
@@ -170,3 +214,104 @@
 - **Trade-off:** `accent` now appears exactly once on the page — the header band — which makes the tan
   token even closer to unused than decision 6 already noted. Accepted: a colour spent on one thing is
   not a problem, a colour spent on the wrong thing is.
+
+## 16. Reserve the hero's shape in `placeholders` mode, dashed
+
+- **Date:** 2026-08-16
+- **Considered:** hide the hero entirely until a cover exists · fill it with `tileColor(slug)` so a
+  draft looks like a finished recipe · drop the square and keep the stat bar as a standalone strip ·
+  reserve the whole object as a dashed square with a dashed stat bar welded under it
+- **Chosen:** reserve it, dashed, with em-dashes in the cells. This is the case that _always_ happens:
+  `ReviewPanel` renders `<RecipeArticle recipe={preview} placeholders />`, and a draft has no cover,
+  no times and no servings by construction — so decision 4's welded object, the centrepiece of the
+  design, has nothing to weld to on every new recipe. Decision 12's "assume a cover exists" is true of
+  published recipes and false here. Reserving keeps the review preview the same shape as the page it
+  previews, which is the whole reason that panel renders the real article full width.
+- **`PLACEHOLDER_META` has to change, not just be reused.** It is three entries today —
+  `Prep · Cooking · Serves`, no Total — and the new bar leads with Total and has four cells. Left as
+  is, the reserved shape would be three cells that snap to four the moment both times are typed, which
+  is the opposite of reserving.
+- **Why not `tileColor()`:** it makes an unfinished draft look like a finished recipe with a coloured
+  cover, on the one screen whose job is to tell you what is missing before you publish.
+- **Trade-off:** the new design now has two hero shapes to keep in step rather than one. Contained by
+  the fact that only `ReviewPanel` passes the flag — the two saved-recipe routes never reach it, and a
+  published recipe with no cover simply has no hero at all.
+
+## 17. The stat bar's column count follows the data
+
+- **Date:** 2026-08-16
+- **Considered:** always four columns with an em-dash in any empty cell · drop Total and always show
+  three · one column per filled cell
+- **Chosen:** one column per filled cell — four cells split the bar in four, three split it in three,
+  and at zero the bar is omitted so the hero is a bordered photo alone. The design was only ever drawn
+  at four, but `filled` in `RecipeArticle` builds 0–4: Total needs _both_ times, and each of prep,
+  cook and servings drops on its own. `kipsate` has `servings = null` today, so a fixed
+  `grid-cols-4` leaves a visible empty quarter with its hairline on a live published recipe — and
+  `detailsSchema` marks all four of those fields optional, so a recipe with a cover and nothing else
+  is publishable through the wizard, not just a legacy artifact.
+- **Why not dash the gaps:** `RecipeArticle`'s existing comment argues the opposite and is right —
+  dashes are "a shape for the row", shown only while the _whole_ row is absent, because a public page
+  should not announce a gap a reader cannot fill. That is exactly why decision 16 dashes and this one
+  does not: a draft's author can fill the gap, a visitor cannot.
+- **Trade-off:** cell width varies between recipes, so two recipe pages are not pixel-identical.
+  Cheaper than a bar that looks broken on the recipes that exist.
+
+## 18. No counts in either card header
+
+- **Date:** 2026-08-16
+- **Considered:** live "2 of 6" on Ingredients and static "3 steps" on Method, as drawn · static
+  counts on both · nothing on either
+- **Chosen:** nothing. The count was added to give the card header a right-hand element, and its only
+  real justification was live tick progress — which decision 7's revision moves to a later change.
+  What is left restates a list the reader is looking at. This closes both of the count questions
+  `plan.md` left open, and it removes the mismatch of a live count facing a static one in matching
+  headers.
+- **Trade-off:** the headers are icon-and-title only, with empty space to their right. The slot is
+  where the live count goes when ticking lands.
+
+## 19. `DifficultyBadge` gets no icon
+
+- **Date:** 2026-08-16
+- **Considered:** the leaf icon drawn in the mockup · an icon per difficulty · no icon
+- **Chosen:** no icon, and `DifficultyBadge` is not touched at all. It is also rendered by
+  `RecipeRow.tsx` in the manage table, so an icon added here restyles a page that is not in this plan.
+  And one icon is really three: `STYLES` is `Record<RecipeDifficulty, string>` precisely so a fourth
+  difficulty cannot be added without a matching entry, and an icon map would need the same treatment —
+  leaf for easy, and two more nobody has chosen.
+- **Trade-off:** the mockup shows the leaf, so the drawn design and the shipped one differ by one
+  glyph. The mockup has been corrected rather than left to mislead.
+
+## 20. Move today's `RecipeArticle` for the rail; do not write a second renderer
+
+- **Date:** 2026-08-16
+- **Considered:** container queries on the article, so its parts reshape by measured width, with no
+  prop and the phone layout falling out of the same rule · a `variant="full" | "compact"` prop · a
+  new compact preview component written from scratch · dropping decision 1 and letting the rail
+  inherit
+- **Chosen:** keep today's component and move it, unchanged, to
+  `app/admin/_components/recipe-wizard/`; write the new design fresh in `components/shared/`. Moving
+  proven code is what makes "the rail stays exactly as it is" a fact rather than a re-implementation
+  from memory. `toRecipeView` stays behind with the new article, since the two route pages import it
+  from there and the wizard uses `toPreview` from `draft.ts` instead — so the split is clean, with no
+  shared helper straddling both. The moved file belongs under the route because it now has exactly one
+  caller in the wizard; leaving it in `shared/` would advertise a reach it no longer has.
+- **Why not container queries**, which were the strongest alternative: they do not implement decision 1,
+  they overturn it — the rail would get the _new_ design squeezed, not today's look. They would have
+  been free, and they would have shipped the deferred phone layout in the same rule. Turned down
+  because the rail is wanted unchanged.
+- **The drift `PreviewRail`'s comment warns about is two different risks, and only one is real here.**
+  _Visual_ drift — the preview no longer looks like the published page — is not a risk of this
+  decision, it _is_ decision 1. _Content_ drift is the dangerous one: a field added to a recipe that
+  appears in one renderer and not the other, so the preview quietly lies about what is being saved.
+  `notes` is the loaded example — the column exists and the wizard has no field for it.
+- **So the warning goes on `RecipeView` in `types/recipes.ts`, not in either component.** A new field
+  is added to the type first; that is where the person who could cause the drift is standing. Same
+  instinct as the `security invoker` warning living in the migration that creates it.
+- **Trade-off:** two renderers, permanently, which is the thing this repo has argued against once
+  already. What it buys beyond the rail: the dashed-cover reservation stays in the moved file, so
+  `admin-create-wizard` decision 21's coupling between that reservation and the rail's scroll effect
+  never becomes a constraint on the new design, and `recipe.cover` never has to join that effect's
+  dependency array.
+- **Checked, not assumed:** both components will carry `#ingredients-heading` and `#steps-heading`.
+  `RecipeWizard` renders the rail only when `step !== 3` and `ReviewPanel` only when `step === 3`, so
+  they never mount together and there is no duplicate-id collision.

@@ -680,7 +680,7 @@
         <span class="sc"><span class="dot in"></span><code>/recipes/[slug]</code></span>
         <span class="sc"><span class="dot in"></span><code>/admin/preview/[slug]</code></span>
         <span class="sc"><span class="dot in"></span>Review &amp; Publish preview</span>
-        <span class="sc"><span class="dot out"></span>Live rail on wizard steps 1–3 — keeps today's look</span>
+        <span class="sc"><span class="dot out"></span>Live rail on wizard steps 1–3 — keeps today's component, moved</span>
       </div>
 
       <!-- ================= THE PAGE ================= -->
@@ -700,9 +700,7 @@
               <div class="col">
                 <h1>Pom met Kip</h1>
                 <p class="desc">The Sunday centrepiece — pomtajer, citrus and slow-roasted chicken, baked until the top catches.</p>
-                <span class="badge-easy"
-                  ><svg class="ic s14"><use href="#i-leaf" /></svg>Easy</span
-                >
+                <span class="badge-easy">Easy</span>
               </div>
             </div>
 
@@ -745,21 +743,23 @@
                 </div>
               </div>
 
-              <!-- 3 · ingredients, tickable -->
+              <!-- 3 · ingredients — static, not tickable. Decision 7 was deferred to its own change
+                   after grilling: it is the only non-presentational part of a presentation-only plan,
+                   and it drags the card header (and #ingredients-heading with it) across the
+                   server/client line. The row shape below is what ticking will slot into. -->
               <div class="card" style="margin-top: 24px">
                 <div class="card-head">
                   <svg class="ic s19"><use href="#i-list" /></svg>
                   <h2 id="ingredients-heading">Ingredients</h2>
-                  <span class="count">2 of 6</span>
                 </div>
                 <div class="card-body">
                   <ul class="ticklist">
-                    <li class="done"><span class="box on">✓</span><span class="amt tnum">1 kg</span><span class="nm">pomtajer</span></li>
-                    <li><span class="box"></span><span class="amt tnum">500 g</span><span class="nm">kipfilet</span></li>
-                    <li class="done"><span class="box on">✓</span><span class="amt tnum">2</span><span class="nm">uien</span></li>
-                    <li><span class="box"></span><span class="amt tnum">1</span><span class="nm">sinaasappel</span></li>
-                    <li><span class="box"></span><span class="amt tnum">½ tl</span><span class="nm">zout</span></li>
-                    <li><span class="box"></span><span class="amt tnum">3 el</span><span class="nm">olie</span></li>
+                    <li><span class="amt tnum">1 kg</span><span class="nm">pomtajer</span></li>
+                    <li><span class="amt tnum">500 g</span><span class="nm">kipfilet</span></li>
+                    <li><span class="amt tnum">2</span><span class="nm">uien</span></li>
+                    <li><span class="amt tnum">1</span><span class="nm">sinaasappel</span></li>
+                    <li><span class="amt tnum">½ tl</span><span class="nm">zout</span></li>
+                    <li><span class="amt tnum">3 el</span><span class="nm">olie</span></li>
                   </ul>
                 </div>
               </div>
@@ -769,7 +769,6 @@
                 <div class="card-head">
                   <svg class="ic s19"><use href="#i-chef" /></svg>
                   <h2 id="steps-heading">Method</h2>
-                  <span class="count">3 steps</span>
                 </div>
                 <div class="card-body">
                   <ol class="steps">
@@ -833,14 +832,20 @@
             <dd>46px, weight 800, tracking <code>-0.025em</code></dd>
             <dt>Description</dt>
             <dd>17.5px, <code>text-muted-foreground</code>, <code>max-w-[60ch]</code></dd>
+            <dt>Dark</dt>
+            <dd>
+              <b>same gradient, <code>accent</code> at 10%</b> — see <code>dark-band-check.html</code>
+            </dd>
             <dt>Badge</dt>
-            <dd>existing <code>DifficultyBadge</code>, leaf icon added</dd>
+            <dd>existing <code>DifficultyBadge</code>, <b>unchanged — no icon</b></dd>
             <dt>Border</dt>
             <dd>1px <code>border</code>, bottom only</dd>
           </dl>
           <p class="why">
             <b>Why a band:</b> every other page on the site opens with one — this is the established page-shell pattern, not a new idea. It also gives the title its own surface so nothing is overlaid
-            on a photo.
+            on a photo. <b>Why two mixes:</b> dark <code>--accent</code> is <em>lighter</em> than dark <code>--background</code>, so 34% there is a slab rather than a tint — 7.5× light's contrast.
+            <b>Why no icon on the badge:</b> <code>DifficultyBadge</code> is also rendered by the manage table, and its map is <code>Record&lt;RecipeDifficulty, string&gt;</code> — one icon would be
+            three icons and a page that isn't in this plan.
           </p>
         </div>
 
@@ -853,7 +858,11 @@
             <dt>Photo</dt>
             <dd>square, <code>aspect-square</code>, full width, never re-cropped</dd>
             <dt>Stat bar</dt>
-            <dd>4 equal columns, <code>border-t</code>, hairline between cells</dd>
+            <dd><b>one column per filled cell</b>, <code>border-t</code>, hairline between cells</dd>
+            <dt>Cell count</dt>
+            <dd>0–4. Total needs <em>both</em> times; each cell drops on its own</dd>
+            <dt>At 0 cells</dt>
+            <dd>bar omitted entirely — the hero is a bordered photo</dd>
             <dt>Cell</dt>
             <dd>icon 18px + stacked value / label, centred</dd>
             <dt>Value</dt>
@@ -861,31 +870,34 @@
             <dt>Label</dt>
             <dd>9px, <code>tracking-[0.18em]</code>, uppercase, muted</dd>
           </dl>
-          <p class="why"><b>Why welded:</b> a separate facts card read as a third floating box. Sharing one border makes the photo and its numbers one object — and it removes a card from the page.</p>
+          <p class="why">
+            <b>Why welded:</b> a separate facts card read as a third floating box. Sharing one border makes the photo and its numbers one object — and it removes a card from the page.
+            <b>Why the column count follows the data:</b> <code>prep_minutes</code>, <code>cook_minutes</code> and <code>servings</code> are all optional in <code>detailsSchema</code>, and
+            <code>kipsate</code> has <code>servings = null</code> today — a fixed <code>grid-cols-4</code> leaves a quarter of the bar empty on a live recipe.
+          </p>
         </div>
 
         <div class="spec">
           <h3>3 · Ingredients card</h3>
-          <p class="where">Tickable — the one interactive part</p>
+          <p class="where">Static. Ticking is a later change</p>
           <dl>
             <dt>Card</dt>
             <dd><code>bg-card</code>, 1px <code>border</code>, <code>rounded-2xl</code></dd>
             <dt>Header</dt>
-            <dd>icon + heading, count right, <code>border-b</code></dd>
+            <dd>icon + heading, <b>no count</b>, <code>border-b</code></dd>
             <dt>Heading id</dt>
-            <dd><code>#ingredients-heading</code> — <b>keep it</b></dd>
-            <dt>Checkbox</dt>
-            <dd>20px, <code>rounded-md</code>, fills <code>primary</code> when ticked</dd>
-            <dt>Ticked row</dt>
-            <dd>42% opacity + line-through</dd>
+            <dd><code>#ingredients-heading</code> — <b>keep it</b>, plus <code>scroll-mt-24</code></dd>
+            <dt>Row</dt>
+            <dd>amount + name, hairline between, 11px vertical padding</dd>
             <dt>Amount</dt>
             <dd>weight 700, <code>min-w-[66px]</code>, <code>tabular-nums</code></dd>
-            <dt>Count</dt>
-            <dd>live — “2 of 6”, not a static total</dd>
+            <dt>Later</dt>
+            <dd>a 20px checkbox goes left of the amount; the live count goes in the header</dd>
           </dl>
           <p class="why">
-            <b>Why a child component:</b> <code>RecipeArticle</code> is a server component on two routes <em>and</em> compiled into the wizard's client bundle. The tick state lives in a small
-            <code>"use client"</code> list; the article itself must not gain <code>useState</code>.
+            <b>Why static for now:</b> ticking is the only non-presentational thing in a presentation-only change, and the live “2 of 6” sits in the card <em>header</em> — so the whole card, including
+            the load-bearing <code>#ingredients-heading</code>, would have to move inside a <code>"use client"</code> child. Deferred to its own change so this diff crosses no boundary at all.
+            <b><code>scroll-mt-24</code> is not optional:</b> the navigator's anchors land under a 64px sticky navbar without it.
           </p>
         </div>
 
@@ -894,7 +906,9 @@
           <p class="where">Same card idiom as ingredients</p>
           <dl>
             <dt>Heading id</dt>
-            <dd><code>#steps-heading</code> — <b>keep it</b></dd>
+            <dd><code>#steps-heading</code> — <b>keep it</b>, plus <code>scroll-mt-24</code></dd>
+            <dt>Header</dt>
+            <dd>icon + heading, <b>no count</b> — matches Ingredients</dd>
             <dt>Numeral</dt>
             <dd>36px circle, filled <code>primary</code>, white text, weight 800</dd>
             <dt>Connector</dt>
@@ -907,8 +921,9 @@
             <dd>plain italic <code>text-muted-foreground</code>, no tint, no padding — unchanged from today</dd>
           </dl>
           <p class="why">
-            <b>Why filled and not outlined:</b> outlined circles read as empty checkboxes next to the real ones in the card above. Filled removes the collision. <b>The note stays untinted:</b> a
-            coloured callout gave an optional aside more weight than the instruction it hangs off.
+            <b>Why filled and not outlined:</b> outlined circles read as empty checkboxes — harmless today, a direct collision the moment the card above becomes tickable, which is a change that is
+            deferred rather than dropped. Filled is the choice that survives both. <b>The note stays untinted:</b> a coloured callout gave an optional aside more weight than the instruction it hangs
+            off.
           </p>
         </div>
 
@@ -925,18 +940,25 @@
             <dt>Active</dt>
             <dd><code>bg-primary</code>, white text</dd>
             <dt>Targets</dt>
-            <dd>plain <code>&lt;a href="#…"&gt;</code> — no JavaScript</dd>
+            <dd><code>&lt;a href="#…"&gt;</code> + <code>scroll-mt-24</code> on both headings</dd>
+            <dt>Not rendered</dt>
+            <dd>
+              <b>when <code>placeholders</code> is on</b> — i.e. in Review &amp; Publish
+            </dd>
           </dl>
           <p class="why">
-            <b>Free anchors:</b> the two heading ids already exist and <code>PreviewRail</code> scrolls to them, calling them “part of its markup contract”. Only <em>highlighting</em> the current
-            section would need a client component — deferred.
+            <b>Anchors are free; landing them is not.</b> <code>Navbar</code> is <code>sticky top-0 h-16</code>, so without <code>scroll-mt</code> every click parks the card header behind it —
+            <code>/dev</code> already solved this with <code>scroll-mt-20</code>. <b>Why not in Review &amp; Publish:</b> that panel wraps the article in <code>overflow-hidden</code>, which makes it
+            the sticky element's scroll container — the pill would never float, and its <code>-56px</code> pull would drop it on top of the last method card.
           </p>
         </div>
 
         <div class="spec">
-          <h3>6 · Loading skeleton</h3>
-          <p class="where"><code>RecipeFallback</code>, same file as the page</p>
+          <h3>6 · Loading skeletons — <b>two of them</b></h3>
+          <p class="where"><code>RecipeFallback</code> <em>and</em> <code>PreviewFallback</code></p>
           <dl>
+            <dt>Files</dt>
+            <dd><code>app/recipes/[slug]/page.tsx</code> · <code>app/admin/preview/[slug]/page.tsx</code></dd>
             <dt>Band</dt>
             <dd>same tint, 34px title bar + two description lines + a pill</dd>
             <dt>Hero</dt>
@@ -947,8 +969,31 @@
             <dd><code>foreground</code>/8%</dd>
           </dl>
           <p class="why">
-            <b>Must ship together.</b> The fallback still draws the pre-overhaul layout. Leave it and every cold load flashes the old shape before snapping to the new one — the easiest thing here to
-            forget.
+            <b>Must ship together.</b> Both fallbacks still draw the pre-overhaul layout, and both routes are in scope. Leave either and every cold load flashes the old shape before snapping to the
+            new one — the easiest thing here to forget, and <code>PreviewFallback</code> is the one that gets forgotten twice because it lives in a different file from the page everyone is thinking
+            about.
+          </p>
+        </div>
+
+        <div class="spec">
+          <h3>7 · The empty shape</h3>
+          <p class="where"><code>placeholders</code> — Review &amp; Publish only</p>
+          <dl>
+            <dt>Hero</dt>
+            <dd>dashed square, reserved at full column width</dd>
+            <dt>Stat bar</dt>
+            <dd>welded under it, dashed, <b>four cells</b> of em-dashes</dd>
+            <dt>Order</dt>
+            <dd>Total · Prep · Cooking · Serves — <b>same as the real bar</b></dd>
+            <dt>Pill</dt>
+            <dd>not rendered</dd>
+            <dt>Elsewhere</dt>
+            <dd>a saved recipe with no cover gets no hero at all — no dashes</dd>
+          </dl>
+          <p class="why">
+            <b>This is the case that always happens.</b> A draft on step 4 has no cover, no times and no servings by construction, so the welded object has nothing to weld to — “assume a cover exists”
+            is true of published recipes and false here. <b><code>PLACEHOLDER_META</code> has to grow a fourth entry and be reordered:</b> it is three cells today with no Total, so the reserved shape
+            would otherwise snap from 3 to 4 the moment both times are typed.
           </p>
         </div>
       </div>
@@ -987,16 +1032,24 @@
         <h3>Load-bearing details, easy to undo by accident</h3>
         <ul>
           <li>
-            <b>The two heading ids stay.</b> <code>#ingredients-heading</code> and <code>#steps-heading</code> are the navigator's targets <em>and</em> the wizard rail's scroll targets. Rename either
-            and one breaks silently.
+            <b>The two heading ids stay, and gain <code>scroll-mt-24</code>.</b> They are the navigator's targets, the sections' <code>aria-labelledby</code>, and — in the moved component — the wizard
+            rail's scroll targets. Rename either and something breaks silently; omit the scroll margin and every pill click hides the card header behind the navbar.
           </li>
           <li>
             <b><code>RecipeArticle</code> gains no <code>useState</code> and no server-only import.</b> It renders as a server component on two routes and is compiled into the wizard's client bundle.
-            Ticking lives in a child.
+            This change adds no client code at all — ticking, which would have, was split out.
           </li>
           <li><b>The square is never re-cropped.</b> No full-bleed hero, no <code>object-cover</code> into a band — the stored file is the framing its author chose.</li>
-          <li><b>The wizard's live rail keeps today's look.</b> Only the Review &amp; Publish preview follows this design.</li>
-          <li><b>The skeleton ships with it</b>, or the page flashes the old layout on every cold load.</li>
+          <li>
+            <b>The wizard's live rail keeps today's <em>component</em></b
+            >, moved to <code>app/admin/_components/recipe-wizard/</code> unchanged rather than rewritten. Moving proven code is what makes “exactly as it is now” a fact instead of a re-implementation
+            — and it leaves the dashed-cover reservation that the rail's scroll effect depends on inside the old file, where it stops being this design's problem.
+          </li>
+          <li><b>Both skeletons ship with it</b>, or the two routes flash the old layout on every cold load.</li>
+          <li>
+            <b>The stat bar's column count follows the data</b>, and the pill is off whenever <code>placeholders</code> is on. Both are cases a fixed four-cell mockup cannot show you, and both are
+            reachable on recipes that exist today.
+          </li>
         </ul>
       </div>
     </div>
